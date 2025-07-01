@@ -1,31 +1,19 @@
 import { createClient } from '@supabase/supabase-js'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
 
-// Simple server client for API routes (no auth needed)
+// Simple client for server-side usage (API routes)
 export const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   {
     auth: {
-      persistSession: false, // Disable auth for server-side usage
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false
     }
   }
 )
 
-// Server-side Supabase client (for API routes and Server Components)
+// For pages that need auth context later
 export const createSupabaseServerClient = () => {
-  const cookieStore = cookies()
-
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get: (name: string) => cookieStore.get(name)?.value,
-        set: () => {}, // Optional for SSR
-        remove: () => {}, // Optional for SSR
-      },
-    }
-  )
+  return supabase
 }

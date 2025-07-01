@@ -92,3 +92,209 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* ===== ZOMBIFY PRIMARY BUTTON ===== */
+.zombify-primary-button {
+  position: relative;
+  background: #000;
+  border: 2px solid #333;
+  color: #f5f1e6;
+  font-family: 'Courier New', monospace;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+  box-shadow: 
+    0 4px 8px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  
+  /* Subtle noise texture */
+  background-image: 
+    radial-gradient(circle at 1px 1px, rgba(255,255,255,0.08) 1px, transparent 0);
+  background-size: 20px 20px;
+  
+  /* Glitch border effect */
+  animation: button-static 0.1s infinite;
+}
+
+.zombify-primary-button:hover {
+  background: #1a1a1a;
+  border-color: #555;
+  transform: translateY(-2px);
+  box-shadow: 
+    0 8px 16px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    0 0 20px rgba(0, 0, 0, 0.4);
+}
+
+.zombify-primary-button:active {
+  transform: translateY(0);
+  background: #000;
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+@keyframes button-static {
+  0%, 100% { 
+    box-shadow: 
+      0 4px 8px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+  50% { 
+    box-shadow: 
+      0 4px 8px rgba(0, 0, 0, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+}
+
+/* ===== TERMINAL ANALYSIS SCREEN - GREY/NOISE THEME ===== */
+@keyframes terminal-flicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.95; }
+}
+
+@keyframes terminal-glow {
+  0%, 100% { 
+    text-shadow: 0 0 5px rgba(200, 200, 200, 0.6), 0 0 10px rgba(180, 180, 180, 0.4); 
+  }
+  50% { 
+    text-shadow: 0 0 10px rgba(220, 220, 220, 0.8), 0 0 20px rgba(200, 200, 200, 0.6); 
+  }
+}
+
+@keyframes noise-sweep {
+  0% { transform: translateY(-100vh); }
+  100% { transform: translateY(100vh); }
+}
+
+@keyframes static-rain {
+  0% { transform: translateY(-100%); opacity: 0; }
+  10% { opacity: 0.8; }
+  90% { opacity: 0.8; }
+  100% { transform: translateY(100vh); opacity: 0; }
+}
+
+@keyframes progress-pulse {
+  0%, 100% { box-shadow: 0 0 5px rgba(180, 180, 180, 0.4); }
+  50% { box-shadow: 0 0 20px rgba(200, 200, 200, 0.8), 0 0 30px rgba(180, 180, 180, 0.5); }
+}
+
+/* Terminal Text Effects - Grey Theme */
+.terminal-text {
+  color: #c8c8c8;
+  text-shadow: 0 0 5px rgba(200, 200, 200, 0.5);
+  animation: terminal-flicker 0.2s infinite linear alternate;
+}
+
+.terminal-glow {
+  animation: terminal-glow 3s ease-in-out infinite;
+}
+
+/* Enhanced Glitch Effect for Landing */
+.glitch-text {
+  position: relative;
+  animation: glitch-main 4s infinite;
+}
+
+.glitch-text:before,
+.glitch-text:after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.glitch-text:before {
+  animation: glitch-1 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) both infinite;
+  color: #666;
+  z-index: -1;
+}
+
+.glitch-text:after {
+  animation: glitch-2 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) both infinite;
+  color: #999;
+  z-index: -2;
+}
+
+@keyframes glitch-main {
+  0%, 100% { transform: translate(0); }
+  20% { transform: translate(-1px, 1px); }
+  40% { transform: translate(-1px, -1px); }
+  60% { transform: translate(1px, 1px); }
+  80% { transform: translate(1px, -1px); }
+}
+
+@keyframes glitch-1 {
+  0%, 100% { transform: translate(0); }
+  10% { transform: translate(-1px, -1px); }
+  20% { transform: translate(1px, 1px); }
+  30% { transform: translate(-1px, 1px); }
+  40% { transform: translate(1px, -1px); }
+  50% { transform: translate(-1px, -1px); }
+  60% { transform: translate(1px, 1px); }
+  70% { transform: translate(-1px, 1px); }
+  80% { transform: translate(1px, -1px); }
+  90% { transform: translate(-1px, -1px); }
+}
+
+@keyframes glitch-2 {
+  0%, 100% { transform: translate(0); }
+  10% { transform: translate(1px, 1px); }
+  20% { transform: translate(-1px, -1px); }
+  30% { transform: translate(1px, -1px); }
+  40% { transform: translate(-1px, 1px); }
+  50% { transform: translate(1px, 1px); }
+  60% { transform: translate(-1px, -1px); }
+  70% { transform: translate(1px, -1px); }
+  80% { transform: translate(-1px, 1px); }
+  90% { transform: translate(1px, 1px); }
+}
+
+/* Enhanced Border Effects */
+.glitch-border {
+  position: relative;
+  animation: border-flicker 0.3s infinite linear;
+}
+
+@keyframes border-flicker {
+  0%, 100% { border-color: rgba(0, 0, 0, 0.3); }
+  50% { border-color: rgba(0, 0, 0, 0.6); }
+}
+
+/* Drag State Enhancements */
+.upload-hover {
+  background: linear-gradient(45deg, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.02));
+  border-color: rgba(0, 0, 0, 0.5);
+}
+
+/* ===== ZOMBIFY CARD STYLING ===== */
+.zombify-card {
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.zombify-card:before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, transparent 49%, rgba(0, 0, 0, 0.01) 50%, transparent 51%);
+  background-size: 20px 20px;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.zombify-card:hover {
+  border-color: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.03);
+}
