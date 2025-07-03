@@ -2,6 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import "/styles/globals.css"
 import { AuthProvider } from '@/hooks/useAuth'
+import { UploadProvider } from '@/contexts/UploadContext'
 
 export const metadata: Metadata = {
   title: "Zombify - UX Feedback Tool",
@@ -30,7 +31,9 @@ export default function RootLayout({
       </head>
       <body>
         <AuthProvider>
-          {children}
+          <UploadProvider>
+            {children}
+          </UploadProvider>
         </AuthProvider>
       </body>
     </html>

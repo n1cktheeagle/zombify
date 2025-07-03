@@ -10,7 +10,8 @@ export async function POST(req: NextRequest) {
     const supabase = createRouteHandlerClient({ cookies });
     
     // Get current user session
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    console.log('Session check:', { session: !!session, user: session?.user?.id, sessionError });
     
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest) {
       });
 
     if (uploadError) {
-      console.error('Storage upload error:', uploadError.message);
+      console.error('Storage upload error:', uploadError);
       return NextResponse.json({ error: 'Upload to storage failed' }, { status: 500 });
     }
 
@@ -48,41 +49,70 @@ export async function POST(req: NextRequest) {
 
     // Determine user information for database insert
     const authenticatedUser = session?.user;
-    const finalUserId = authenticatedUser?.id || userId || null;
+    const finalUserId = authenticatedUser?.id || null;
     const finalIsGuest = !authenticatedUser || isGuest;
 
-    // Insert feedback record to database with proper user context
-    console.log('About to insert to database:', {
+    // Prepare the data for insertion
+    const feedbackData = {
       id,
       image_url: imageUrl,
       score: analysis.score,
       issues: analysis.issues,
+      analysis: analysis, // Store full analysis as JSONB
       user_id: finalUserId,
       is_guest: finalIsGuest,
       chain_id: uuidv4(),
-    });
+      created_at: new Date().toISOString(),
+    };
 
+    console.log('About to insert to database:', feedbackData);
+
+    // Insert feedback record to database
     const { error: insertError, data: insertData } = await supabase
       .from('feedback')
-      .insert([
-        {
-          id,
-          image_url: imageUrl,
-          score: analysis.score,
-          issues: analysis.issues,
-          analysis: analysis, // Store full analysis including zombieTips
-          user_id: finalUserId,
-          is_guest: finalIsGuest,
-          chain_id: uuidv4(),
-          created_at: new Date().toISOString(),
-        },
-      ]);
+      .insert([feedbackData])
+      .select('*'); // Return the inserted data
 
     console.log('Insert result:', { insertError, insertData });
 
     if (insertError) {
-      console.error('DB insert error:', insertError.message);
-      return NextResponse.json({ error: 'Database insert failed' }, { status: 500 });
+      console.error('DB insert error:', insertError);
+      
+      // Check if it's a policy/permission error
+      if (insertError.code === '42501' || insertError.message.includes('permission')) {
+        console.error('RLS Policy blocking insert. User:', finalUserId, 'IsGuest:', finalIsGuest);
+        
+        // Try to debug RLS by temporarily disabling it for this table
+        console.log('Attempting to check RLS policies...');
+        
+        return NextResponse.json({ 
+          error: 'Database permission denied', 
+          details: insertError.message,
+          debug: { finalUserId, finalIsGuest, authenticatedUser: !!authenticatedUser }
+        }, { status: 500 });
+      }
+      
+      return NextResponse.json({ 
+        error: 'Database insert failed', 
+        details: insertError.message 
+      }, { status: 500 });
+    }
+
+    // Verify the record was actually inserted
+    const { data: verifyData, error: verifyError } = await supabase
+      .from('feedback')
+      .select('id, user_id, is_guest')
+      .eq('id', id)
+      .single();
+
+    console.log('Verification query:', { verifyData, verifyError });
+
+    if (verifyError || !verifyData) {
+      console.error('Record not found after insert:', { verifyError, verifyData });
+      return NextResponse.json({ 
+        error: 'Record insert verification failed',
+        details: verifyError?.message 
+      }, { status: 500 });
     }
 
     // If user is authenticated, increment their feedback count
@@ -92,19 +122,25 @@ export async function POST(req: NextRequest) {
       });
       
       if (incrementError) {
-        console.error('Error incrementing feedback count:', incrementError.message);
+        console.error('Error incrementing feedback count:', incrementError);
         // Don't fail the request if this fails
       }
     }
+
+    console.log('Upload successful! Record created:', id);
 
     // Return success with the feedback ID for frontend to handle redirect
     return NextResponse.json({ 
       success: true, 
       feedbackId: id,
-      redirectUrl: `/feedback/${id}`
+      redirectUrl: `/feedback/${id}`,
+      debug: { finalUserId, finalIsGuest, insertData }
     }, { status: 200 });
   } catch (err) {
     console.error('Unexpected server error:', err);
-    return NextResponse.json({ error: 'Unexpected server error' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Unexpected server error', 
+      details: err instanceof Error ? err.message : 'Unknown error'
+    }, { status: 500 });
   }
 }
