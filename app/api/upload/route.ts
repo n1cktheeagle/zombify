@@ -1,26 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import { v4 as uuidv4 } from 'uuid';
 import { analyzeImage } from '@/lib/analyzeImage';
 
 export async function POST(req: NextRequest) {
   try {
-    // Dynamic import to avoid module resolution issues
-    const { createClient } = await import('@supabase/supabase-js');
+    // Create authenticated Supabase client
+    const supabase = createRouteHandlerClient({ cookies });
     
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        auth: {
-          persistSession: false,
-          autoRefreshToken: false,
-          detectSessionInUrl: false
-        }
-      }
-    );
-
+    // Get current user session
+    const { data: { session } } = await supabase.auth.getSession();
+    
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
+    const userId = formData.get('user_id') as string | null;
+    const isGuest = formData.get('is_guest') === 'true';
 
     if (!file) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
@@ -51,12 +46,19 @@ export async function POST(req: NextRequest) {
     const analysis = await analyzeImage(imageUrl);
     console.log('OpenAI analysis result:', analysis);
 
-    // Insert feedback record to database
+    // Determine user information for database insert
+    const authenticatedUser = session?.user;
+    const finalUserId = authenticatedUser?.id || userId || null;
+    const finalIsGuest = !authenticatedUser || isGuest;
+
+    // Insert feedback record to database with proper user context
     console.log('About to insert to database:', {
       id,
       image_url: imageUrl,
       score: analysis.score,
       issues: analysis.issues,
+      user_id: finalUserId,
+      is_guest: finalIsGuest,
       chain_id: uuidv4(),
     });
 
@@ -69,7 +71,10 @@ export async function POST(req: NextRequest) {
           score: analysis.score,
           issues: analysis.issues,
           analysis: analysis, // Store full analysis including zombieTips
+          user_id: finalUserId,
+          is_guest: finalIsGuest,
           chain_id: uuidv4(),
+          created_at: new Date().toISOString(),
         },
       ]);
 
@@ -80,7 +85,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Database insert failed' }, { status: 500 });
     }
 
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_SITE_URL}/feedback/${id}`, 303);
+    // If user is authenticated, increment their feedback count
+    if (authenticatedUser && !finalIsGuest) {
+      const { error: incrementError } = await supabase.rpc('increment_feedback_count', {
+        user_uuid: authenticatedUser.id
+      });
+      
+      if (incrementError) {
+        console.error('Error incrementing feedback count:', incrementError.message);
+        // Don't fail the request if this fails
+      }
+    }
+
+    // Return success with the feedback ID for frontend to handle redirect
+    return NextResponse.json({ 
+      success: true, 
+      feedbackId: id,
+      redirectUrl: `/feedback/${id}`
+    }, { status: 200 });
   } catch (err) {
     console.error('Unexpected server error:', err);
     return NextResponse.json({ error: 'Unexpected server error' }, { status: 500 });

@@ -1,11 +1,12 @@
 import type React from "react"
 import type { Metadata } from "next"
 import "/styles/globals.css"
+import { AuthProvider } from '@/hooks/useAuth'
 
 export const metadata: Metadata = {
   title: "Zombify - UX Feedback Tool",
   description: "Get undead-level UX feedback for your designs",
-    generator: 'v0.dev'
+  generator: 'v0.dev'
 }
 
 export default function RootLayout({
@@ -27,7 +28,11 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+      </body>
     </html>
   )
 }

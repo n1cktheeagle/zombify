@@ -1,17 +1,37 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
+import { canUserUpload, incrementFeedbackCount } from '@/lib/auth';
 import UploadZone from '@/components/UploadZone';
+import { MainHeader } from '@/components/MainHeader';
 
 type AppState = 'landing' | 'analyzing' | 'complete';
 
 export default function HomePage() {
   const [appState, setAppState] = useState<AppState>('landing');
   const [analysisProgress, setAnalysisProgress] = useState(0);
+  const { user, profile, loading } = useAuth();
   const router = useRouter();
 
+  // Redirect logged-in users to dashboard
+  useEffect(() => {
+    if (!loading && user) {
+      router.push('/dashboard');
+    }
+  }, [user, loading, router]);
+
   const handleZombify = async (file: File) => {
+// TEMPORARILY DISABLED - Check upload permissions for authenticated users
+// if (user) {
+//   const canUpload = await canUserUpload(user.id);
+//   if (!canUpload) {
+//     alert('Upload limit reached! Upgrade to Pro for unlimited uploads.');
+//     return;
+//   }
+// }
+
     setAppState('analyzing');
     setAnalysisProgress(0);
 
@@ -30,6 +50,14 @@ export default function HomePage() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('project_name', 'Untitled');
+      
+      // Add user info if authenticated
+      if (user) {
+        formData.append('user_id', user.id);
+        formData.append('is_guest', 'false');
+      } else {
+        formData.append('is_guest', 'true');
+      }
 
       const res = await fetch('/api/upload', {
         method: 'POST',
@@ -39,20 +67,22 @@ export default function HomePage() {
       clearInterval(progressInterval);
       setAnalysisProgress(100);
 
-      if (res.url.includes('/feedback/')) {
-        const id = res.url.split('/feedback/')[1];
-        
+      if (!res.ok) {
+        throw new Error('Analysis failed');
+      }
+
+      const result = await res.json();
+      
+      if (result.success && result.feedbackId) {
         // Brief completion state before redirect
         setAppState('complete');
         setTimeout(() => {
-          router.push(`/feedback/${id}`);
+          router.push(`/feedback/${result.feedbackId}`);
         }, 800);
         return;
       }
 
-      if (!res.ok) {
-        throw new Error('Analysis failed');
-      }
+      throw new Error(result.error || 'Analysis failed');
 
     } catch (err) {
       console.error('Upload error:', err);
@@ -61,6 +91,15 @@ export default function HomePage() {
       throw err; // Re-throw to let UploadZone handle the error display
     }
   };
+
+  // Show loading state while auth is initializing
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#f5f1e6] flex items-center justify-center">
+        <div className="font-mono text-gray-600">Loading...</div>
+      </div>
+    );
+  }
 
   // Analysis Screen - Updated with Grey/Noise Theme
   if (appState === 'analyzing' || appState === 'complete') {
@@ -216,29 +255,17 @@ export default function HomePage() {
     );
   }
 
+  // Determine if user can upload
+  const isLoggedIn = !!user;
+  const isAtUploadLimit = Boolean(profile && profile.plan_type === 'free' && profile.feedback_count >= profile.monthly_limit);
+
   // Landing Page
   return (
     <div className="min-h-screen bg-[#f5f1e6] text-black font-mono relative">
       {/* Subtle scanlines overlay */}
       <div className="fixed inset-0 pointer-events-none opacity-[0.02] bg-gradient-to-b from-transparent via-black to-transparent bg-[length:100%_4px]" />
 
-      {/* Top Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between p-6">
-        {/* Logo */}
-        <div className="text-2xl font-bold tracking-tight text-black">
-          ZOMBIFY
-        </div>
-        
-        {/* Auth Buttons */}
-        <div className="flex items-center space-x-4">
-          <button className="text-sm font-mono tracking-wide text-black opacity-70 hover:opacity-100 transition-opacity">
-            LOGIN
-          </button>
-          <button className="text-sm font-mono tracking-wide px-4 py-2 border border-black/20 text-black hover:border-black/40 hover:bg-black/5 transition-all">
-            SIGN UP
-          </button>
-        </div>
-      </nav>
+      <MainHeader variant="landing" />
 
       <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 pt-20">
         {/* Header */}
@@ -259,12 +286,53 @@ export default function HomePage() {
           </div>
         </div>
 
+        {/* Auth-aware messaging */}
+        {!isLoggedIn && (
+          <div className="text-center mb-6">
+            <p className="text-sm font-mono opacity-60">
+              Try 1 free analysis • Sign up for 3/month • Pro for unlimited
+            </p>
+          </div>
+        )}
+
+        {isAtUploadLimit && (
+          <div className="text-center mb-6">
+            <p className="text-sm font-mono opacity-60">
+              Monthly limit reached • Upgrade to Pro for unlimited analysis
+            </p>
+          </div>
+        )}
+
         {/* Upload Area - Using Reusable Component */}
-        <UploadZone 
-          isLoggedIn={true} // Landing page allows first upload for everyone
-          showCooldown={false}
-          onZombify={handleZombify}
-        />
+        {!isAtUploadLimit ? (
+          <UploadZone 
+            isLoggedIn={isLoggedIn}
+            showCooldown={false}
+            onZombify={handleZombify}
+          />
+        ) : (
+          <div className="zombify-card max-w-md mx-auto text-center">
+            <p className="text-lg font-mono mb-4">Upload limit reached</p>
+            <p className="text-sm opacity-70 mb-6">
+              You've used all {profile?.monthly_limit} uploads this month
+            </p>
+            <button className="zombify-primary-button">
+              Upgrade to Pro
+            </button>
+          </div>
+        )}
+
+        {/* User Status */}
+        {isLoggedIn && profile && !isAtUploadLimit && (
+          <div className="mt-6 text-center">
+            <p className="text-xs font-mono opacity-60">
+              {profile.plan_type === 'pro' 
+                ? '⭐ Pro: Unlimited analysis' 
+                : `${profile.feedback_count}/${profile.monthly_limit} uploads used this month`
+              }
+            </p>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="mt-16 text-center">

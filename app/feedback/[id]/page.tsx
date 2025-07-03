@@ -1,31 +1,38 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { notFound } from 'next/navigation';
 import GenerationalRadarChart from '@/components/GenerationalRadarChart';
+import { MainHeader } from '@/components/MainHeader';
 
 export default function FeedbackPage({ params }: { params: { id: string } }) {
+  const router = useRouter();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [cooldownTime, setCooldownTime] = useState(60);
+  const [user, setUser] = useState(null);
+
+  const openSignIn = () => {
+    // Your sign in logic here
+  };
+
+  const openSignUp = () => {
+    // Your sign up logic here
+  };
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const { createClient } = await import('@supabase/supabase-js');
+        console.log('Fetching data for ID:', params.id); // DEBUG
         
-        const supabase = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-          {
-            auth: {
-              persistSession: false,
-              autoRefreshToken: false,
-              detectSessionInUrl: false
-            }
-          }
-        );
+        // Use the same client setup as your dashboard/working pages
+        const { createRouteHandlerClient } = await import('@supabase/auth-helpers-nextjs');
+        const { createClientComponentClient } = await import('@supabase/auth-helpers-nextjs');
+        
+        // Try the component client first (like your working pages)
+        const supabase = createClientComponentClient();
 
         const { data: result, error } = await supabase
           .from('feedback')
@@ -33,12 +40,22 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
           .eq('id', params.id)
           .single();
 
-        if (error || !result) {
-          console.log('Database error:', error);
-          return;
+        console.log('Database query result:', { result, error }); // DEBUG
+
+        if (error) {
+          console.error('Database error details:', error); // DEBUG
+          // Don't return here, let it fall through to show 404
+        }
+        
+        if (!result) {
+          console.log('No data found for ID:', params.id); // DEBUG
+          // Don't return here, let it fall through to show 404
         }
 
-        setData(result);
+        if (result && !error) {
+          console.log('Data loaded successfully:', result); // DEBUG
+          setData(result);
+        }
       } catch (err) {
         console.error('Error fetching data:', err);
       } finally {
@@ -88,25 +105,48 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
 
   return (
     <div className="min-h-screen bg-[#f5f1e6] text-black font-mono relative flex flex-col">
-      {/* Top Navigation - Fixed */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between p-6 bg-[#f5f1e6]/90 backdrop-blur-sm border-b border-black/10">
-        <div className="text-2xl font-bold tracking-tight text-black">
-          ZOMBIFY
+      
+      <MainHeader variant="app" />
+
+      {/* Guest CTA - Only show for non-logged in users */}
+      {!user && (
+        <div className="bg-gradient-to-r from-purple-50 to-blue-50 border-b border-purple-200 p-4">
+          <div className="max-w-4xl mx-auto text-center">
+            <p className="font-mono text-purple-800 mb-3">
+              Want to zombify more designs? Create an account for 3 free analyses per month
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button 
+                onClick={openSignIn}
+                className="text-sm font-mono px-4 py-2 border border-purple-400 text-purple-700 hover:bg-purple-50"
+              >
+                LOGIN
+              </button>
+              <button 
+                onClick={openSignUp}
+                className="text-sm font-mono px-4 py-2 bg-purple-600 text-white hover:bg-purple-700"
+              >
+                SIGN UP FREE
+              </button>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center space-x-4">
-          <button className="text-sm font-mono tracking-wide text-black opacity-70 hover:opacity-100 transition-opacity">
-            LOGIN
-          </button>
-          <button className="text-sm font-mono tracking-wide px-4 py-2 border border-black/20 text-black hover:border-black/40 hover:bg-black/5 transition-all">
-            SIGN UP
-          </button>
-        </div>
-      </nav>
+      )}
+
+      {/* Back to Dashboard Button */}
+      <div className="pt-24 px-6">
+        <button 
+          onClick={() => router.push('/dashboard')}
+          className="flex items-center gap-2 text-sm font-mono text-black opacity-70 hover:opacity-100 transition-opacity mb-6"
+        >
+          ← Back to Dashboard
+        </button>
+      </div>
 
       {/* Main Content Area with Sidebar - Account for fixed nav */}
       <div className="flex pt-24">
         {/* Sidebar - Fixed */}
-        <div className={`${sidebarCollapsed ? 'w-0' : 'w-64'} bg-[#f5f1e6] border-r border-black/10 flex-shrink-0 transition-all duration-300 overflow-hidden fixed left-0 top-24 bottom-0 z-40`}>
+        <div className={`${sidebarCollapsed ? 'w-0' : 'w-64'} bg-[#f5f1e6] border-r border-black/10 flex-shrink-0 transition-all duration-300 overflow-hidden fixed left-0 top-20 bottom-0 z-40`}>
           {!sidebarCollapsed && (
             <div className="p-4 w-64">
               {/* Projects Section with Collapse Button */}
@@ -181,74 +221,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
         <div className={`flex-1 p-6 overflow-auto transition-all duration-300 ${sidebarCollapsed ? 'ml-0' : 'ml-64'}`}>
           <div className="max-w-6xl mx-auto w-full">
             
-            {/* Fixed Height Upload Zone with Guest Limitation - Full Width */}
-            <div className="mb-8">
-              <div className="w-full">
-                <div className={`relative overflow-hidden h-48 border-2 border-dashed rounded-lg p-6 text-center cursor-pointer group transition-all duration-300 ${
-                  isCooldownActive 
-                    ? 'border-black/10 bg-black/2 cursor-not-allowed opacity-60 hover:opacity-100' 
-                    : 'border-black/20 hover:border-black/30 hover:bg-black/5'
-                }`}>
-                  
-                  {/* Scanlines overlay - only show if NOT in cooldown and NOT showing auth message */}
-                  {!isCooldownActive && (
-                    <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-[0.15] transition-opacity duration-300">
-                      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black to-transparent bg-[length:100%_4px] animate-pulse" />
-                    </div>
-                  )}
-                  
-                  {/* Cooldown Timer - Small corner */}
-                  {isCooldownActive && (
-                    <div className="absolute top-3 right-3 text-xs font-mono bg-black/10 px-2 py-1 rounded">
-                      {Math.floor(cooldownTime / 60)}:{(cooldownTime % 60).toString().padStart(2, '0')}
-                    </div>
-                  )}
 
-                  {/* Guest Limitation Overlay - No white box, just content on backdrop */}
-                  {isCooldownActive && (
-                    <div className="absolute inset-0 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 bg-[#f5f1e6]/90">
-                      <div className="text-center">
-                        <p className="text-black font-semibold mb-3 text-xl">
-                          Create an account to zombify more designs
-                        </p>
-                        <p className="text-black/80 mb-4 text-sm">
-                          You've reached your guest limit
-                        </p>
-                        <button className="text-sm font-mono tracking-wide px-8 py-3 bg-black text-white hover:bg-black/90 transition-all rounded font-medium">
-                          SIGN UP FREE
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Centered Content */}
-                  <div className="h-full flex flex-col items-center justify-center space-y-4 relative z-10">
-                    <div className={`w-12 h-12 border-2 rounded-lg flex items-center justify-center transition-colors ${
-                      isCooldownActive 
-                        ? 'border-black/10' 
-                        : 'border-black/20 group-hover:border-black/40'
-                    }`}>
-                      <div className={`text-xl transition-opacity ${
-                        isCooldownActive 
-                          ? 'opacity-30' 
-                          : 'opacity-60 group-hover:opacity-80'
-                      }`}>📁</div>
-                    </div>
-                    <div className="text-center space-y-1">
-                      <p className={`text-lg font-medium ${isCooldownActive ? 'opacity-50' : ''}`}>
-                        {isCooldownActive ? 'Upload disabled' : 'Drop your interface here'}
-                      </p>
-                      <p className={`text-sm opacity-60 ${isCooldownActive ? 'opacity-30' : ''}`}>
-                        {isCooldownActive 
-                          ? 'Account required for more uploads' 
-                          : 'or click to browse • PNG, JPG, or any UI screenshot'
-                        }
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
 
             {/* Header */}
             <div className="flex items-center justify-between mb-8">
