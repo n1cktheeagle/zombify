@@ -55,20 +55,14 @@ export default function RecentUploadsSection() {
 
   return (
     <div className="space-y-2">
-      {uploads.slice(0, 5).map((upload) => (
+      {uploads.map((upload) => (
         <div
           key={upload.id}
-          className="flex items-center space-x-3 p-2 hover:bg-black/5 rounded cursor-pointer transition-colors"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Sidebar navigation clicked');
-            console.log('Upload ID:', upload.id);
-            console.log('Full upload object:', upload);
-            const path = `/feedback/${upload.id}`;
-            console.log('Navigating to:', path);
-            router.push(path);
+          className="flex items-center space-x-3 p-2 hover:bg-black/5 rounded cursor-pointer transition-colors relative z-10"
+          onClick={() => {
+            window.location.href = `/feedback/${upload.id}`;
           }}
+          
           role="button"
           tabIndex={0}
           onKeyDown={(e) => {

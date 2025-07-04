@@ -51,7 +51,6 @@ export function UploadProvider({ children }: { children: ReactNode }) {
         .select('id, image_url, score, created_at, analysis')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
-        .limit(10);
 
       if (error) {
         console.error('Error fetching uploads:', error);
