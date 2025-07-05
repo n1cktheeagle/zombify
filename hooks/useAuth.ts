@@ -19,8 +19,13 @@ interface AuthContextType {
   user: User | null
   profile: UserProfile | null
   loading: boolean
+  initialized: boolean
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
+  signUpWithEmail: (email: string, password: string, fullName?: string) => Promise<any>
+  signInWithEmail: (email: string, password: string) => Promise<any>
+  resendEmailConfirmation: (email: string) => Promise<any>
+  resetPassword: (email: string) => Promise<any>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -33,67 +38,142 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [initialized, setInitialized] = useState(false)
 
   useEffect(() => {
-    const getInitialSession = async () => {
+    let mounted = true
+
+    const initializeAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
-        setUser(session?.user ?? null)
+        console.log('🔐 Starting simple auth initialization...')
         
+        const { data: { session } } = await supabase.auth.getSession()
+
+        if (!mounted) return
+
+        console.log('📋 Session result:', session ? `Found user: ${session.user?.email}` : 'No session')
+
         if (session?.user) {
-          const userProfile = await getUserProfile(session.user.id)
-          setProfile(userProfile)
+          setUser(session.user)
+          
+          try {
+            const userProfile = await getUserProfile(session.user.id)
+            if (mounted) {
+              setProfile(userProfile)
+            }
+          } catch (profileError) {
+            console.warn('Profile loading failed (non-critical):', profileError)
+          }
         }
       } catch (error) {
-        console.error('Error getting session:', error)
+        console.error('❌ Auth initialization failed:', error)
       } finally {
-        setLoading(false)
+        if (mounted) {
+          setLoading(false)
+          setInitialized(true)
+          console.log('🏁 Simple auth initialization complete')
+        }
       }
     }
 
-    getInitialSession()
+    initializeAuth()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setUser(session?.user ?? null)
+        console.log('🔄 Auth state changed:', event, session?.user?.email || 'No user')
         
+        if (!mounted) return
+
+        setUser(session?.user ?? null)
+
+        if (mounted) {
+          setLoading(false)
+          setInitialized(true)
+          console.log('🏁 Auth state listener set initialized=true')
+        }
+
         if (session?.user) {
-          const userProfile = await getUserProfile(session.user.id)
-          setProfile(userProfile)
+          getUserProfile(session.user.id)
+            .then(userProfile => {
+              if (mounted) {
+                setProfile(userProfile)
+                console.log('✅ Profile loaded successfully')
+              }
+            })
+            .catch(error => {
+              console.warn('Profile loading failed during auth change:', error)
+            })
         } else {
           setProfile(null)
         }
-        
-        setLoading(false)
       }
     )
 
-    return () => subscription.unsubscribe()
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   const handleSignOut = async () => {
     try {
-      await supabase.auth.signOut()
+      console.log('🚪 Signing out...')
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
+      
       setUser(null)
       setProfile(null)
+      
+      localStorage.removeItem('zombify_user_cache')
+      
+      window.location.href = '/'
     } catch (error) {
-      console.error('Error signing out:', error)
+      console.error('❌ Error signing out:', error)
     }
   }
 
   const refreshProfile = async () => {
     if (user) {
-      const userProfile = await getUserProfile(user.id)
-      setProfile(userProfile)
+      try {
+        const userProfile = await getUserProfile(user.id)
+        setProfile(userProfile)
+      } catch (error) {
+        console.error('Error refreshing profile:', error)
+      }
     }
+  }
+
+  const signUpWithEmailWrapper = async (email: string, password: string, fullName?: string) => {
+    const { signUpWithEmail } = await import('@/lib/auth')
+    return signUpWithEmail(email, password, fullName)
+  }
+
+  const signInWithEmailWrapper = async (email: string, password: string) => {
+    const { signInWithEmail } = await import('@/lib/auth')
+    return signInWithEmail(email, password)
+  }
+
+  const resendEmailConfirmationWrapper = async (email: string) => {
+    const { resendEmailConfirmation } = await import('@/lib/auth')
+    return resendEmailConfirmation(email)
+  }
+
+  const resetPasswordWrapper = async (email: string) => {
+    const { resetPassword } = await import('@/lib/auth')
+    return resetPassword(email)
   }
 
   const contextValue: AuthContextType = {
     user,
     profile,
     loading,
+    initialized,
     signOut: handleSignOut,
-    refreshProfile
+    refreshProfile,
+    signUpWithEmail: signUpWithEmailWrapper,
+    signInWithEmail: signInWithEmailWrapper,
+    resendEmailConfirmation: resendEmailConfirmationWrapper,
+    resetPassword: resetPasswordWrapper
   }
 
   return React.createElement(

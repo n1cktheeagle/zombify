@@ -1,5 +1,5 @@
-// AGGRESSIVE SUPABASE AUTH FIX
-// This addresses the core Supabase initialization issue
+// FIXED SUPABASE AUTH DASHBOARD
+// This addresses TypeScript errors and implements proper data loading
 
 'use client';
 
@@ -50,7 +50,6 @@ export default function Dashboard() {
   const supabase = getSupabaseClient();
 
   useEffect(() => {
-    // NUCLEAR OPTION: Skip auth entirely and use localStorage as fallback
     let mounted = true;
     
     const aggressiveInit = async () => {
@@ -85,6 +84,12 @@ export default function Dashboard() {
             setUser(userData);
             await loadDashboardDataDirect(userData.id);
             return;
+          } else {
+            // No user found - redirect to landing page
+            console.log('❌ No authenticated user, redirecting to home');
+            localStorage.removeItem('zombify_user');
+            router.replace('/');
+            return;
           }
         } catch (authError) {
           console.log('❌ Auth failed, trying fallback...');
@@ -98,6 +103,14 @@ export default function Dashboard() {
         
       } catch (err: any) {
         console.error('💥 All auth methods failed:', err);
+        // If we're getting auth errors, probably signed out - redirect home
+        if (err && typeof err === 'object' && 'message' in err && typeof err.message === 'string' &&
+            (err.message.includes('406') || err.message.includes('Unauthorized'))) {
+          console.log('🚪 Auth error detected, redirecting to home');
+          localStorage.removeItem('zombify_user');
+          router.replace('/');
+          return;
+        }
         setError('Unable to connect. Please check your internet connection.');
         setLoading(false);
       }
@@ -110,72 +123,85 @@ export default function Dashboard() {
     };
   }, []);
 
-  // Load data directly with user ID (bypass auth)
+  // Load data directly with user ID using Supabase queries
   const loadDashboardDataDirect = async (userId: string) => {
     console.log('📊 Loading data directly for user:', userId);
     setAuthStep('loading_data');
     
     try {
-      // Create direct database calls
-      const profilePromise = fetch('/api/profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId })
-      });
-      
-      const feedbackPromise = fetch('/api/feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId })
-      });
-      
-      const [profileRes, feedbackRes] = await Promise.all([profilePromise, feedbackPromise]);
-      
-      if (profileRes.ok) {
-        const profileData = await profileRes.json();
-        setProfile(profileData);
-        console.log('✅ Profile loaded via API');
-      }
-      
-      if (feedbackRes.ok) {
-        const feedbackData = await feedbackRes.json();
-        setFeedback(feedbackData);
-        console.log('✅ Feedback loaded via API');
-      }
-      
-      setLoading(false);
-      console.log('✅ Dashboard loaded via direct API');
-      
-    } catch (err) {
-      console.error('API fallback failed, trying direct DB:', err);
-      await loadDashboardDataDB(userId);
-    }
-  };
-
-  // Direct database access (last resort)
-  const loadDashboardDataDB = async (userId: string) => {
-    console.log('🗄️ Direct database access...');
-    
-    try {
+      // Use direct Supabase queries instead of API calls
       const [profileResult, feedbackResult] = await Promise.allSettled([
         supabase.from('profiles').select('*').eq('id', userId).single(),
-        supabase.from('feedback').select('*').or(`user_id.eq.${userId},and(user_id.is.null,is_guest.eq.true)`).order('created_at', { ascending: false }).limit(10)
+        supabase.from('feedback').select('*').or(`user_id.eq.${userId},and(user_id.is.null,is_guest.eq.true)`).order('created_at', { ascending: false }).limit(20)
       ]);
       
       if (profileResult.status === 'fulfilled' && profileResult.value.data) {
         setProfile(profileResult.value.data);
+        console.log('✅ Profile loaded via direct query');
+      } else {
+        console.log('⚠️ Profile query failed:', profileResult.status === 'rejected' ? profileResult.reason : 'No data');
+        
+        // Check if it's an auth error (406, 401, etc.)
+        if (profileResult.status === 'rejected' && 
+            profileResult.reason && 
+            typeof profileResult.reason === 'object' && 
+            'message' in profileResult.reason &&
+            typeof profileResult.reason.message === 'string' &&
+            profileResult.reason.message.includes('406')) {
+          console.log('🚪 Auth error in profile query, redirecting to home');
+          localStorage.removeItem('zombify_user');
+          router.replace('/');
+          return;
+        }
+        
+        // Create default profile if none exists
+        const defaultProfile: UserProfile = {
+          id: userId,
+          plan_type: 'free',
+          feedback_count: 0,
+          monthly_limit: 3
+        };
+        setProfile(defaultProfile);
       }
       
       if (feedbackResult.status === 'fulfilled' && feedbackResult.value.data) {
         setFeedback(feedbackResult.value.data);
+        console.log('✅ Feedback loaded via direct query');
+      } else {
+        console.log('⚠️ Feedback query failed:', feedbackResult.status === 'rejected' ? feedbackResult.reason : 'No data');
+        
+        // Check if it's an auth error for feedback too
+        if (feedbackResult.status === 'rejected' && 
+            feedbackResult.reason && 
+            typeof feedbackResult.reason === 'object' && 
+            'message' in feedbackResult.reason &&
+            typeof feedbackResult.reason.message === 'string' &&
+            feedbackResult.reason.message.includes('406')) {
+          console.log('🚪 Auth error in feedback query, redirecting to home');
+          localStorage.removeItem('zombify_user');
+          router.replace('/');
+          return;
+        }
+        
+        setFeedback([]);
       }
       
       setLoading(false);
-      console.log('✅ Dashboard loaded via direct DB');
+      console.log('✅ Dashboard loaded via direct queries');
       
-    } catch (err) {
-      console.error('💥 Direct DB failed:', err);
-      setError('Database connection failed');
+    } catch (err: any) {
+      console.error('💥 Direct queries failed:', err);
+      
+      // Check for auth errors
+      if (err && typeof err === 'object' && 'message' in err && typeof err.message === 'string' &&
+          (err.message.includes('406') || err.message.includes('401') || err.message.includes('Unauthorized'))) {
+        console.log('🚪 Database auth error, redirecting to home');
+        localStorage.removeItem('zombify_user');
+        router.replace('/');
+        return;
+      }
+      
+      setError('Failed to load dashboard data');
       setLoading(false);
     }
   };
@@ -187,13 +213,17 @@ export default function Dashboard() {
     
     try {
       // Load recent guest feedback
-      const { data: guestFeedback } = await supabase
+      const { data: guestFeedback, error: guestError } = await supabase
         .from('feedback')
         .select('*')
         .is('user_id', null)
         .eq('is_guest', true)
         .order('created_at', { ascending: false })
         .limit(5);
+      
+      if (guestError) {
+        console.error('Guest feedback error:', guestError);
+      }
       
       setFeedback(guestFeedback || []);
       setLoading(false);
