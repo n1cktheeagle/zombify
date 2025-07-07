@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { signIn, signUp, signInWithGoogle, signInWithDiscord } from '@/lib/auth'
+import { signInWithGoogle, signInWithDiscord, signUp, signIn, resetPasswordWithCooldown, getResetCooldownStatus } from '@/lib/auth'
 
 interface AuthModalProps {
   onClose: () => void
@@ -16,6 +16,9 @@ export function AuthModal({ onClose, initialMode = 'signin' }: AuthModalProps) {
   const [fullName, setFullName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('')
+  const [forgotPasswordSent, setForgotPasswordSent] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -24,16 +27,68 @@ export function AuthModal({ onClose, initialMode = 'signin' }: AuthModalProps) {
 
     try {
       if (isSignUp) {
-        const { error } = await signUp(email, password, fullName)
-        if (error) throw error
+        const result = await signUp(email, password, fullName)
         
-        alert('Check your email for the confirmation link!')
-        onClose()
+        if (result.error) {
+          // Handle our specific error messages from secure signUp function
+          if (result.error.message.includes('already exists using Google or Discord')) {
+            setError('This email is already registered with Google or Discord. Please use those sign-in buttons above.')
+          } else if (result.error.message.includes('already exists')) {
+            setError('An account with this email already exists. Please sign in instead.')
+          } else {
+            setError(result.error.message)
+          }
+        } else {
+          alert('✅ Account created! Check your email for the verification link!')
+          onClose()
+        }
       } else {
-        const { error } = await signIn(email, password)
-        if (error) throw error
-        onClose()
-        router.push('/dashboard')
+        const result = await signIn(email, password)
+        
+        if (result.error) {
+          if (result.error.message.includes('Email not confirmed')) {
+            setError('Please verify your email first. Check your inbox!')
+          } else if (result.error.message.includes('Invalid login credentials')) {
+            setError('Invalid email or password. If you signed up with Google or Discord, use those buttons above.')
+          } else {
+            setError('Sign in failed. Please check your credentials.')
+          }
+        } else {
+          onClose()
+          router.push('/dashboard')
+        }
+      }
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+
+    // Check cooldown before attempting reset
+    const cooldownStatus = getResetCooldownStatus(forgotPasswordEmail)
+    if (!cooldownStatus.canReset) {
+      setError(cooldownStatus.message!)
+      setLoading(false)
+      return
+    }
+
+    try {
+      const result = await resetPasswordWithCooldown(forgotPasswordEmail, 'landing')
+      
+      if (result.success) {
+        setForgotPasswordSent(true)
+      } else if (result.onCooldown) {
+        setError(result.error || 'Please wait before requesting another reset')
+      } else if (result.isOAuth) {
+        setError(result.error || 'This account uses Google or Discord sign-in')
+      } else {
+        setError(result.error || 'Failed to send reset email')
       }
     } catch (err: any) {
       setError(err.message)
@@ -49,10 +104,9 @@ export function AuthModal({ onClose, initialMode = 'signin' }: AuthModalProps) {
     try {
       const { error } = await signInWithGoogle()
       if (error) throw error
-      onClose()
+      // Redirect will happen automatically
     } catch (err: any) {
-      setError(err.message)
-    } finally {
+      setError(`Google sign-in failed: ${err.message}`)
       setLoading(false)
     }
   }
@@ -64,14 +118,136 @@ export function AuthModal({ onClose, initialMode = 'signin' }: AuthModalProps) {
     try {
       const { error } = await signInWithDiscord()
       if (error) throw error
-      onClose()
+      // Redirect will happen automatically
     } catch (err: any) {
-      setError(err.message)
-    } finally {
+      setError(`Discord sign-in failed: ${err.message}`)
       setLoading(false)
     }
   }
 
+  // Reset all states when switching modes
+  const switchMode = () => {
+    setIsSignUp(!isSignUp)
+    setError(null)
+    setShowForgotPassword(false)
+    setForgotPasswordSent(false)
+  }
+
+  const backToSignIn = () => {
+    setShowForgotPassword(false)
+    setForgotPasswordSent(false)
+    setError(null)
+    setForgotPasswordEmail('')
+  }
+
+  // Get cooldown info for UI display
+  const getCooldownInfo = () => {
+    if (!forgotPasswordEmail) return null
+    
+    const cooldownStatus = getResetCooldownStatus(forgotPasswordEmail)
+    if (!cooldownStatus.canReset) {
+      return {
+        onCooldown: true,
+        message: cooldownStatus.message
+      }
+    }
+    
+    return { onCooldown: false }
+  }
+
+  const cooldownInfo = getCooldownInfo()
+
+  // Forgot Password View
+  if (showForgotPassword) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-[#f5f1e6] border-2 border-black p-8 rounded-none max-w-md w-full mx-4 font-mono">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-mono font-bold">
+              Reset Password
+            </h2>
+            <button
+              onClick={onClose}
+              className="text-2xl hover:text-gray-600 font-mono leading-none"
+            >
+              ×
+            </button>
+          </div>
+
+          {forgotPasswordSent ? (
+            <div className="text-center space-y-4">
+              <div className="text-green-600 text-sm font-mono bg-green-50 p-4 border-2 border-green-200">
+                ✅ Password reset email sent! Check your inbox and click the link to reset your password.
+              </div>
+              <button
+                onClick={backToSignIn}
+                className="text-sm text-gray-600 hover:text-black font-mono underline"
+              >
+                ← Back to Login
+              </button>
+            </div>
+          ) : (
+            <>
+              <form onSubmit={handleForgotPassword} className="space-y-6">
+                <div className="text-sm text-gray-600 font-mono mb-4">
+                  Enter your email address and we'll send you a link to reset your password.
+                  <br /><br />
+                  <strong>Note:</strong> This only works for accounts created with email/password. If you signed up with Google or Discord, please use those buttons on the main login screen.
+                </div>
+
+                <div>
+                  <label className="block text-sm font-mono mb-2 font-medium">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={forgotPasswordEmail}
+                    onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                    className="w-full p-3 border-2 border-black bg-white font-mono focus:outline-none focus:border-gray-600"
+                    placeholder="your@email.com"
+                    required
+                  />
+                </div>
+
+                {/* Cooldown warning */}
+                {cooldownInfo?.onCooldown && (
+                  <div className="text-yellow-600 text-sm font-mono bg-yellow-50 p-3 border-2 border-yellow-200">
+                    <p className="font-medium">⏳ Reset Cooldown Active</p>
+                    <p>{cooldownInfo.message}</p>
+                  </div>
+                )}
+
+                {error && (
+                  <div className="text-red-600 text-sm font-mono bg-red-50 p-3 border-2 border-red-200">
+                    {error}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading || cooldownInfo?.onCooldown}
+                  className="w-full bg-black text-white font-mono px-6 py-3 border-2 border-black hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {loading ? 'SENDING...' : cooldownInfo?.onCooldown ? 'RESET ON COOLDOWN' : 'SEND RESET EMAIL'}
+                </button>
+              </form>
+
+              <div className="mt-6 text-center">
+                <button
+                  onClick={backToSignIn}
+                  className="text-sm text-gray-600 hover:text-black font-mono underline"
+                >
+                  ← Back to Login
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // Main Auth Modal
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-[#f5f1e6] border-2 border-black p-8 rounded-none max-w-md w-full mx-4 font-mono">
@@ -90,7 +266,6 @@ export function AuthModal({ onClose, initialMode = 'signin' }: AuthModalProps) {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Social Sign In Buttons */}
           <div className="space-y-3">
-            {/* Google Sign In Button */}
             <button
               type="button"
               onClick={handleGoogleSignIn}
@@ -106,7 +281,6 @@ export function AuthModal({ onClose, initialMode = 'signin' }: AuthModalProps) {
               {loading ? 'Loading...' : `Continue with Google`}
             </button>
 
-            {/* Discord Sign In Button */}
             <button
               type="button"
               onClick={handleDiscordSignIn}
@@ -170,9 +344,25 @@ export function AuthModal({ onClose, initialMode = 'signin' }: AuthModalProps) {
               className="w-full p-3 border-2 border-black bg-white font-mono focus:outline-none focus:border-gray-600"
               placeholder="••••••••"
               required
-              minLength={6}
+              minLength={8}
             />
           </div>
+
+          {/* Forgot Password Link - Only show on signin */}
+          {!isSignUp && (
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForgotPassword(true)
+                  if (email) setForgotPasswordEmail(email)
+                }}
+                className="text-sm text-gray-600 hover:text-black font-mono underline"
+              >
+                Forgot your password?
+              </button>
+            </div>
+          )}
 
           {error && (
             <div className="text-red-600 text-sm font-mono bg-red-50 p-3 border-2 border-red-200">
@@ -191,7 +381,7 @@ export function AuthModal({ onClose, initialMode = 'signin' }: AuthModalProps) {
 
         <div className="mt-6 text-center">
           <button
-            onClick={() => setIsSignUp(!isSignUp)}
+            onClick={switchMode}
             className="text-sm text-gray-600 hover:text-black font-mono underline"
           >
             {isSignUp 

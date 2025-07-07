@@ -50,29 +50,41 @@ export default function HomePage() {
     addDebugLog('No cached user found, proceeding with auth check');
   }, []);
 
-  // Handle auth errors from URL
+  // Handle auth errors from URL - UPDATED with OAuth conflict handling
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
     const urlParams = new URLSearchParams(window.location.search);
     const error = urlParams.get('error') || urlParams.get('auth_error');
+    const provider = urlParams.get('provider');
+    
     if (error) {
-      const details = urlParams.get('details');
-      const errorMessage = details ? `${error}: ${decodeURIComponent(details)}` : decodeURIComponent(error);
+      let errorMessage = '';
+      
+      // NEW: Handle OAuth conflict errors
+      if (error === 'email_conflict' && provider) {
+        errorMessage = `This email is already registered with email/password. Please sign in using that method instead of ${provider}.`;
+        addDebugLog(`🚨 OAuth conflict detected: ${provider} attempted on email account`);
+      } else if (error === 'security_check_failed' && provider) {
+        errorMessage = `Security check failed for ${provider} sign-in. Please try again or contact support.`;
+        addDebugLog(`🚨 Security check failed for ${provider}`);
+      } else {
+        // Handle existing error types
+        const details = urlParams.get('details');
+        errorMessage = details ? `${error}: ${decodeURIComponent(details)}` : decodeURIComponent(error);
+        addDebugLog(`Auth error from URL: ${errorMessage}`);
+      }
       
       // Only show error if it's a recent one (not from cache/previous attempts)
       if (!error.includes('auth_failed')) {
         setAuthError(errorMessage);
-        addDebugLog(`Auth error from URL: ${errorMessage}`);
       }
       
       // Always clean URL regardless
       window.history.replaceState({}, '', window.location.pathname);
       
-      // Clear error after 3 seconds
-      if (authError) {
-        setTimeout(() => setAuthError(null), 3000);
-      }
+      // Clear error after 5 seconds (longer for conflict errors)
+      setTimeout(() => setAuthError(null), 5000);
     }
   }, []);
 
@@ -143,8 +155,8 @@ export default function HomePage() {
     return (
       <div className="min-h-screen bg-[#f5f1e6] flex items-center justify-center">
         <Suspense fallback={null}>
-  <AuthNotifications />
-</Suspense>
+          <AuthNotifications />
+        </Suspense>
 
         <div className="font-mono text-gray-600 text-center">
           <div className="text-2xl mb-4">⏳</div>
@@ -299,12 +311,15 @@ export default function HomePage() {
       <MainHeader variant="landing" />
 
       <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 pt-20">
-        {/* Auth Error Message */}
+        {/* UPDATED: Enhanced Auth Error Message */}
         {authError && (
-          <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50 bg-red-100 border border-red-400 text-red-700 px-6 py-3 rounded font-mono text-sm max-w-md">
-            <div className="flex items-center gap-2">
-              <span>⚠️</span>
-              <span>Authentication failed: {authError}</span>
+          <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50 bg-red-100 border-2 border-red-400 text-red-700 px-6 py-4 rounded font-mono text-sm max-w-lg shadow-lg">
+            <div className="flex items-start gap-3">
+              <span className="text-lg">⚠️</span>
+              <div>
+                <div className="font-bold mb-1">Authentication Error</div>
+                <div className="text-xs leading-relaxed">{authError}</div>
+              </div>
             </div>
           </div>
         )}

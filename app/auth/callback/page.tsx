@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { supabase } from '@/lib/auth'
+import { supabase, checkEmailAuthType } from '@/lib/auth'
 
 function CallbackHandler() {
   const router = useRouter()
@@ -22,9 +22,11 @@ function CallbackHandler() {
         
         const code = searchParams.get('code')
         const type = searchParams.get('type')
+        const oauthProvider = searchParams.get('oauth_provider')
         
         console.log('📝 Code present:', !!code)
         console.log('📝 Auth type:', type)
+        console.log('📝 OAuth provider:', oauthProvider)
 
         if (code) {
           console.log('🔄 Exchanging code for session...')
@@ -38,20 +40,51 @@ function CallbackHandler() {
 
           console.log('✅ Auth successful!', data.user?.email)
           
+          // NEW: OAuth Security Check for account conflicts
+          if (oauthProvider && data.user?.email) {
+            console.log('🔍 Running OAuth security check...')
+            
+            try {
+              const authType = await checkEmailAuthType(data.user.email)
+              console.log('🔍 Existing auth type for', data.user.email, ':', authType)
+              
+              if (authType === 'email') {
+                console.log('🚨 BLOCKING: Email/password account exists for this email')
+                
+                // Sign out the OAuth session immediately
+                await supabase.auth.signOut()
+                
+                // Clear any cached data
+                localStorage.removeItem('zombify_user_cache')
+                
+                // Redirect with error
+                window.location.href = `/?auth_error=email_conflict&provider=${oauthProvider}`
+                return
+              }
+              
+              console.log('✅ OAuth security check passed')
+            } catch (securityError) {
+              console.error('❌ OAuth security check failed:', securityError)
+              // If security check fails, err on the side of caution
+              await supabase.auth.signOut()
+              localStorage.removeItem('zombify_user_cache')
+              window.location.href = `/?auth_error=security_check_failed&provider=${oauthProvider}`
+              return
+            }
+          }
+          
+          // Cache user data
+          localStorage.setItem('zombify_user_cache', JSON.stringify({
+            user: data.user,
+            timestamp: Date.now()
+          }))
+          
           if (type === 'email') {
             console.log('📧 Email verification successful')
-            localStorage.setItem('zombify_user_cache', JSON.stringify({
-              user: data.user,
-              timestamp: Date.now()
-            }))
             window.location.href = '/?verified=true'
           } else {
-            console.log('🔄 OAuth successful, redirecting home')
-            localStorage.setItem('zombify_user_cache', JSON.stringify({
-              user: data.user,
-              timestamp: Date.now()
-            }))
-            window.location.href = '/'
+            console.log('🔄 OAuth successful, redirecting to dashboard')
+            window.location.href = '/dashboard'
           }
           
         } else {
@@ -69,7 +102,7 @@ function CallbackHandler() {
     const emergencyTimer = setTimeout(() => {
       console.log('🚨 Emergency redirect triggered')
       window.location.href = '/'
-    }, 3000)
+    }, 5000) // Increased timeout for security checks
     
     return () => {
       clearTimeout(timer)
@@ -82,7 +115,7 @@ function CallbackHandler() {
       <div className="font-mono text-gray-600 text-center">
         <div className="text-2xl mb-4">🔐</div>
         <p className="text-lg mb-2">Processing authentication...</p>
-        <p className="text-sm opacity-60">Completing sign-in flow...</p>
+        <p className="text-sm opacity-60">Completing sign-in flow and running security checks...</p>
         
         <div className="mt-6 flex justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600"></div>

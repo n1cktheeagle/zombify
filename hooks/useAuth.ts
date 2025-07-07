@@ -1,7 +1,17 @@
 'use client'
 import React, { useState, useEffect, createContext, useContext } from 'react'
 import type { User } from '@supabase/auth-helpers-nextjs'
-import { supabase, getUserProfile } from '@/lib/auth'
+import { 
+  supabase, 
+  getUserProfile, 
+  signUp, 
+  signIn, 
+  resendConfirmation, 
+  resetPassword,
+  resetPasswordWithCooldown,
+  getUserProviders,
+  isOAuthUser
+} from '@/lib/auth'
 
 export interface UserProfile {
   id: string
@@ -22,10 +32,15 @@ interface AuthContextType {
   initialized: boolean
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
-  signUpWithEmail: (email: string, password: string, fullName?: string) => Promise<any>
-  signInWithEmail: (email: string, password: string) => Promise<any>
-  resendEmailConfirmation: (email: string) => Promise<any>
-  resetPassword: (email: string) => Promise<any>
+  // Simplified auth functions
+  signUp: (email: string, password: string, fullName?: string) => Promise<any>
+  signIn: (email: string, password: string) => Promise<any>
+  resendConfirmation: (email: string) => Promise<any>
+  resetPassword: (email: string, source?: 'landing' | 'settings') => Promise<any>
+  resetPasswordWithCooldown: (email: string, source?: 'landing' | 'settings') => Promise<any>
+  // Account info functions
+  getUserProviders: () => Promise<string[]>
+  isOAuthUser: () => Promise<boolean>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -45,7 +60,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const initializeAuth = async () => {
       try {
-        console.log('🔐 Starting simple auth initialization...')
+        console.log('🔐 Starting auth initialization...')
         
         const { data: { session } } = await supabase.auth.getSession()
 
@@ -71,7 +86,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (mounted) {
           setLoading(false)
           setInitialized(true)
-          console.log('🏁 Simple auth initialization complete')
+          console.log('🏁 Auth initialization complete')
         }
       }
     }
@@ -143,26 +158,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }
 
-  const signUpWithEmailWrapper = async (email: string, password: string, fullName?: string) => {
-    const { signUpWithEmail } = await import('@/lib/auth')
-    return signUpWithEmail(email, password, fullName)
-  }
-
-  const signInWithEmailWrapper = async (email: string, password: string) => {
-    const { signInWithEmail } = await import('@/lib/auth')
-    return signInWithEmail(email, password)
-  }
-
-  const resendEmailConfirmationWrapper = async (email: string) => {
-    const { resendEmailConfirmation } = await import('@/lib/auth')
-    return resendEmailConfirmation(email)
-  }
-
-  const resetPasswordWrapper = async (email: string) => {
-    const { resetPassword } = await import('@/lib/auth')
-    return resetPassword(email)
-  }
-
   const contextValue: AuthContextType = {
     user,
     profile,
@@ -170,10 +165,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
     initialized,
     signOut: handleSignOut,
     refreshProfile,
-    signUpWithEmail: signUpWithEmailWrapper,
-    signInWithEmail: signInWithEmailWrapper,
-    resendEmailConfirmation: resendEmailConfirmationWrapper,
-    resetPassword: resetPasswordWrapper
+    // Simplified auth functions
+    signUp,
+    signIn,
+    resendConfirmation,
+    resetPassword,
+    resetPasswordWithCooldown,
+    // Account info functions
+    getUserProviders,
+    isOAuthUser
   }
 
   return React.createElement(
