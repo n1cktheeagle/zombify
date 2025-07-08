@@ -19,6 +19,7 @@ export function AuthModal({ onClose, initialMode = 'signin' }: AuthModalProps) {
   const [showForgotPassword, setShowForgotPassword] = useState(false)
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('')
   const [forgotPasswordSent, setForgotPasswordSent] = useState(false)
+  const [verificationStep, setVerificationStep] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -27,9 +28,11 @@ export function AuthModal({ onClose, initialMode = 'signin' }: AuthModalProps) {
 
     try {
       if (isSignUp) {
+        console.log('🔍 Starting signup process...')
         const result = await signUp(email, password, fullName)
         
         if (result.error) {
+          console.log('🚨 Signup error:', result.error.message)
           // Handle our specific error messages from secure signUp function
           if (result.error.message.includes('already exists using Google or Discord')) {
             setError('This email is already registered with Google or Discord. Please use those sign-in buttons above.')
@@ -38,28 +41,52 @@ export function AuthModal({ onClose, initialMode = 'signin' }: AuthModalProps) {
           } else {
             setError(result.error.message)
           }
+        } else if (result.data?.user) {
+          console.log('✅ Signup successful:', { 
+            hasUser: !!result.data.user,
+            emailConfirmed: !!result.data.user.email_confirmed_at,
+            needsVerification: !result.data.user.email_confirmed_at
+          })
+          
+          // Check if email verification is needed
+          if (!result.data.user.email_confirmed_at) {
+            setVerificationStep(true)
+            setError(null)
+          } else {
+            // Account created and verified immediately (shouldn't happen for email accounts)
+            alert('✅ Account created successfully!')
+            onClose()
+            router.push('/dashboard')
+          }
         } else {
-          alert('✅ Account created! Check your email for the verification link!')
-          onClose()
+          console.log('⚠️ Unexpected signup result:', result)
+          setError('Account creation completed, but please check your email for verification.')
+          setVerificationStep(true)
         }
       } else {
+        console.log('🔍 Starting signin process...')
         const result = await signIn(email, password)
         
         if (result.error) {
+          console.log('🚨 Signin error:', result.error.message)
           if (result.error.message.includes('Email not confirmed')) {
-            setError('Please verify your email first. Check your inbox!')
+            setError('Please verify your email first. Check your inbox for the verification link!')
           } else if (result.error.message.includes('Invalid login credentials')) {
             setError('Invalid email or password. If you signed up with Google or Discord, use those buttons above.')
+          } else if (result.error.message.includes('Google or Discord')) {
+            setError('This account uses Google or Discord sign-in. Please use those buttons above.')
           } else {
             setError('Sign in failed. Please check your credentials.')
           }
         } else {
+          console.log('✅ Signin successful')
           onClose()
           router.push('/dashboard')
         }
       }
     } catch (err: any) {
-      setError(err.message)
+      console.error('❌ Auth error:', err)
+      setError(err.message || 'An unexpected error occurred')
     } finally {
       setLoading(false)
     }
@@ -131,11 +158,13 @@ export function AuthModal({ onClose, initialMode = 'signin' }: AuthModalProps) {
     setError(null)
     setShowForgotPassword(false)
     setForgotPasswordSent(false)
+    setVerificationStep(false)
   }
 
   const backToSignIn = () => {
     setShowForgotPassword(false)
     setForgotPasswordSent(false)
+    setVerificationStep(false)
     setError(null)
     setForgotPasswordEmail('')
   }
@@ -156,6 +185,56 @@ export function AuthModal({ onClose, initialMode = 'signin' }: AuthModalProps) {
   }
 
   const cooldownInfo = getCooldownInfo()
+
+  // 🔥 NEW: Email Verification Step
+  if (verificationStep) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-[#f5f1e6] border-2 border-black p-8 rounded-none max-w-md w-full mx-4 font-mono">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-mono font-bold">
+              Check Your Email
+            </h2>
+            <button
+              onClick={onClose}
+              className="text-2xl hover:text-gray-600 font-mono leading-none"
+            >
+              ×
+            </button>
+          </div>
+
+          <div className="text-center space-y-4">
+            <div className="text-green-600 text-sm font-mono bg-green-50 p-4 border-2 border-green-200">
+              <div className="mb-2">✅ Account Created Successfully!</div>
+              <div>We've sent a verification email to:</div>
+              <div className="font-bold">{email}</div>
+            </div>
+            
+            <div className="text-sm text-gray-600 font-mono space-y-2">
+              <p>Click the verification link in your email to activate your account.</p>
+              <p><strong>Important:</strong> Check your spam folder if you don't see the email within a few minutes.</p>
+            </div>
+
+            <div className="pt-4 space-y-3">
+              <button
+                onClick={onClose}
+                className="w-full bg-black text-white font-mono px-6 py-3 border-2 border-black hover:bg-gray-800 transition-colors"
+              >
+                GOT IT
+              </button>
+              
+              <button
+                onClick={() => setIsSignUp(false)}
+                className="text-sm text-gray-600 hover:text-black font-mono underline"
+              >
+                ← Back to Login
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   // Forgot Password View
   if (showForgotPassword) {

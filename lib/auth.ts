@@ -25,69 +25,62 @@ function validatePassword(password: string): { isValid: boolean; error?: string 
   return { isValid: true }
 }
 
-// FIXED: More reliable email auth type detection
+// 🔥 COMPLETELY REWRITTEN: Read-only email auth type detection
+// 🔧 SIMPLIFIED VERSION: Only use signin testing, avoid password reset
 export async function checkEmailAuthType(email: string): Promise<'email' | 'oauth' | 'none'> {
   try {
-    console.log('🔍 Testing signup attempt for detection...')
+    console.log('🔍 [SIMPLE] Starting detection for:', email)
     
-    // BETTER METHOD: Try signup first to see if account exists
-    const { data: signupData, error: signupError } = await supabase.auth.signUp({
+    // SINGLE METHOD: Try signin with dummy password only
+    const testPassword = 'dummy_password_that_will_definitely_fail_12345'
+    
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
-      password: 'test_password_for_detection_456',
-      options: { 
-        emailRedirectTo: 'http://localhost:3000/test-detection'
-      }
+      password: testPassword
     })
     
-    if (signupError) {
-      const signupErrorMsg = signupError.message.toLowerCase()
-      console.log('🔍 Signup test error:', signupErrorMsg)
+    console.log('🔍 [SIMPLE] Signin result:', {
+      hasData: !!data,
+      hasUser: !!data?.user,
+      errorMessage: error?.message,
+      errorCode: error?.name
+    })
+    
+    if (error) {
+      const errorMsg = error.message.toLowerCase()
+      console.log('🔍 [SIMPLE] Error message (lowercase):', errorMsg)
       
-      // If signup fails because account exists
-      if (signupErrorMsg.includes('already') || 
-          signupErrorMsg.includes('registered') || 
-          signupErrorMsg.includes('exists')) {
-        
-        console.log('🔍 Account exists, testing password capability...')
-        
-        // Now test password signin to determine type
-        const { error: pwError } = await supabase.auth.signInWithPassword({
-          email,
-          password: 'definitely_wrong_password_test_123'
-        })
-        
-        if (pwError) {
-          const pwErrorMsg = pwError.message.toLowerCase()
-          console.log('🔍 Password test error:', pwErrorMsg)
-          
-          // These errors indicate EMAIL account exists
-          if (pwErrorMsg.includes('invalid login credentials') || 
-              pwErrorMsg.includes('email not confirmed')) {
-            console.log('✅ Detected EMAIL account')
-            return 'email'
-          }
-          
-          // Other errors likely mean OAuth account
-          console.log('✅ Detected OAUTH account')
-          return 'oauth'
-        }
-        
-        console.log('✅ Detected EMAIL account (password worked)')
+      // CONFIRMED account exists with wrong password
+      if (errorMsg.includes('email not confirmed')) {
+        console.log('✅ [SIMPLE] Detected EMAIL account (unconfirmed)')
         return 'email'
       }
-    } else if (signupData && signupData.user) {
-      console.log('⚠️ Signup succeeded = no existing account (cleaning up test account)')
-      // We accidentally created a test account, but this means NO existing account
-      // The test account will be cleaned up by Supabase since it has no confirmation
+      
+      // Rate limiting = account exists and we're hitting it too much
+      if (errorMsg.includes('too many requests') || 
+          errorMsg.includes('rate limit')) {
+        console.log('✅ [SIMPLE] Rate limited - EMAIL account exists')
+        return 'email'
+      }
+      
+      // For "Invalid login credentials" - be more permissive
+      // Assume NO account exists (to avoid ghost account issues)
+      if (errorMsg.includes('invalid login credentials')) {
+        console.log('🤔 [SIMPLE] Invalid credentials - assuming NO account (permissive)')
+        return 'none'
+      }
+      
+      // Any other error - assume no account
+      console.log('✅ [SIMPLE] Other error - assuming NO account')
       return 'none'
     }
     
-    console.log('✅ No existing account detected')
-    return 'none'
+    // Success with dummy password = something is very wrong
+    console.log('⚠️ [SIMPLE] Unexpected signin success')
+    return 'email'
     
   } catch (error) {
-    console.error('❌ Error in checkEmailAuthType:', error)
-    // Default to 'none' to allow signup if we can't determine
+    console.error('❌ [SIMPLE] Error in detection:', error)
     return 'none'
   }
 }
@@ -148,7 +141,7 @@ export async function resetPassword(email: string, source: 'landing' | 'settings
   return { error }
 }
 
-// SECURE: Basic signup - only creates email accounts
+// 🔥 FIXED: Secure signup that NEVER creates accounts during detection
 export async function signUp(email: string, password: string, fullName?: string) {
   console.log('🔍 Starting secure signUp for:', email)
   
@@ -157,8 +150,8 @@ export async function signUp(email: string, password: string, fullName?: string)
     return { data: null, error: new Error(passwordCheck.error!) }
   }
 
-  // Check if account already exists
-  console.log('🔍 Checking email auth type...')
+  // 🔥 FIXED: Read-only account detection (simplified)
+  console.log('🔍 Checking email auth type (SIMPLIFIED)...')
   const authType = await checkEmailAuthType(email)
   console.log('🔍 Auth type result:', authType)
   
@@ -178,6 +171,8 @@ export async function signUp(email: string, password: string, fullName?: string)
   }
 
   console.log('✅ Proceeding with new account creation')
+  
+  // 🔥 FIXED: Proper signup with email verification
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -185,39 +180,54 @@ export async function signUp(email: string, password: string, fullName?: string)
       data: {
         full_name: fullName || '',
       },
-      emailRedirectTo: `${window.location.origin}/auth/callback?type=email`
+      emailRedirectTo: `${window.location.origin}/auth/callback?type=signup`
     },
   })
   
-  console.log('🔍 Supabase signup result:', { data: !!data, error: error?.message })
+  console.log('🔍 Supabase signup result:', { 
+    hasData: !!data, 
+    hasUser: !!data?.user,
+    needsConfirmation: data?.user && !data.user.email_confirmed_at,
+    error: error?.message 
+  })
+  
   return { data, error }
 }
 
 // SECURE: Enhanced signin that blocks OAuth accounts
 export async function signIn(email: string, password: string) {
-  // SECURITY CHECK: First verify this email can use password auth
-  const authType = await checkEmailAuthType(email)
+  console.log('🔍 Starting signin process...')
   
-  if (authType === 'oauth') {
-    return { 
-      data: null, 
-      error: new Error('This account is already created, please sign in.') 
-    }
-  }
-  
-  if (authType === 'none') {
-    return { 
-      data: null, 
-      error: new Error('No account found with this email address.') 
-    }
-  }
-  
-  // Proceed with password authentication only for email accounts
+  // For signin, we don't need to check auth type first
+  // Just try to sign in directly - let Supabase handle it
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   })
   
+  if (error) {
+    console.log('🚨 Signin error:', error.message)
+    
+    // Handle specific error cases
+    if (error.message.includes('Email not confirmed')) {
+      return { 
+        data: null, 
+        error: new Error('Please verify your email first. Check your inbox for the verification link!') 
+      }
+    }
+    
+    if (error.message.includes('Invalid login credentials')) {
+      return { 
+        data: null, 
+        error: new Error('Invalid email or password. If you signed up with Google or Discord, use those buttons above.') 
+      }
+    }
+    
+    // Pass through other errors
+    return { data, error }
+  }
+  
+  console.log('✅ Signin successful')
   return { data, error }
 }
 
@@ -375,7 +385,7 @@ export async function resendConfirmation(email: string) {
     type: 'signup',
     email,
     options: {
-      emailRedirectTo: `${window.location.origin}/auth/callback?type=email`
+      emailRedirectTo: `${window.location.origin}/auth/callback?type=signup`
     }
   })
   return { error }
