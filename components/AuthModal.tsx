@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { signInWithGoogle, signInWithDiscord, signUp, signIn, resetPasswordWithCooldown, getResetCooldownStatus } from '@/lib/auth'
+import { signInWithGoogle, signInWithDiscord, signUp, signIn, resetPasswordWithCooldown, getResetCooldownStatus, resendConfirmation } from '@/lib/auth'
 
 interface AuthModalProps {
   onClose: () => void
@@ -28,21 +28,14 @@ export function AuthModal({ onClose, initialMode = 'signin' }: AuthModalProps) {
 
     try {
       if (isSignUp) {
-        console.log('🔍 Starting signup process...')
+        console.log('🔍 [UI] Starting signup process...')
         const result = await signUp(email, password, fullName)
         
         if (result.error) {
-          console.log('🚨 Signup error:', result.error.message)
-          // Handle our specific error messages from secure signUp function
-          if (result.error.message.includes('already exists using Google or Discord')) {
-            setError('This email is already registered with Google or Discord. Please use those sign-in buttons above.')
-          } else if (result.error.message.includes('already exists')) {
-            setError('An account with this email already exists. Please sign in instead.')
-          } else {
-            setError(result.error.message)
-          }
+          console.log('🚨 [UI] Signup error:', result.error.message)
+          setError(result.error.message)
         } else if (result.data?.user) {
-          console.log('✅ Signup successful:', { 
+          console.log('✅ [UI] Signup successful:', { 
             hasUser: !!result.data.user,
             emailConfirmed: !!result.data.user.email_confirmed_at,
             needsVerification: !result.data.user.email_confirmed_at
@@ -53,39 +46,30 @@ export function AuthModal({ onClose, initialMode = 'signin' }: AuthModalProps) {
             setVerificationStep(true)
             setError(null)
           } else {
-            // Account created and verified immediately (shouldn't happen for email accounts)
+            // Account created and verified immediately
             alert('✅ Account created successfully!')
             onClose()
             router.push('/dashboard')
           }
         } else {
-          console.log('⚠️ Unexpected signup result:', result)
-          setError('Account creation completed, but please check your email for verification.')
+          console.log('⚠️ [UI] Unexpected signup result - likely needs verification')
           setVerificationStep(true)
         }
       } else {
-        console.log('🔍 Starting signin process...')
+        console.log('🔍 [UI] Starting signin process...')
         const result = await signIn(email, password)
         
         if (result.error) {
-          console.log('🚨 Signin error:', result.error.message)
-          if (result.error.message.includes('Email not confirmed')) {
-            setError('Please verify your email first. Check your inbox for the verification link!')
-          } else if (result.error.message.includes('Invalid login credentials')) {
-            setError('Invalid email or password. If you signed up with Google or Discord, use those buttons above.')
-          } else if (result.error.message.includes('Google or Discord')) {
-            setError('This account uses Google or Discord sign-in. Please use those buttons above.')
-          } else {
-            setError('Sign in failed. Please check your credentials.')
-          }
+          console.log('🚨 [UI] Signin error:', result.error.message)
+          setError(result.error.message)
         } else {
-          console.log('✅ Signin successful')
+          console.log('✅ [UI] Signin successful')
           onClose()
           router.push('/dashboard')
         }
       }
     } catch (err: any) {
-      console.error('❌ Auth error:', err)
+      console.error('❌ [UI] Auth error:', err)
       setError(err.message || 'An unexpected error occurred')
     } finally {
       setLoading(false)
@@ -97,7 +81,6 @@ export function AuthModal({ onClose, initialMode = 'signin' }: AuthModalProps) {
     setLoading(true)
     setError(null)
 
-    // Check cooldown before attempting reset
     const cooldownStatus = getResetCooldownStatus(forgotPasswordEmail)
     if (!cooldownStatus.canReset) {
       setError(cooldownStatus.message!)
@@ -119,6 +102,36 @@ export function AuthModal({ onClose, initialMode = 'signin' }: AuthModalProps) {
       }
     } catch (err: any) {
       setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleResendVerification = async () => {
+    setLoading(true)
+    setError(null)
+    
+    try {
+      console.log('🔄 [UI] Resending verification email...')
+      const result = await resendConfirmation(email)
+      
+      if (result.error) {
+        setError(result.error.message)
+      } else {
+        setError(null)
+        // Show success message briefly
+        const successDiv = document.createElement('div')
+        successDiv.className = 'text-green-600 text-sm font-mono bg-green-50 p-3 border-2 border-green-200 mb-4'
+        successDiv.textContent = '✅ Verification email sent! Check your inbox.'
+        
+        const form = document.querySelector('.verification-form')
+        if (form) {
+          form.insertBefore(successDiv, form.firstChild)
+          setTimeout(() => successDiv.remove(), 3000)
+        }
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to resend verification email')
     } finally {
       setLoading(false)
     }
@@ -161,15 +174,16 @@ export function AuthModal({ onClose, initialMode = 'signin' }: AuthModalProps) {
     setVerificationStep(false)
   }
 
+  // 🔥 FIXED: Properly functional back to login button
   const backToSignIn = () => {
     setShowForgotPassword(false)
     setForgotPasswordSent(false)
     setVerificationStep(false)
     setError(null)
     setForgotPasswordEmail('')
+    setIsSignUp(false) // Ensure we're in sign-in mode
   }
 
-  // Get cooldown info for UI display
   const getCooldownInfo = () => {
     if (!forgotPasswordEmail) return null
     
@@ -186,7 +200,7 @@ export function AuthModal({ onClose, initialMode = 'signin' }: AuthModalProps) {
 
   const cooldownInfo = getCooldownInfo()
 
-  // 🔥 NEW: Email Verification Step
+  // 🔥 ENHANCED: Email Verification Step with resend functionality
   if (verificationStep) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -203,7 +217,7 @@ export function AuthModal({ onClose, initialMode = 'signin' }: AuthModalProps) {
             </button>
           </div>
 
-          <div className="text-center space-y-4">
+          <div className="verification-form text-center space-y-4">
             <div className="text-green-600 text-sm font-mono bg-green-50 p-4 border-2 border-green-200">
               <div className="mb-2">✅ Account Created Successfully!</div>
               <div>We've sent a verification email to:</div>
@@ -215,7 +229,21 @@ export function AuthModal({ onClose, initialMode = 'signin' }: AuthModalProps) {
               <p><strong>Important:</strong> Check your spam folder if you don't see the email within a few minutes.</p>
             </div>
 
+            {error && (
+              <div className="text-red-600 text-sm font-mono bg-red-50 p-3 border-2 border-red-200">
+                {error}
+              </div>
+            )}
+
             <div className="pt-4 space-y-3">
+              <button
+                onClick={handleResendVerification}
+                disabled={loading}
+                className="w-full bg-blue-600 text-white font-mono px-6 py-3 border-2 border-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {loading ? 'SENDING...' : 'RESEND VERIFICATION EMAIL'}
+              </button>
+              
               <button
                 onClick={onClose}
                 className="w-full bg-black text-white font-mono px-6 py-3 border-2 border-black hover:bg-gray-800 transition-colors"
@@ -224,7 +252,7 @@ export function AuthModal({ onClose, initialMode = 'signin' }: AuthModalProps) {
               </button>
               
               <button
-                onClick={() => setIsSignUp(false)}
+                onClick={backToSignIn}
                 className="text-sm text-gray-600 hover:text-black font-mono underline"
               >
                 ← Back to Login
@@ -288,7 +316,6 @@ export function AuthModal({ onClose, initialMode = 'signin' }: AuthModalProps) {
                   />
                 </div>
 
-                {/* Cooldown warning */}
                 {cooldownInfo?.onCooldown && (
                   <div className="text-yellow-600 text-sm font-mono bg-yellow-50 p-3 border-2 border-yellow-200">
                     <p className="font-medium">⏳ Reset Cooldown Active</p>

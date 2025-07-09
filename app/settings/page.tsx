@@ -119,17 +119,28 @@ export default function AccountSettings() {
     <div className="min-h-screen bg-[#f5f1e6] text-black font-mono">
       <MainHeader variant="app" />
       
-      <div className="pt-20 px-6 py-8">
+      <div className="pt-24 px-6 py-8">
         <div className="max-w-4xl mx-auto">
           
-          {/* Header */}
+          {/* Header with Back Button */}
           <div className="mb-8">
+            <div className="flex items-center gap-4 mb-4">
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="flex items-center gap-2 text-sm font-mono text-gray-600 hover:text-black transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                Back to Dashboard
+              </button>
+            </div>
             <h1 className="text-4xl font-bold mb-2">ACCOUNT SETTINGS</h1>
             <p className="text-lg opacity-70">Manage your account and preferences</p>
           </div>
 
           {/* Temporary Debug Component */}
-<DebugAuth />
+          <DebugAuth />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             
@@ -256,15 +267,31 @@ export default function AccountSettings() {
             <h2 className="text-2xl font-bold mb-6">ACCOUNT ACTIONS</h2>
             
             <div className="space-y-4">
-              <button
-                onClick={async () => {
-                  await supabase.auth.signOut()
-                  router.push('/')
-                }}
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 font-medium transition-colors"
-              >
-                🚪 Sign Out
-              </button>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => router.push('/dashboard')}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5v6l3-3 3 3V5" />
+                  </svg>
+                  Back to Dashboard
+                </button>
+                
+                <button
+                  onClick={async () => {
+                    await supabase.auth.signOut()
+                    router.push('/')
+                  }}
+                  className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 font-medium transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                  Sign Out
+                </button>
+              </div>
             </div>
           </div>
         </div>

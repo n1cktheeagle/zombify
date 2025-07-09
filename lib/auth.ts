@@ -25,80 +25,50 @@ function validatePassword(password: string): { isValid: boolean; error?: string 
   return { isValid: true }
 }
 
-// 🔥 COMPLETELY REWRITTEN: Read-only email auth type detection
-// 🔧 SIMPLIFIED VERSION: Only use signin testing, avoid password reset
+// 🔥 SIMPLE: Basic check that only catches obvious cases
 export async function checkEmailAuthType(email: string): Promise<'email' | 'oauth' | 'none'> {
   try {
-    console.log('🔍 [SIMPLE] Starting detection for:', email)
+    console.log('🔍 [DETECTION] Simple check for:', email)
     
-    // SINGLE METHOD: Try signin with dummy password only
-    const testPassword = 'dummy_password_that_will_definitely_fail_12345'
+    // Only check recent signup marker - don't do any API calls
+    const recentSignupKey = `recent_signup_${email}`
+    const recentSignup = localStorage.getItem(recentSignupKey)
     
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password: testPassword
-    })
-    
-    console.log('🔍 [SIMPLE] Signin result:', {
-      hasData: !!data,
-      hasUser: !!data?.user,
-      errorMessage: error?.message,
-      errorCode: error?.name
-    })
-    
-    if (error) {
-      const errorMsg = error.message.toLowerCase()
-      console.log('🔍 [SIMPLE] Error message (lowercase):', errorMsg)
+    if (recentSignup) {
+      const signupTime = parseInt(recentSignup)
+      const fiveMinutesAgo = Date.now() - (5 * 60 * 1000)
       
-      // CONFIRMED account exists with wrong password
-      if (errorMsg.includes('email not confirmed')) {
-        console.log('✅ [SIMPLE] Detected EMAIL account (unconfirmed)')
+      if (signupTime > fiveMinutesAgo) {
+        console.log('✅ [DETECTION] Recent signup marker found')
         return 'email'
+      } else {
+        // Clean up old marker
+        localStorage.removeItem(recentSignupKey)
       }
-      
-      // Rate limiting = account exists and we're hitting it too much
-      if (errorMsg.includes('too many requests') || 
-          errorMsg.includes('rate limit')) {
-        console.log('✅ [SIMPLE] Rate limited - EMAIL account exists')
-        return 'email'
-      }
-      
-      // For "Invalid login credentials" - be more permissive
-      // Assume NO account exists (to avoid ghost account issues)
-      if (errorMsg.includes('invalid login credentials')) {
-        console.log('🤔 [SIMPLE] Invalid credentials - assuming NO account (permissive)')
-        return 'none'
-      }
-      
-      // Any other error - assume no account
-      console.log('✅ [SIMPLE] Other error - assuming NO account')
-      return 'none'
     }
     
-    // Success with dummy password = something is very wrong
-    console.log('⚠️ [SIMPLE] Unexpected signin success')
-    return 'email'
+    // Default to unknown - let Supabase handle it
+    console.log('✅ [DETECTION] No recent signup, defaulting to none')
+    return 'none'
     
   } catch (error) {
-    console.error('❌ [SIMPLE] Error in detection:', error)
+    console.error('❌ [DETECTION] Error:', error)
     return 'none'
   }
 }
 
-// SIMPLIFIED: Check if user is OAuth-only (Google/Discord)
+// Check if user is OAuth-only (Google/Discord)
 export async function isOAuthUser(): Promise<boolean> {
   try {
     const { data: { user }, error } = await supabase.auth.getUser()
     if (error || !user) return false
     
-    // Check if user has OAuth providers but NO email provider
     const providers = user.identities?.map(identity => identity.provider) || []
     const hasOAuth = providers.includes('google') || providers.includes('discord')
     const hasEmail = providers.includes('email')
     
     console.log('🔍 User auth check:', { providers, hasOAuth, hasEmail })
     
-    // OAuth user = has OAuth AND no email provider
     return hasOAuth && !hasEmail
   } catch (error) {
     console.error('Error checking if OAuth user:', error)
@@ -106,30 +76,8 @@ export async function isOAuthUser(): Promise<boolean> {
   }
 }
 
-// SECURE: Reset password with OAuth detection
+// SECURE: Reset password - only used when user explicitly requests it
 export async function resetPassword(email: string, source: 'landing' | 'settings' = 'landing') {
-  // First check if this email belongs to an OAuth account
-  const authType = await checkEmailAuthType(email)
-  
-  if (authType === 'oauth') {
-    return { 
-      error: { 
-        message: 'This account was created with Google or Discord. Please sign in using that method instead.',
-        isOAuthAccount: true
-      }
-    }
-  }
-  
-  if (authType === 'none') {
-    return {
-      error: {
-        message: 'No account found with this email address.',
-        noAccount: true
-      }
-    }
-  }
-  
-  // Proceed with normal password reset for email accounts
   const redirectUrl = source === 'settings' 
     ? `${window.location.origin}/auth/password-reset?source=settings`
     : `${window.location.origin}/auth/password-reset?source=landing`;
@@ -138,41 +86,71 @@ export async function resetPassword(email: string, source: 'landing' | 'settings
     redirectTo: redirectUrl
   })
   
+  // Let the error bubble up - don't try to interpret it
   return { error }
 }
 
-// 🔥 FIXED: Secure signup that NEVER creates accounts during detection
+// 🔥 SIMPLIFIED: Only block on definitive account existence, allow deleted accounts to re-register
 export async function signUp(email: string, password: string, fullName?: string) {
-  console.log('🔍 Starting secure signUp for:', email)
+  console.log('🔍 [SIGNUP] Starting signup for:', email)
   
   const passwordCheck = validatePassword(password)
   if (!passwordCheck.isValid) {
     return { data: null, error: new Error(passwordCheck.error!) }
   }
 
-  // 🔥 FIXED: Read-only account detection (simplified)
-  console.log('🔍 Checking email auth type (SIMPLIFIED)...')
-  const authType = await checkEmailAuthType(email)
-  console.log('🔍 Auth type result:', authType)
-  
-  if (authType === 'oauth') {
-    console.log('🚨 BLOCKING OAuth account signup')
-    return { 
-      data: null, 
-      error: new Error('An account with this email already exists using Google or Discord. Please sign in with that method instead.') 
+  // 🔥 MINIMAL CHECK: Only block on definitive errors that mean account exists and is active
+  console.log('🔍 [SIGNUP] Checking for active account conflicts...')
+  try {
+    const { data: testData, error: testError } = await supabase.auth.signInWithPassword({
+      email,
+      password: 'test_password_to_check_if_account_exists'
+    })
+    
+    if (testError) {
+      const errorMsg = testError.message.toLowerCase()
+      console.log('🔍 [SIGNUP] Sign-in test error:', errorMsg)
+      
+      // ONLY block on errors that definitively mean an ACTIVE account exists
+      if (errorMsg.includes('email not confirmed') || 
+          errorMsg.includes('email not verified') ||
+          errorMsg.includes('confirm your email')) {
+        console.log('🚨 [SIGNUP] BLOCKING - Unverified account exists')
+        return {
+          data: null,
+          error: new Error('An account with this email exists but needs verification. Please check your email.')
+        }
+      }
+      
+      if (errorMsg.includes('too many requests')) {
+        console.log('🚨 [SIGNUP] BLOCKING - Rate limited, account exists')
+        return {
+          data: null,
+          error: new Error('An account with this email already exists. Please sign in instead.')
+        }
+      }
+      
+      // For "invalid login credentials" - this could be deleted account, so proceed
+      if (errorMsg.includes('invalid login credentials')) {
+        console.log('🔍 [SIGNUP] Invalid credentials - could be deleted account, proceeding')
+      }
+      
+      console.log('✅ [SIGNUP] Test passed, proceeding to Supabase signup')
+      
+    } else if (testData?.user) {
+      // If signin succeeded with test password, that's very weird but account exists
+      console.log('🚨 [SIGNUP] BLOCKING - Test signin succeeded unexpectedly')
+      return {
+        data: null,
+        error: new Error('An account with this email already exists. Please sign in instead.')
+      }
     }
-  }
-  if (authType === 'email') {
-    console.log('🚨 BLOCKING existing email account signup')
-    return { 
-      data: null, 
-      error: new Error('An account with this email already exists. Please sign in instead.') 
-    }
+  } catch (manualCheckError) {
+    console.log('🔍 [SIGNUP] Manual check failed, proceeding:', manualCheckError)
   }
 
-  console.log('✅ Proceeding with new account creation')
+  console.log('✅ [SIGNUP] Proceeding to Supabase signup')
   
-  // 🔥 FIXED: Proper signup with email verification
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -184,32 +162,54 @@ export async function signUp(email: string, password: string, fullName?: string)
     },
   })
   
-  console.log('🔍 Supabase signup result:', { 
+  if (error) {
+    console.log('❌ [SIGNUP] Supabase error:', error.message)
+    
+    // Handle Supabase's specific error messages
+    if (error.message.includes('already registered') || 
+        error.message.includes('already exists') ||
+        error.message.includes('already been taken') ||
+        error.message.includes('User already registered')) {
+      return {
+        data: null,
+        error: new Error('An account with this email already exists. Please sign in instead.')
+      }
+    }
+    
+    // Pass through other errors as-is
+    return { data, error }
+  }
+  
+  // Mark successful signups 
+  if (data?.user) {
+    const recentSignupKey = `recent_signup_${email}`
+    localStorage.setItem(recentSignupKey, Date.now().toString())
+    console.log('✅ [SIGNUP] Success - marked recent signup')
+  }
+  
+  console.log('🔍 [SIGNUP] Result:', { 
     hasData: !!data, 
     hasUser: !!data?.user,
-    needsConfirmation: data?.user && !data.user.email_confirmed_at,
-    error: error?.message 
+    needsConfirmation: data?.user && !data.user.email_confirmed_at
   })
   
   return { data, error }
 }
 
-// SECURE: Enhanced signin that blocks OAuth accounts
+// SECURE: Enhanced signin
 export async function signIn(email: string, password: string) {
-  console.log('🔍 Starting signin process...')
+  console.log('🔍 [SIGNIN] Starting signin process...')
   
-  // For signin, we don't need to check auth type first
-  // Just try to sign in directly - let Supabase handle it
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   })
   
   if (error) {
-    console.log('🚨 Signin error:', error.message)
+    console.log('🚨 [SIGNIN] Error:', error.message)
     
-    // Handle specific error cases
-    if (error.message.includes('Email not confirmed')) {
+    if (error.message.includes('Email not confirmed') || 
+        error.message.includes('email not verified')) {
       return { 
         data: null, 
         error: new Error('Please verify your email first. Check your inbox for the verification link!') 
@@ -223,12 +223,44 @@ export async function signIn(email: string, password: string) {
       }
     }
     
-    // Pass through other errors
     return { data, error }
   }
   
-  console.log('✅ Signin successful')
+  console.log('✅ [SIGNIN] Success')
   return { data, error }
+}
+
+// Simple resend confirmation
+export async function resendConfirmation(email: string) {
+  console.log('🔍 [RESEND] Resending confirmation for:', email)
+  
+  const { error } = await supabase.auth.resend({
+    type: 'signup',
+    email,
+    options: {
+      emailRedirectTo: `${window.location.origin}/auth/callback?type=signup`
+    }
+  })
+  
+  if (error) {
+    console.log('❌ [RESEND] Error:', error.message)
+    
+    if (error.message.includes('already confirmed') || 
+        error.message.includes('already verified')) {
+      return {
+        error: new Error('This email is already verified. Please try signing in instead.')
+      }
+    }
+    
+    if (error.message.includes('not found') || 
+        error.message.includes('does not exist')) {
+      return {
+        error: new Error('No account found with this email. Please sign up first.')
+      }
+    }
+  }
+  
+  return { error }
 }
 
 // Cooldown system (unchanged)
@@ -335,7 +367,6 @@ export async function resetPasswordWithCooldown(
   email: string, 
   source: 'landing' | 'settings' = 'landing'
 ): Promise<{ success: boolean; error?: string; onCooldown?: boolean; isOAuth?: boolean }> {
-  // Check cooldown first
   const cooldownStatus = getResetCooldownStatus(email)
   if (!cooldownStatus.canReset) {
     return {
@@ -345,24 +376,15 @@ export async function resetPasswordWithCooldown(
     }
   }
   
-  // Check if OAuth account and reset password
   const result = await resetPassword(email, source)
   
   if (result.error) {
-    if ((result.error as any).isOAuthAccount) {
-      return {
-        success: false,
-        error: result.error.message,
-        isOAuth: true
-      }
-    }
     return {
       success: false,
-      error: result.error.message
+      error: result.error.message || 'Failed to send reset email'
     }
   }
   
-  // Success - store cooldown
   storeCooldown(email)
   return { success: true }
 }
@@ -379,19 +401,6 @@ export function clearResetCooldown(email: string): void {
   }
 }
 
-// Resend email confirmation
-export async function resendConfirmation(email: string) {
-  const { error } = await supabase.auth.resend({
-    type: 'signup',
-    email,
-    options: {
-      emailRedirectTo: `${window.location.origin}/auth/callback?type=signup`
-    }
-  })
-  return { error }
-}
-
-// Get user's auth providers
 export async function getUserProviders(): Promise<string[]> {
   try {
     const { data: { user }, error } = await supabase.auth.getUser()
@@ -404,16 +413,14 @@ export async function getUserProviders(): Promise<string[]> {
   }
 }
 
-// SECURE: Sign in with Google - blocks email/password accounts
+// OAuth functions (unchanged - working well)
 export async function signInWithGoogle() {
-  console.log('🔍 Starting secure Google OAuth...')
+  console.log('🔍 Starting PKCE Google OAuth...')
   
-  // Note: We can't pre-check email for OAuth since we don't have it yet
-  // But we can add a callback check after OAuth completes
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${window.location.origin}/auth/callback?oauth_provider=google`,
+      redirectTo: `${window.location.origin}/auth/callback`,
       queryParams: {
         access_type: 'offline',
         prompt: 'consent',
@@ -424,19 +431,14 @@ export async function signInWithGoogle() {
   return { data, error }
 }
 
-// SECURE: Sign in with Discord - blocks email/password accounts  
 export async function signInWithDiscord() {
-  console.log('🔍 Starting secure Discord OAuth...')
+  console.log('🔍 Starting PKCE Discord OAuth...')
   
-  // Note: We can't pre-check email for OAuth since we don't have it yet
-  // But we can add a callback check after OAuth completes
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'discord',
     options: {
-      redirectTo: `${window.location.origin}/auth/callback?oauth_provider=discord`,
-      queryParams: {
-        prompt: 'consent',
-      }
+      redirectTo: `${window.location.origin}/auth/callback`,
+      scopes: 'identify email'
     }
   })
   
