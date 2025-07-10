@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import "/styles/globals.css"
 import { AuthProvider } from '@/hooks/useAuth'
 import { UploadProvider } from '@/contexts/UploadContext'
+import { AppLayout } from '@/components/AppLayout'
 
 export const metadata: Metadata = {
   title: "Zombify - UX Feedback Tool",
@@ -32,7 +33,9 @@ export default function RootLayout({
       <body>
         <AuthProvider>
           <UploadProvider>
-            {children}
+            <AppLayout>
+              {children}
+            </AppLayout>
           </UploadProvider>
         </AuthProvider>
       </body>

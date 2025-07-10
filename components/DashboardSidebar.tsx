@@ -1,5 +1,7 @@
-import React from 'react';
-import { Folder, Clock, Lock } from 'lucide-react';
+import React, { useState } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+import { Folder, Clock, Lock, ChevronDown, Settings, LogOut } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 interface RecentAnalysis {
   id: string;
@@ -22,6 +24,7 @@ interface SidebarProps {
   projects?: Project[];
   recentAnalyses?: RecentAnalysis[];
   currentAnalysis?: RecentAnalysis;
+  loading?: boolean;
 }
 
 export default function DashboardSidebar({ 
@@ -29,18 +32,52 @@ export default function DashboardSidebar({
   isPro = false, 
   projects = [], 
   recentAnalyses = [], 
-  currentAnalysis 
+  currentAnalysis,
+  loading = false
 }: SidebarProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { user, signOut } = useAuth();
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+
+  // Extract feedback ID from current pathname
+  const getCurrentFeedbackId = () => {
+    if (pathname?.startsWith('/feedback/')) {
+      return pathname.split('/')[2];
+    }
+    return null;
+  };
+
+  const currentFeedbackId = getCurrentFeedbackId();
+
+  const handleAnalysisClick = (analysisId: string) => {
+    router.push(`/feedback/${analysisId}`);
+  };
+
+  const handleProjectClick = (projectId: string) => {
+    // Navigate to project page when you implement it
+    console.log('Navigate to project:', projectId);
+  };
+
+  const handleLogout = async () => {
+    setShowProfileMenu(false);
+    await signOut();
+  };
+
+  const handleSettings = () => {
+    router.push('/settings');
+    setShowProfileMenu(false);
+  };
   
   return (
-    <div className="w-64 h-screen bg-[#f5f1e6] border-r border-black/10 flex flex-col font-mono">
-      {/* Header */}
+    <div className="w-full h-full bg-[#f5f1e6] border-r border-black/10 flex flex-col font-mono">
+      {/* Header with Logo */}
       <div className="p-4 border-b border-black/10">
-        <div className="text-lg font-bold tracking-tight text-black">
+        <div 
+          className="text-lg font-bold tracking-tight text-black cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={() => router.push('/dashboard')}
+        >
           ZOMBIFY
-        </div>
-        <div className="text-xs opacity-60 mt-1">
-          DASHBOARD
         </div>
       </div>
 
@@ -78,6 +115,7 @@ export default function DashboardSidebar({
                   <div
                     key={project.id}
                     className="p-2 rounded hover:bg-black/5 cursor-pointer transition-colors group"
+                    onClick={() => handleProjectClick(project.id)}
                   >
                     <div className="text-sm font-medium truncate group-hover:text-black">
                       {project.name}
@@ -104,65 +142,127 @@ export default function DashboardSidebar({
           </div>
           
           <div className="space-y-2">
-            {/* Current Analysis (if on feedback page) */}
-            {currentAnalysis && (
-              <div className="p-3 rounded bg-black/5 border border-black/10">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-xs font-bold text-green-600">CURRENT</div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs bg-black/10 px-2 py-1 rounded font-mono">
-                      {currentAnalysis.context.replace('_', ' ')}
-                    </span>
-                  </div>
-                </div>
-                <div className="text-sm font-medium truncate mb-1">
-                  {currentAnalysis.fileName}
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs opacity-60">Grip Score</span>
-                  <span className="text-sm font-bold">{currentAnalysis.gripScore}</span>
-                </div>
+            {/* All Recent Analyses - Keep positions stable */}
+            {loading ? (
+              <div className="text-center py-4">
+                <p className="text-xs opacity-60">Loading recent analyses...</p>
               </div>
-            )}
-            
-            {/* Previous Analyses */}
-            {recentAnalyses.length === 0 && !currentAnalysis ? (
+            ) : recentAnalyses.length === 0 ? (
               <div className="text-center py-4">
                 <p className="text-xs opacity-60">No recent analyses</p>
               </div>
             ) : (
-              recentAnalyses.slice(0, 5).map((analysis) => (
-                <div
-                  key={analysis.id}
-                  className="p-2 rounded hover:bg-black/5 cursor-pointer transition-colors group"
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="text-sm font-medium truncate flex-1 group-hover:text-black">
-                      {analysis.fileName}
+              // Show all recent analyses, highlight based on current URL
+              recentAnalyses.slice(0, 5).map((analysis) => {
+                const isCurrent = currentFeedbackId === analysis.id;
+                return (
+                  <div
+                    key={analysis.id}
+                    className={`p-2 rounded cursor-pointer transition-all duration-200 group ${
+                      isCurrent 
+                        ? 'bg-green-50 border border-green-200 shadow-sm' 
+                        : 'hover:bg-black/5'
+                    }`}
+                    onClick={() => handleAnalysisClick(analysis.id)}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2 flex-1">
+                        {isCurrent && (
+                          <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0 animate-pulse"></div>
+                        )}
+                        <div className={`text-sm font-medium truncate transition-colors ${
+                          isCurrent ? 'text-green-800 font-semibold' : 'group-hover:text-black'
+                        }`}>
+                          {analysis.fileName}
+                        </div>
+                      </div>
+                      <div className={`text-sm font-bold ml-2 transition-colors ${
+                        isCurrent ? 'text-green-800' : ''
+                      }`}>
+                        {analysis.gripScore}
+                      </div>
                     </div>
-                    <div className="text-sm font-bold ml-2">{analysis.gripScore}</div>
+                    <div className="flex items-center justify-between">
+                      <span className={`text-xs px-2 py-1 rounded font-mono transition-colors ${
+                        isCurrent 
+                          ? 'bg-green-100 text-green-700' 
+                          : 'bg-black/10'
+                      }`}>
+                        {analysis.context.replace('_', ' ')}
+                      </span>
+                      <span className={`text-xs transition-colors ${
+                        isCurrent ? 'text-green-600' : 'opacity-60'
+                      }`}>
+                        {new Date(analysis.timestamp).toLocaleDateString()}
+                      </span>
+                    </div>
+                    {isCurrent && (
+                      <div className="text-xs text-green-600 mt-1 font-medium animate-in slide-in-from-top-1 duration-200">
+                        Currently viewing
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs bg-black/10 px-2 py-1 rounded font-mono">
-                      {analysis.context.replace('_', ' ')}
-                    </span>
-                    <span className="text-xs opacity-60">
-                      {new Date(analysis.timestamp).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="p-4 border-t border-black/10">
-        <div className="text-xs opacity-50 text-center">
-          Signal received. Pattern recognized.
+      {/* Profile Section at Bottom */}
+      {isLoggedIn && user && (
+        <div className="border-t border-black/10 p-4 relative">
+          <button
+            onClick={() => setShowProfileMenu(!showProfileMenu)}
+            className="w-full flex items-center gap-3 p-2 rounded hover:bg-black/5 transition-colors"
+          >
+            <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
+              {user.email?.charAt(0).toUpperCase() || 'U'}
+            </div>
+            <div className="flex-1 text-left">
+              <div className="text-sm font-medium truncate">
+                {user.email?.split('@')[0] || 'User'}
+              </div>
+              <div className="text-xs opacity-60">
+                {isPro ? 'Pro Account' : 'Free Account'}
+              </div>
+            </div>
+            <ChevronDown className={`w-4 h-4 transition-transform ${showProfileMenu ? 'rotate-180' : ''}`} />
+          </button>
+
+          {/* Profile Dropdown Menu */}
+          {showProfileMenu && (
+            <div className="absolute bottom-full left-4 right-4 mb-2 bg-white border border-black/20 rounded shadow-lg z-50">
+              <div className="py-2">
+                <button
+                  onClick={handleSettings}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
+                >
+                  <Settings className="w-4 h-4" />
+                  Settings
+                </button>
+                <div className="border-t border-gray-200 my-1"></div>
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-red-50 text-red-600 transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Logout
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      )}
+
+      {/* Footer for non-logged in users */}
+      {!isLoggedIn && (
+        <div className="p-4 border-t border-black/10">
+          <div className="text-xs opacity-50 text-center">
+            Signal received. Pattern recognized.
+          </div>
+        </div>
+      )}
     </div>
   );
 }
