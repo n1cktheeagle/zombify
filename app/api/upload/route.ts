@@ -3,6 +3,7 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { v4 as uuidv4 } from 'uuid';
 import { analyzeImage } from '@/lib/analyzeImage';
+import { ZombifyAnalysis } from '@/types/analysis';
 
 export async function POST(req: NextRequest) {
   try {
@@ -44,20 +45,31 @@ export async function POST(req: NextRequest) {
 
     // Get real OpenAI analysis
     console.log('Getting OpenAI analysis for:', imageUrl);
-    const analysis = await analyzeImage(imageUrl);
-    console.log('OpenAI analysis result:', analysis);
+    const analysis: ZombifyAnalysis = await analyzeImage(imageUrl);
+    console.log('OpenAI analysis result:', {
+      context: analysis.context,
+      industry: analysis.industry,
+      gripScore: analysis.gripScore.overall,
+      issueCount: analysis.criticalIssues.length + analysis.usabilityIssues.length
+    });
 
     // Determine user information for database insert
     const authenticatedUser = session?.user;
     const finalUserId = authenticatedUser?.id || null;
     const finalIsGuest = !authenticatedUser || isGuest;
 
+    // Extract top issues for backward compatibility
+    const topIssues = [
+      ...analysis.criticalIssues.map(issue => issue.issue),
+      ...analysis.usabilityIssues.map(issue => issue.issue)
+    ].slice(0, 5); // Keep top 5 issues for the legacy 'issues' column
+
     // Prepare the data for insertion
     const feedbackData = {
       id,
       image_url: imageUrl,
-      score: analysis.score,
-      issues: analysis.issues,
+      score: analysis.gripScore.overall, 
+      issues: topIssues,
       analysis: analysis, // Store full analysis as JSONB
       user_id: finalUserId,
       is_guest: finalIsGuest,
@@ -65,7 +77,13 @@ export async function POST(req: NextRequest) {
       created_at: new Date().toISOString(),
     };
 
-    console.log('About to insert to database:', feedbackData);
+    console.log('About to insert to database:', {
+      id: feedbackData.id,
+      score: feedbackData.score,
+      issueCount: topIssues.length,
+      context: analysis.context,
+      industry: analysis.industry
+    });
 
     // Insert feedback record to database
     const { error: insertError, data: insertData } = await supabase
@@ -134,7 +152,13 @@ export async function POST(req: NextRequest) {
       success: true, 
       feedbackId: id,
       redirectUrl: `/feedback/${id}`,
-      debug: { finalUserId, finalIsGuest, insertData }
+      analysisPreview: {
+        context: analysis.context,
+        industry: analysis.industry,
+        gripScore: analysis.gripScore.overall,
+        criticalIssueCount: analysis.criticalIssues.length,
+        totalIssueCount: analysis.criticalIssues.length + analysis.usabilityIssues.length
+      }
     }, { status: 200 });
   } catch (err) {
     console.error('Unexpected server error:', err);

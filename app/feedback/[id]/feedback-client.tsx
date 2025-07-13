@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import GenerationalRadarChart from '@/components/GenerationalRadarChart';
 import { AppLayout } from '@/components/AppLayout';
+import { ZombifyAnalysis } from '@/types/analysis';
+import FeedbackDisplay from '@/components/FeedbackDisplay';
+import GripScoreCard from '@/components/GripScoreCard';
 
 // TypeScript interfaces
 interface FeedbackData {
@@ -18,6 +21,15 @@ interface FeedbackData {
   score: number;
   user_id: string | null;
   is_guest: boolean;
+}
+
+// Helper function to check if analysis is new format
+function isNewAnalysisFormat(analysis: any): analysis is ZombifyAnalysis {
+  return analysis && 
+    typeof analysis === 'object' && 
+    'gripScore' in analysis && 
+    'criticalIssues' in analysis &&
+    'context' in analysis;
 }
 
 export default function FeedbackPage({ params }: { params: { id: string } }) {
@@ -77,6 +89,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
         }
 
         console.log('✅ Data loaded successfully:', feedbackData);
+console.log('Analysis structure:', JSON.stringify(feedbackData.analysis, null, 2));
         if (mounted) {
           setData(feedbackData);
           setError(null);
@@ -183,10 +196,15 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
     return filename.replace('.png', '').replace('.jpg', '').replace('.jpeg', '') || 'Current Analysis';
   };
 
-  // Parse analysis data from your actual table structure
+  // Parse analysis data
   const analysis = data.analysis || {};
-  const issues = data.issues || [];
-  const score = data.score || 0;
+  const isNewFormat = isNewAnalysisFormat(analysis);
+  
+  // Extract data based on format
+  const score = isNewFormat ? analysis.gripScore.overall : (data.score || 0);
+  const issues = isNewFormat ? 
+    [...analysis.criticalIssues.map(i => i.issue), ...analysis.usabilityIssues.map(i => i.issue)] : 
+    (data.issues || []);
 
   // Create current analysis object for sidebar
   const currentAnalysis = {
@@ -263,21 +281,13 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
                 </p>
               </div>
 
-              {/* Generational Analysis */}
-              {analysis?.generationalScores && (
+              {/* Generational Analysis - works for both old and new format */}
+              {((isNewFormat && analysis.generationalAnalysis) || (!isNewFormat && analysis?.generationalScores)) && (
                 <div className="zombify-card p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    {/* Only show Pro badge if logged in */}
-                    {isLoggedIn && (
-                      <div className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded font-mono ml-auto">
-                        PRO INSIGHT
-                      </div>
-                    )}
-                  </div>
-                  
+                  <h3 className="text-lg font-bold mb-4">GENERATIONAL APPEAL</h3>
                   <GenerationalRadarChart 
-                    scores={analysis.generationalScores}
-                    primaryTarget={analysis.primaryTarget || 'millennials'}
+                    scores={isNewFormat ? analysis.generationalAnalysis.scores : analysis.generationalScores}
+                    primaryTarget={isNewFormat ? analysis.generationalAnalysis.primaryTarget : (analysis.primaryTarget || 'millennials')}
                   />
                 </div>
               )}
@@ -285,65 +295,96 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
 
             {/* Right Column - Grip Score and Analysis Content */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Grip Score */}
-              <div className="zombify-card p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-bold">GRIP SCORE</h2>
-                  {analysis?.context && (
-                    <span className="text-xs bg-black/10 px-2 py-1 rounded font-mono">
-                      {analysis.context.replace('_', ' ')}
+              {/* Enhanced Grip Score for new format, simple for old */}
+              {isNewFormat ? (
+                <GripScoreCard 
+                  gripScore={analysis.gripScore}
+                  showBreakdown={true}
+                />
+              ) : (
+                <div className="zombify-card p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-bold">GRIP SCORE</h2>
+                    {analysis?.context && (
+                      <span className="text-xs bg-black/10 px-2 py-1 rounded font-mono">
+                        {analysis.context.replace('_', ' ')}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-5xl font-bold glitch-text mb-4">{score}</div>
+                  <p className="opacity-70 text-sm">How well this cuts through the noise</p>
+                  
+                  <div className="mt-4 flex justify-between text-xs opacity-60">
+                    <span>INVISIBLE</span>
+                    <span>SIGNAL</span>
+                    <span>AWAKENING</span>
+                  </div>
+                  <div className="relative h-2 bg-black/10 rounded-full overflow-hidden mt-1">
+                    <div
+                      className="h-full bg-gradient-to-r from-red-500 via-orange-500 to-green-500 rounded-full transition-all duration-1000 ease-out"
+                      style={{ width: `${score}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Context and Industry badges for new format */}
+              {isNewFormat && (
+                <div className="flex gap-2 mb-4">
+                  <span className="text-xs bg-black text-white px-3 py-1 rounded font-mono">
+                    {analysis.context.replace('_', ' ')}
+                  </span>
+                  {analysis.industry !== 'UNKNOWN' && (
+                    <span className="text-xs bg-blue-600 text-white px-3 py-1 rounded font-mono">
+                      {analysis.industry} ({Math.round(analysis.industryConfidence * 100)}% confidence)
                     </span>
                   )}
                 </div>
-                <div className="text-5xl font-bold glitch-text mb-4">{score}</div>
-                <p className="opacity-70 text-sm">How well this cuts through the noise</p>
-                
-                <div className="mt-4 flex justify-between text-xs opacity-60">
-                  <span>INVISIBLE</span>
-                  <span>SIGNAL</span>
-                  <span>AWAKENING</span>
-                </div>
-                <div className="relative h-2 bg-black/10 rounded-full overflow-hidden mt-1">
-                  <div
-                    className="h-full bg-gradient-to-r from-red-500 via-orange-500 to-green-500 rounded-full transition-all duration-1000 ease-out"
-                    style={{ width: `${score}%` }}
-                  />
-                </div>
-              </div>
+              )}
 
-              {/* Pattern Recognition */}
-              <div className="zombify-card p-6">
-                <h3 className="text-xl font-bold mb-4">PATTERN RECOGNITION</h3>
-                <div className="space-y-4">
-                  {issues.slice(0, isLoggedIn ? 3 : issues.length).map((issue: string, i: number) => (
-                    <div key={i} className="border-l-4 border-red-500 pl-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-red-500">⚡</span>
-                        <span className="font-medium text-sm">{issue}</span>
-                      </div>
-                      {analysis?.insights?.[i] && (
-                        <p className="text-xs italic opacity-70 ml-6">
-                          "{analysis.insights[i]}"
-                        </p>
-                      )}
+              {/* Display comprehensive feedback for new format */}
+              {isNewFormat ? (
+                <FeedbackDisplay 
+                  analysis={analysis}
+                  isLoggedIn={isLoggedIn}
+                  isPro={true} // You can check user's actual pro status here
+                />
+              ) : (
+                // Old format display
+                <>
+                  <div className="zombify-card p-6">
+                    <h3 className="text-xl font-bold mb-4">PATTERN RECOGNITION</h3>
+                    <div className="space-y-4">
+                      {issues.slice(0, isLoggedIn ? issues.length : 3).map((issue: string, i: number) => (
+                        <div key={i} className="border-l-4 border-red-500 pl-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-red-500">⚡</span>
+                            <span className="font-medium text-sm">{issue}</span>
+                          </div>
+                          {analysis?.insights?.[i] && (
+                            <p className="text-xs italic opacity-70 ml-6">
+                              "{analysis.insights[i]}"
+                            </p>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Signal Amplification */}
-              {analysis?.recommendations && analysis.recommendations.length > 0 && (
-                <div className="zombify-card p-6">
-                  <h3 className="text-xl font-bold mb-4">SIGNAL AMPLIFICATION</h3>
-                  <div className="space-y-3">
-                    {analysis.recommendations.slice(0, isLoggedIn ? 2 : analysis.recommendations.length).map((rec: string, i: number) => (
-                      <div key={i} className="flex items-start gap-3">
-                        <span className="text-green-500 mt-1">▲</span>
-                        <span className="text-sm">{rec}</span>
-                      </div>
-                    ))}
                   </div>
-                </div>
+
+                  {analysis?.recommendations && analysis.recommendations.length > 0 && (
+                    <div className="zombify-card p-6">
+                      <h3 className="text-xl font-bold mb-4">SIGNAL AMPLIFICATION</h3>
+                      <div className="space-y-3">
+                        {analysis.recommendations.slice(0, isLoggedIn ? analysis.recommendations.length : 2).map((rec: string, i: number) => (
+                          <div key={i} className="flex items-start gap-3">
+                            <span className="text-green-500 mt-1">▲</span>
+                            <span className="text-sm">{rec}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
