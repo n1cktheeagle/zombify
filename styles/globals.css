@@ -271,7 +271,7 @@ body {
   border-color: rgba(0, 0, 0, 0.5);
 }
 
-/* ===== ZOMBIFY CARD STYLING ===== */
+/* Enhanced Zombify Card - override existing */
 .zombify-card {
   background: rgba(0, 0, 0, 0.02);
   border: 1px solid rgba(0, 0, 0, 0.1);
@@ -279,6 +279,10 @@ body {
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+  /* Enhanced background */
+  background: linear-gradient(135deg, rgba(245, 241, 230, 0.95) 0%, rgba(237, 232, 220, 0.95) 100%);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .zombify-card:before {
@@ -297,4 +301,290 @@ body {
 .zombify-card:hover {
   border-color: rgba(0, 0, 0, 0.2);
   background: rgba(0, 0, 0, 0.03);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* 
+==============================================
+NEW ENHANCED ANIMATIONS FOR FRAMER MOTION
+==============================================
+*/
+
+/* Signal Strength Indicators */
+.signal-bar {
+  background: linear-gradient(to top, #ef4444, #f97316, #eab308, #22c55e);
+  animation: signal-pulse 2s ease-in-out infinite;
+}
+
+@keyframes signal-pulse {
+  0%, 100% { opacity: 0.6; transform: scaleY(1); }
+  50% { opacity: 1; transform: scaleY(1.1); }
+}
+
+/* Scanning Line Effect */
+.scan-line {
+  position: relative;
+  overflow: hidden;
+}
+
+.scan-line::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  animation: scan 3s ease-in-out infinite;
+}
+
+@keyframes scan {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+/* Holographic Border */
+.holo-border {
+  position: relative;
+  border: 2px solid transparent;
+  background: linear-gradient(45deg, #f5f1e6, #ede8dc) padding-box,
+              linear-gradient(45deg, #ff0080, #00ff80, #0080ff, #ff0080) border-box;
+  animation: holo-rotate 4s linear infinite;
+}
+
+@keyframes holo-rotate {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+
+/* Data Matrix Effect */
+.data-matrix {
+  background-image: 
+    linear-gradient(90deg, rgba(0,255,0,0.1) 1px, transparent 1px),
+    linear-gradient(rgba(0,255,0,0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+  animation: matrix-scroll 20s linear infinite;
+}
+
+@keyframes matrix-scroll {
+  0% { background-position: 0 0; }
+  100% { background-position: 20px 20px; }
+}
+
+/* Severity Pulse Animations */
+.severity-critical {
+  animation: critical-pulse 1s ease-in-out infinite alternate;
+}
+
+.severity-high {
+  animation: high-pulse 2s ease-in-out infinite alternate;
+}
+
+@keyframes critical-pulse {
+  0% { 
+    box-shadow: 0 0 5px rgba(239, 68, 68, 0.5);
+    border-color: rgba(239, 68, 68, 0.8);
+  }
+  100% { 
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.8);
+    border-color: rgba(239, 68, 68, 1);
+  }
+}
+
+@keyframes high-pulse {
+  0% { 
+    box-shadow: 0 0 5px rgba(249, 115, 22, 0.3);
+  }
+  100% { 
+    box-shadow: 0 0 15px rgba(249, 115, 22, 0.6);
+  }
+}
+
+/* Loading States */
+.skeleton-loader {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Cyberpunk Glow Effects */
+.cyber-glow-red {
+  box-shadow: 
+    0 0 5px #ff0040,
+    0 0 10px #ff0040,
+    0 0 15px #ff0040,
+    inset 0 0 5px rgba(255, 0, 64, 0.1);
+}
+
+.cyber-glow-green {
+  box-shadow: 
+    0 0 5px #00ff40,
+    0 0 10px #00ff40,
+    0 0 15px #00ff40,
+    inset 0 0 5px rgba(0, 255, 64, 0.1);
+}
+
+.cyber-glow-blue {
+  box-shadow: 
+    0 0 5px #0040ff,
+    0 0 10px #0040ff,
+    0 0 15px #0040ff,
+    inset 0 0 5px rgba(0, 64, 255, 0.1);
+}
+
+/* Text Effects */
+.neon-text {
+  text-shadow: 
+    0 0 5px currentColor,
+    0 0 10px currentColor,
+    0 0 15px currentColor;
+}
+
+.retro-text {
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* Remove problematic Tailwind utilities that don't exist */
+/* Use standard CSS instead */
+
+/* Interactive States */
+.interactive-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.interactive-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+/* Progress Bars */
+.progress-bar {
+  overflow: hidden;
+  background: linear-gradient(90deg, 
+    #ef4444 0%, 
+    #f97316 25%, 
+    #eab308 50%, 
+    #84cc16 75%, 
+    #22c55e 100%);
+  position: relative;
+}
+
+.progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: progress-shine 2s ease-in-out infinite;
+}
+
+@keyframes progress-shine {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Enhanced Glitch Animation Keyframes for GlitchText Component */
+@keyframes glitch-animation-1 {
+  0% { clip: rect(42px, 9999px, 44px, 0); }
+  5% { clip: rect(12px, 9999px, 59px, 0); }
+  10% { clip: rect(48px, 9999px, 29px, 0); }
+  15% { clip: rect(42px, 9999px, 73px, 0); }
+  20% { clip: rect(63px, 9999px, 27px, 0); }
+  25% { clip: rect(34px, 9999px, 55px, 0); }
+  30% { clip: rect(86px, 9999px, 73px, 0); }
+  35% { clip: rect(20px, 9999px, 20px, 0); }
+  40% { clip: rect(26px, 9999px, 60px, 0); }
+  45% { clip: rect(25px, 9999px, 66px, 0); }
+  50% { clip: rect(57px, 9999px, 98px, 0); }
+  55% { clip: rect(5px, 9999px, 46px, 0); }
+  60% { clip: rect(82px, 9999px, 31px, 0); }
+  65% { clip: rect(54px, 9999px, 27px, 0); }
+  70% { clip: rect(28px, 9999px, 99px, 0); }
+  75% { clip: rect(45px, 9999px, 69px, 0); }
+  80% { clip: rect(23px, 9999px, 85px, 0); }
+  85% { clip: rect(54px, 9999px, 84px, 0); }
+  90% { clip: rect(45px, 9999px, 47px, 0); }
+  95% { clip: rect(37px, 9999px, 20px, 0); }
+  100% { clip: rect(4px, 9999px, 91px, 0); }
+}
+
+@keyframes glitch-animation-2 {
+  0% { clip: rect(65px, 9999px, 100px, 0); }
+  5% { clip: rect(52px, 9999px, 74px, 0); }
+  10% { clip: rect(79px, 9999px, 85px, 0); }
+  15% { clip: rect(75px, 9999px, 5px, 0); }
+  20% { clip: rect(67px, 9999px, 61px, 0); }
+  25% { clip: rect(14px, 9999px, 79px, 0); }
+  30% { clip: rect(1px, 9999px, 66px, 0); }
+  35% { clip: rect(86px, 9999px, 30px, 0); }
+  40% { clip: rect(23px, 9999px, 98px, 0); }
+  45% { clip: rect(85px, 9999px, 72px, 0); }
+  50% { clip: rect(71px, 9999px, 75px, 0); }
+  55% { clip: rect(2px, 9999px, 48px, 0); }
+  60% { clip: rect(30px, 9999px, 16px, 0); }
+  65% { clip: rect(68px, 9999px, 87px, 0); }
+  70% { clip: rect(99px, 9999px, 62px, 0); }
+  75% { clip: rect(41px, 9999px, 33px, 0); }
+  80% { clip: rect(6px, 9999px, 47px, 0); }
+  85% { clip: rect(50px, 9999px, 84px, 0); }
+  90% { clip: rect(17px, 9999px, 99px, 0); }
+  95% { clip: rect(53px, 9999px, 84px, 0); }
+  100% { clip: rect(31px, 9999px, 65px, 0); }
+}
+
+/* Responsive Design Helpers */
+@media (max-width: 768px) {
+  .zombify-card {
+    margin: 0 1rem;
+  }
+  
+  .glitch-text {
+    font-size: 1.5rem;
+  }
+  
+  .interactive-card:hover {
+    transform: translateY(-2px) scale(1.01);
+  }
+}
+
+/* Accessibility - Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .glitch-text,
+  .signal-bar,
+  .scan-line::after,
+  .holo-border,
+  .data-matrix,
+  .severity-critical,
+  .severity-high,
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+  
+  .interactive-card:hover {
+    transform: none;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
 }

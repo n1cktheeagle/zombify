@@ -16,6 +16,7 @@ interface AppLayoutProps {
     context: string;
     timestamp: string;
   };
+  fullWidth?: boolean; // Add option for full-width pages
 }
 
 interface FeedbackItem {
@@ -28,7 +29,7 @@ interface FeedbackItem {
   analysis?: any;
 }
 
-export function AppLayout({ children, currentAnalysis }: AppLayoutProps) {
+export function AppLayout({ children, currentAnalysis, fullWidth = false }: AppLayoutProps) {
   const { user, profile, loading } = useAuth();
   const [recentAnalyses, setRecentAnalyses] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
@@ -38,6 +39,9 @@ export function AppLayout({ children, currentAnalysis }: AppLayoutProps) {
   const dataLoadedRef = useRef(false);
   
   const supabase = createClientComponentClient();
+
+  // Auto-detect full width for certain pages
+  const shouldBeFullWidth = fullWidth || pathname?.startsWith('/feedback/');
 
   // Load sidebar data only once and persist it
   useEffect(() => {
@@ -125,7 +129,7 @@ export function AppLayout({ children, currentAnalysis }: AppLayoutProps) {
         />
       </div>
       
-      {/* Main Content - With left margin for sidebar, no top padding */}
+      {/* Main Content - Always uses margin left for sidebar space */}
       <div className="ml-64 min-h-screen">
         {children}
       </div>

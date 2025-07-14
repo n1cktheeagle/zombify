@@ -158,49 +158,42 @@ export default function DashboardSidebar({
                 return (
                   <div
                     key={analysis.id}
-                    className={`p-2 rounded cursor-pointer transition-all duration-200 group ${
-                      isCurrent 
-                        ? 'bg-green-50 border border-green-200 shadow-sm' 
-                        : 'hover:bg-black/5'
-                    }`}
+                    className={`p-2 rounded cursor-pointer transition-all duration-200 group \
+                      ${isCurrent 
+                        ? 'bg-black text-white font-bold font-mono' 
+                        : 'bg-transparent hover:bg-black/10'}
+                    `}
                     onClick={() => handleAnalysisClick(analysis.id)}
                   >
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-2 flex-1">
-                        {isCurrent && (
-                          <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0 animate-pulse"></div>
-                        )}
-                        <div className={`text-sm font-medium truncate transition-colors ${
-                          isCurrent ? 'text-green-800 font-semibold' : 'group-hover:text-black'
-                        }`}>
+                        {/* Remove green dot for active, optional: add subtle indicator if desired */}
+                        <div className={`text-sm font-medium truncate transition-colors \
+                          ${isCurrent ? 'text-white font-bold' : 'group-hover:text-black'}`}
+                        >
                           {analysis.fileName}
                         </div>
                       </div>
-                      <div className={`text-sm font-bold ml-2 transition-colors ${
-                        isCurrent ? 'text-green-800' : ''
-                      }`}>
+                      <div className={`text-sm font-bold ml-2 transition-colors \
+                        ${isCurrent ? 'text-white' : ''}`}
+                      >
                         {analysis.gripScore}
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className={`text-xs px-2 py-1 rounded font-mono transition-colors ${
-                        isCurrent 
-                          ? 'bg-green-100 text-green-700' 
-                          : 'bg-black/10'
-                      }`}>
+                      <span className={`text-xs px-2 py-1 rounded font-mono transition-colors \
+                        ${isCurrent 
+                          ? 'bg-white text-black font-bold' 
+                          : 'bg-black/10'}
+                      `}>
                         {analysis.context.replace('_', ' ')}
                       </span>
-                      <span className={`text-xs transition-colors ${
-                        isCurrent ? 'text-green-600' : 'opacity-60'
-                      }`}>
+                      <span className={`text-xs transition-colors \
+                        ${isCurrent ? 'text-white' : 'opacity-60'}`}
+                      >
                         {new Date(analysis.timestamp).toLocaleDateString()}
                       </span>
                     </div>
-                    {isCurrent && (
-                      <div className="text-xs text-green-600 mt-1 font-medium animate-in slide-in-from-top-1 duration-200">
-                        Currently viewing
-                      </div>
-                    )}
                   </div>
                 );
               })
