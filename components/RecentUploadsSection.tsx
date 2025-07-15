@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useUploads } from '@/contexts/UploadContext'
 import Image from 'next/image'
+import { useState } from 'react';
 
 // Define the upload type based on your actual data structure
 interface Upload {
@@ -17,7 +18,8 @@ interface Upload {
 
 export default function RecentUploadsSection() {
   const router = useRouter();
-  const { uploads } = useUploads();
+  const { uploads, refreshUploads } = useUploads();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Debug: Log uploads to verify data
   console.log('Recent uploads:', uploads);
@@ -42,6 +44,22 @@ export default function RecentUploadsSection() {
     }
   };
 
+  const handleDelete = async (uploadId: string) => {
+    if (!uploadId) return;
+    if (!confirm('Are you sure you want to delete this upload? This action cannot be undone.')) return;
+    setDeletingId(uploadId);
+    try {
+      const res = await fetch(`/api/feedback/${uploadId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete upload');
+      // Optionally, optimistically remove from UI or refresh
+      refreshUploads && refreshUploads();
+    } catch (err) {
+      alert('Failed to delete upload. Please try again.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   if (!uploads || uploads.length === 0) {
     return (
       <div className="text-center py-4">
@@ -58,7 +76,7 @@ export default function RecentUploadsSection() {
       {uploads.map((upload) => (
         <div
           key={upload.id}
-          className="flex items-center space-x-3 p-2 hover:bg-black/5 rounded cursor-pointer transition-colors relative z-10"
+          className="flex items-center space-x-3 p-2 hover:bg-black/5 rounded cursor-pointer transition-colors relative z-10 group"
           onClick={() => {
             window.location.href = `/feedback/${upload.id}`;
           }}
@@ -108,6 +126,20 @@ export default function RecentUploadsSection() {
               <span className="font-bold">{upload.score || 0}</span>
             </div>
           </div>
+
+          {/* Delete Button */}
+          <button
+            className="ml-2 px-2 py-1 text-xs text-red-600 border border-red-200 rounded hover:bg-red-50 transition-opacity opacity-0 group-hover:opacity-100 disabled:opacity-50"
+            title="Delete upload"
+            onClick={e => {
+              e.stopPropagation();
+              handleDelete(upload.id);
+            }}
+            disabled={deletingId === upload.id}
+            aria-label="Delete upload"
+          >
+            {deletingId === upload.id ? 'Deleting...' : 'Delete'}
+          </button>
         </div>
       ))}
     </div>

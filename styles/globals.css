@@ -282,7 +282,6 @@ body {
   /* Enhanced background */
   background: linear-gradient(135deg, rgba(245, 241, 230, 0.95) 0%, rgba(237, 232, 220, 0.95) 100%);
   backdrop-filter: blur(10px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .zombify-card:before {
@@ -302,7 +301,6 @@ body {
   border-color: rgba(0, 0, 0, 0.2);
   background: rgba(0, 0, 0, 0.03);
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
 }
 
 /* 

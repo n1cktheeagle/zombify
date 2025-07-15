@@ -19,6 +19,7 @@ interface UploadContextType {
   loading: boolean;
   refreshUploads: () => void;
   addUpload: (upload: Upload) => void;
+  deleteUpload: (id: string) => void;
 }
 
 const UploadContext = createContext<UploadContextType | undefined>(undefined);
@@ -76,8 +77,12 @@ export function UploadProvider({ children }: { children: ReactNode }) {
     setUploads(prev => [upload, ...prev.slice(0, 9)]);
   };
 
+  const deleteUpload = (id: string) => {
+    setUploads(prev => prev.filter(u => u.id !== id));
+  };
+
   return (
-    <UploadContext.Provider value={{ uploads, loading, refreshUploads, addUpload }}>
+    <UploadContext.Provider value={{ uploads, loading, refreshUploads, addUpload, deleteUpload }}>
       {children}
     </UploadContext.Provider>
   );

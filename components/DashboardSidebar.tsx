@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Folder, Clock, Lock, ChevronDown, Settings, LogOut } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import Image from 'next/image';
 
 interface RecentAnalysis {
   id: string;
@@ -39,6 +40,24 @@ export default function DashboardSidebar({
   const pathname = usePathname();
   const { user, signOut } = useAuth();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Handle click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowProfileMenu(false);
+      }
+    };
+
+    if (showProfileMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showProfileMenu]);
 
   // Extract feedback ID from current pathname
   const getCurrentFeedbackId = () => {
@@ -74,10 +93,19 @@ export default function DashboardSidebar({
       {/* Header with Logo */}
       <div className="p-4 border-b border-black/10">
         <div 
-          className="text-lg font-bold tracking-tight text-black cursor-pointer hover:opacity-80 transition-opacity"
+          className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
           onClick={() => router.push('/dashboard')}
         >
-          ZOMBIFY
+          <Image 
+            src="/logo.png" 
+            alt="Logo" 
+            width={28} 
+            height={28} 
+            className="object-contain"
+          />
+          <div className="text-lg font-bold tracking-tight text-black">
+            ZOMBIFY
+          </div>
         </div>
       </div>
 
@@ -153,46 +181,36 @@ export default function DashboardSidebar({
               </div>
             ) : (
               // Show all recent analyses, highlight based on current URL
-              recentAnalyses.slice(0, 5).map((analysis) => {
+              recentAnalyses.map((analysis) => {
                 const isCurrent = currentFeedbackId === analysis.id;
                 return (
                   <div
                     key={analysis.id}
-                    className={`p-2 rounded cursor-pointer transition-all duration-200 group \
+                    className={`p-3 rounded cursor-pointer transition-all duration-200 group \
                       ${isCurrent 
                         ? 'bg-black text-white font-bold font-mono' 
                         : 'bg-transparent hover:bg-black/10'}
                     `}
                     onClick={() => handleAnalysisClick(analysis.id)}
                   >
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2 flex-1">
-                        {/* Remove green dot for active, optional: add subtle indicator if desired */}
-                        <div className={`text-sm font-medium truncate transition-colors \
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className={`text-xs font-medium truncate transition-colors \
                           ${isCurrent ? 'text-white font-bold' : 'group-hover:text-black'}`}
                         >
                           {analysis.fileName}
                         </div>
+                        <div className={`text-xs mt-1 transition-colors \
+                          ${isCurrent ? 'text-white opacity-90' : 'opacity-60'}`}
+                        >
+                          {new Date(analysis.timestamp).toLocaleDateString()}
+                        </div>
                       </div>
-                      <div className={`text-sm font-bold ml-2 transition-colors \
+                      <div className={`text-base font-bold ml-3 transition-colors \
                         ${isCurrent ? 'text-white' : ''}`}
                       >
                         {analysis.gripScore}
                       </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className={`text-xs px-2 py-1 rounded font-mono transition-colors \
-                        ${isCurrent 
-                          ? 'bg-white text-black font-bold' 
-                          : 'bg-black/10'}
-                      `}>
-                        {analysis.context.replace('_', ' ')}
-                      </span>
-                      <span className={`text-xs transition-colors \
-                        ${isCurrent ? 'text-white' : 'opacity-60'}`}
-                      >
-                        {new Date(analysis.timestamp).toLocaleDateString()}
-                      </span>
                     </div>
                   </div>
                 );
@@ -204,7 +222,7 @@ export default function DashboardSidebar({
 
       {/* Profile Section at Bottom */}
       {isLoggedIn && user && (
-        <div className="border-t border-black/10 p-4 relative">
+        <div className="border-t border-black/10 p-4 relative" ref={dropdownRef}>
           <button
             onClick={() => setShowProfileMenu(!showProfileMenu)}
             className="w-full flex items-center gap-3 p-2 rounded hover:bg-black/5 transition-colors"

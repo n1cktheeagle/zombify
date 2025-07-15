@@ -23,6 +23,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [navigating, setNavigating] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   
   const router = useRouter();
   const supabase = createClientComponentClient();
@@ -115,6 +116,21 @@ export default function Dashboard() {
   const handleNavigate = async (id: string) => {
     setNavigating(id);
     router.push(`/feedback/${id}`);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!id) return;
+    if (!confirm('Are you sure you want to delete this upload? This action cannot be undone.')) return;
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/feedback/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete upload');
+      setFeedback(prev => prev.filter(f => f.id !== id));
+    } catch (err) {
+      alert('Failed to delete upload. Please try again.');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   // Show loading while auth is initializing
@@ -271,7 +287,7 @@ export default function Dashboard() {
               {feedback.map((item) => (
                 <div 
                   key={item.id} 
-                  className={`bg-white border border-black/20 rounded p-4 hover:bg-gray-50 transition-colors cursor-pointer ${
+                  className={`bg-white border border-black/20 rounded p-4 hover:bg-gray-50 transition-colors cursor-pointer group ${
                     navigating === item.id ? 'opacity-50 pointer-events-none' : ''
                   }`}
                   onClick={() => handleNavigate(item.id)}
@@ -308,6 +324,19 @@ export default function Dashboard() {
                         <div className="text-xs text-blue-600 mt-1">Navigating...</div>
                       )}
                     </div>
+                    {/* Delete Button */}
+                    <button
+                      className="ml-4 px-3 py-1 text-xs text-red-600 border border-red-200 rounded hover:bg-red-50 transition-opacity opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                      title="Delete upload"
+                      onClick={e => {
+                        e.stopPropagation();
+                        handleDelete(item.id);
+                      }}
+                      disabled={deletingId === item.id}
+                      aria-label="Delete upload"
+                    >
+                      {deletingId === item.id ? 'Deleting...' : 'Delete'}
+                    </button>
                   </div>
                 </div>
               ))}

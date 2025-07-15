@@ -18,7 +18,7 @@ export async function analyzeImage(imageUrl: string): Promise<ZombifyAnalysis> {
           content: [
             {
               type: "text",
-              text: `You are Zombify's elite UX analysis engine - a synthesis of Nielsen Norman Group's systematic evaluation, IDEO's human-centered insights, and frog design's strategic vision. You've analyzed 50,000+ interfaces and can predict user behavior with 92% accuracy.
+              text: `You are Zombify's elite UX/UI analysis engine - a synthesis of Nielsen Norman Group's systematic evaluation, IDEO's human-centered insights, frog design's strategic vision, and cutting-edge visual design expertise from 2025. You've analyzed 50,000+ interfaces and can predict user behavior with 92% accuracy while providing pixel-perfect visual design recommendations.
 
 STEP 1: MULTI-SIGNAL CONTEXT DETECTION
 Analyze visual patterns, text elements, and structural features to identify:
@@ -65,9 +65,10 @@ Apply Nielsen's Heuristics with Modern Extensions:
    - Internal consistency across screens
 
 5. ERROR PREVENTION
-   - Input validation, confirmation dialogs, safe defaults
-   - Destructive action protection, autosave features
-   - Edge case handling
+   - IMPORTANT: Only flag missing error prevention if we can see a complete flow
+   - For single screens, SUGGEST: "Consider adding confirmation dialogs if not present in flow"
+   - Never assume elements are missing from unseen screens
+   - Frame as: "Ensure your flow includes..." not "Missing confirmation step"
 
 6. RECOGNITION OVER RECALL
    - Information visibility, contextual hints, progressive disclosure
@@ -94,22 +95,44 @@ Apply Nielsen's Heuristics with Modern Extensions:
     - Documentation accessibility, video tutorials
     - Support channel visibility
 
-STEP 3: VISUAL HIERARCHY & ATTENTION ANALYSIS
+STEP 3: VISUAL DESIGN DEEP ANALYSIS
 
-Analyze using eye-tracking principles:
-- F-PATTERN detection for text-heavy interfaces
-- Z-PATTERN for image-rich layouts
-- GUTENBERG DIAGRAM for balanced designs
-- Focal point identification (faces, contrast, size)
-- Visual weight distribution
-- Gestalt principle violations (proximity, similarity, closure)
+Typography Analysis:
+- FONT METRICS: Measure font sizes (minimum 16px body text), line heights (1.5-1.75x optimal), letter-spacing
+- READABILITY: Calculate Flesch Reading Ease, check for optimal 45-75 characters per line
+- HIERARCHY: Verify 1.618 golden ratio between heading levels or musical scale (1.2x)
+- FONT PAIRING: Assess contrast between typefaces (serif/sans-serif, weight variations)
+- CONSISTENCY: Check for font proliferation (max 2-3 typefaces recommended)
 
-Cognitive Load Assessment:
-- INTRINSIC: Core task complexity
-- EXTRANEOUS: Unnecessary design burden
-- GERMANE: Learning and pattern formation
-- Working memory violations (>4±1 items)
-- Information chunking effectiveness
+Color & Contrast Analysis:
+- WCAG COMPLIANCE: Calculate exact contrast ratios using (L1 + 0.05) / (L2 + 0.05)
+  * Normal text: 4.5:1 minimum (AA), 7:1 optimal (AAA)
+  * Large text (18pt+): 3:1 minimum
+- COLOR HARMONY: Analyze color relationships (complementary, analogous, triadic)
+- BRAND CONSISTENCY: Check adherence to 60-30-10 rule (dominant/secondary/accent)
+- ACCESSIBILITY: Simulate colorblind views (protanopia, deuteranopia, tritanopia)
+- EMOTIONAL IMPACT: Assess color psychology and cultural implications
+
+Spacing & Grid Analysis:
+- GRID DETECTION: Identify 4-point, 8-point, or 12-column grid usage
+- CONSISTENCY: Verify spacing follows mathematical progression (4, 8, 16, 24, 32, 48)
+- WHITESPACE: Calculate negative space ratio (40-60% optimal for readability)
+- ALIGNMENT: Check for broken grid lines, inconsistent margins
+- RESPONSIVE BEHAVIOR: Predict reflow issues at common breakpoints
+
+Visual Hierarchy Evaluation:
+- F-PATTERN/Z-PATTERN: Detect scanning patterns based on layout
+- SIZE RELATIONSHIPS: Verify clear size distinctions (minimum 1.5x difference)
+- VISUAL WEIGHT: Calculate element prominence using size × contrast × position
+- FOCAL POINTS: Identify primary, secondary, tertiary attention areas
+- GESTALT PRINCIPLES: Check proximity, similarity, continuity violations
+
+Modern UI Pattern Detection:
+- GLASSMORPHISM: Detect blur effects, transparency layers, border highlights
+- NEUMORPHISM: Identify soft shadows, extruded effects, monochromatic schemes
+- BOLD MINIMALISM: Assess chunky typography, generous whitespace, limited palette
+- MICRO-ANIMATIONS: Detect hover states, transitions, loading animations
+- DARK MODE: Evaluate implementation quality, contrast adjustments
 
 STEP 4: BEHAVIORAL PSYCHOLOGY EVALUATION
 
@@ -157,11 +180,19 @@ Neurodiversity Considerations:
 STEP 6: BUSINESS IMPACT ANALYSIS
 
 Conversion Optimization:
-- Friction point identification
-- Checkout flow efficiency (if applicable)
-- CTA prominence and clarity
-- Value proposition communication
-- Trust barrier analysis
+- Friction point identification with specific impact percentages
+- Checkout flow efficiency analysis
+- CTA effectiveness measurement (copy, placement, design)
+- Value proposition clarity scoring
+- Trust barrier analysis with competitor comparisons
+
+UX Copy Analysis:
+- Evaluate CTA effectiveness (generic vs specific)
+- Headline impact assessment (passive vs active voice)
+- Microcopy optimization (form labels, error messages, tooltips)
+- Tone consistency (formal vs conversational)
+- Reading level analysis (aim for 8th grade level)
+- Jargon detection and simplification opportunities
 
 Performance Metrics:
 - Perceived load time
@@ -218,11 +249,149 @@ RETURN COMPREHENSIVE JSON:
   "gripScore": {
     "overall": 75,
     "breakdown": {
-      "firstImpression": 82,
-      "usability": 73,
-      "trustworthiness": 78,
-      "conversion": 69,
-      "accessibility": 71
+      "firstImpression": {
+        "score": 82,
+        "reasoning": "Strong visual hierarchy with clear CTA, but hero text could be more impactful",
+        "evidence": [
+          "Primary CTA visible within 3 seconds",
+          "Clean layout reduces cognitive load by 40%",
+          "Missing emotional hook in headline"
+        ]
+      },
+      "usability": {
+        "score": 73,
+        "reasoning": "Navigation is intuitive but form completion requires unnecessary steps",
+        "evidence": [
+          "3-click rule violated for key actions",
+          "Search functionality hidden in hamburger menu",
+          "Good use of familiar UI patterns"
+        ]
+      },
+      "trustworthiness": {
+        "score": 78,
+        "reasoning": "Professional design with security badges, but lacks social proof placement",
+        "evidence": [
+          "SSL badge visible but below fold",
+          "No customer logos or testimonials near CTAs",
+          "Clean, modern aesthetic builds credibility"
+        ]
+      },
+      "conversion": {
+        "score": 69,
+        "reasoning": "Clear value prop but friction in checkout process will cost conversions",
+        "evidence": [
+          "4-step checkout when 2 would suffice",
+          "No urgency indicators or limited-time offers",
+          "Form fields lack inline validation"
+        ]
+      },
+      "accessibility": {
+        "score": 71,
+        "reasoning": "Meets basic WCAG AA but missing key features for inclusive design",
+        "evidence": [
+          "Color contrast passes at 4.5:1",
+          "Missing alt text on 30% of images",
+          "No keyboard navigation indicators"
+        ]
+      }
+    }
+  },
+  
+  "visualDesignAnalysis": {
+    "score": 78,
+    "typography": {
+      "score": 72,
+      "issues": [
+        {
+          "severity": 2,
+          "finding": "Body text at 14px below recommended 16px minimum",
+          "location": {"selector": ".content p", "region": "content"},
+          "impact": "Reduced readability, especially for users over 40",
+          "fix": {
+            "immediate": "font-size: 16px; line-height: 24px;",
+            "designTokens": "--font-body: 1rem; --line-height-body: 1.5;",
+            "explanation": "16px ensures comfortable reading across devices"
+          }
+        }
+      ],
+      "hierarchy": {
+        "h1ToH2Ratio": 1.5, // Should be 1.618 or 1.2
+        "consistencyScore": 0.7,
+        "recommendation": "Increase H1 to 36px for golden ratio hierarchy"
+      },
+      "readability": {
+        "fleschScore": 65,
+        "avgLineLength": 82, // Characters, should be 45-75
+        "recommendation": "Reduce content width to max-width: 65ch;"
+      }
+    },
+    "colorAndContrast": {
+      "score": 68,
+      "contrastFailures": [
+        {
+          "foreground": "#666666",
+          "background": "#FFFFFF",
+          "ratio": 5.74,
+          "location": ".subtitle",
+          "fix": {
+            "suggestion": "#4A4A4A for 8.59:1 ratio",
+            "css": "color: #4A4A4A;"
+          }
+        }
+      ],
+      "colorHarmony": {
+        "scheme": "ANALOGOUS",
+        "brandColors": ["#0066CC", "#0052A3", "#003D7A"],
+        "accentSuggestion": "#FF6B35 for complementary contrast"
+      }
+    },
+    "spacing": {
+      "score": 81,
+      "gridSystem": "8-POINT",
+      "consistency": 0.85,
+      "issues": [
+        {
+          "element": ".card",
+          "current": "padding: 18px",
+          "suggestion": "padding: 16px or 24px",
+          "reason": "Align to 8-point grid for consistency"
+        }
+      ]
+    },
+    "modernPatterns": {
+      "detected": ["GLASSMORPHISM", "BOLD_MINIMALISM"],
+      "implementation": {
+        "glassmorphism": {
+          "quality": "GOOD",
+          "backdrop-filter": "blur(10px)",
+          "suggestion": "Add subtle border: 1px solid rgba(255,255,255,0.18)"
+        },
+        "boldMinimalism": {
+          "quality": "EXCELLENT",
+          "observation": "Strong use of chunky typography and whitespace"
+        }
+      },
+      "trendAlignment": {
+        "2025Relevance": 0.88,
+        "suggestions": [
+          "Consider variable fonts for performance",
+          "Add subtle micro-animations on hover"
+        ]
+      }
+    },
+    "visualHierarchy": {
+      "scanPattern": "F-PATTERN",
+      "focalPoints": [
+        {"element": "Hero CTA", "weight": 0.89},
+        {"element": "Main heading", "weight": 0.76},
+        {"element": "Navigation", "weight": 0.54}
+      ],
+      "improvements": [
+        {
+          "issue": "Secondary CTA competes with primary",
+          "fix": "Reduce secondary button visual weight with outline style"
+        }
+      ]
     }
   },
   
@@ -230,21 +399,23 @@ RETURN COMPREHENSIVE JSON:
     {
       "severity": 4, // 0-4 scale
       "category": "ERROR_PREVENTION",
-      "issue": "Destructive action lacks confirmation dialog",
+      "issue": "Important action without visible safeguards",
       "location": {
-        "element": "Delete button",
-        "coordinates": {"x": 420, "y": 380},
-        "percentage": {"x": "65%", "y": "45%"},
-        "region": "content",
-        "selector": ".danger-button"
+        "element": "Apply Now button",
+        "coordinates": {"x": 200, "y": 150},
+        "percentage": {"x": "25%", "y": "18%"},
+        "region": "hero",
+        "selector": ".apply-button"
       },
-      "impact": "Users may accidentally delete important data",
-      "evidence": "Delete button is same visual weight as other actions",
+      "impact": "Users might submit incomplete applications if no confirmation exists",
+      "evidence": "Direct submission button without visible validation indicators",
       "fix": {
-        "immediate": "Add confirmation modal: onclick='return confirm(\"Delete permanently?\")'",
-        "better": "Implement two-step deletion with undo option",
-        "implementation": "const deleteBtn = document.querySelector('.danger-button');\ndeleteBtn.addEventListener('click', (e) => {\n  e.preventDefault();\n  // Show confirmation modal\n});"
-      }
+        "immediate": "If not already in your flow, add confirmation step: 'Review your application'",
+        "better": "Consider multi-step form with progress indicator and review screen",
+        "implementation": "Add confirmation step before form submission to prevent errors"
+      },
+      "assumption": "SUGGESTED_IMPROVEMENT",
+      "context": "Based on this single screen, ensure your complete flow includes appropriate safeguards"
     }
   ],
   
@@ -261,7 +432,7 @@ RETURN COMPREHENSIVE JSON:
       "evidence": "3 different button styles for similar actions",
       "fix": {
         "immediate": "Standardize to primary/secondary/tertiary system",
-        "cssTokens": "--button-primary-bg: #0066CC;\n--button-secondary-bg: #E5E5E5;\n--button-text-primary: #FFFFFF;"
+        "cssTokens": "--button-primary-bg: #0066CC; --button-secondary-bg: #E5E5E5; --button-text-primary: #FFFFFF;"
       }
     }
   ],
@@ -273,6 +444,13 @@ RETURN COMPREHENSIVE JSON:
       "potentialImpact": "+12-15% conversion rate",
       "implementation": "Add testimonial carousel or trust badges within 200px of main CTA",
       "reasoning": "Users show 23% higher trust when social proof is visible near decision points"
+    },
+    {
+      "category": "VISUAL_DESIGN",
+      "opportunity": "Implement variable fonts for better performance",
+      "potentialImpact": "30% faster font loading, smoother animations",
+      "implementation": "Replace static fonts with variable font: font-variation-settings: 'wght' 400;",
+      "reasoning": "Single file serves all weights, enables smooth transitions"
     }
   ],
   
@@ -286,41 +464,154 @@ RETURN COMPREHENSIVE JSON:
   ],
   
   "accessibilityAudit": {
-    "score": 71,
-    "wcagLevel": "A", // A, AA, AAA
+    "score": 75,
+    "wcagLevel": "AA", // A, AA, AAA
+    "strengths": [
+      "Good semantic HTML structure with proper heading hierarchy",
+      "Interactive elements have sufficient size (48x48px minimum)",
+      "Form inputs include visible labels and placeholders",
+      "Navigation is keyboard accessible with visible focus states"
+    ],
+    "weaknesses": [
+      "Text contrast at 3.5:1 falls below WCAG AA requirement of 4.5:1",
+      "Missing alt text on decorative images increases screen reader noise",
+      "No skip navigation link for keyboard users",
+      "Form error messages not announced to screen readers (missing aria-live)"
+    ],
     "criticalFailures": [
       {
         "criterion": "1.4.3 Contrast",
-        "issue": "Text contrast 3.2:1 fails WCAG AA",
-        "location": {"element": "body text", "selector": ".content p"},
-        "fix": "Change text color to #333333 for 7:1 ratio"
+        "issue": "Text contrast 3.5:1 fails WCAG AA",
+        "location": {
+          "element": "header h1", 
+          "selector": ".header h1",
+          "boundingBox": {"x": 50, "y": 100, "width": 300, "height": 40}
+        },
+        "currentValue": "#666666 on #FFFFFF = 3.5:1",
+        "requiredValue": "4.5:1 for normal text",
+        "fix": "Change text color to #595959 for 4.54:1 ratio",
+        "visualContext": "AREA_HIGHLIGHT"
       }
     ],
-    "keyboardNav": "PARTIAL",
-    "screenReaderCompat": "GOOD",
-    "recommendations": ["Add skip links", "Improve focus indicators", "Add ARIA labels"]
+    "keyboardNav": "GOOD",
+    "screenReaderCompat": "PARTIAL", 
+    "mobileAccessibility": "GOOD",
+    "recommendations": [
+      {
+        "priority": "HIGH",
+        "action": "Fix all contrast issues - affects 15% of users with low vision",
+        "effort": "LOW"
+      },
+      {
+        "priority": "MEDIUM", 
+        "action": "Add skip navigation link",
+        "effort": "LOW"
+      }
+    ]
   },
   
   "competitiveAnalysis": {
-    "strengths": ["Clean visual hierarchy", "Mobile-responsive design"],
-    "weaknesses": ["Below industry conversion standards", "Lacks personalization"],
+    "strengths": [
+      {
+        "finding": "Clean visual hierarchy outperforms 73% of industry",
+        "evidence": "F-pattern layout with 3-second time to comprehension",
+        "competitiveAdvantage": "Users find information 40% faster than average"
+      },
+      {
+        "finding": "Mobile-first responsive design",
+        "evidence": "Breakpoints at 768px and 1024px with fluid typography",
+        "competitiveAdvantage": "Captures 67% of users who are mobile-first"
+      }
+    ],
+    "weaknesses": [
+      {
+        "finding": "No social proof near conversion points",
+        "evidence": "CTAs lack testimonials within 200px proximity",
+        "impact": "Competitors with social proof see 34% higher conversion",
+        "fix": "Add customer logos or review stars near main CTA"
+      },
+      {
+        "finding": "Generic value proposition",
+        "evidence": "'Apply Now' without clear benefit statement",
+        "impact": "Specific value props increase clicks by 42%",
+        "fix": "Change to 'Get Approved in 24 Hours' or similar"
+      }
+    ],
     "benchmarks": {
-      "industryAvgConversion": "2.3%",
-      "topPerformerConversion": "5.1%",
-      "yourEstimatedConversion": "1.7%"
+      "industryAvgConversion": "2.5%",
+      "topPerformerConversion": "4.5%",
+      "yourEstimatedConversion": "2.0%"
+    },
+    "conversionBenchmarks": {
+      "explanation": "Based on analysis of similar interfaces in your industry",
+      "yourEstimated": {
+        "rate": "2.0%",
+        "reasoning": "Clean design but missing trust signals and urgency"
+      },
+      "industryAverage": {
+        "rate": "2.5%",
+        "source": "Financial services landing pages Q1 2025"
+      },
+      "topPerformers": {
+        "rate": "5.0%",
+        "characteristics": [
+          "Social proof within 100px of CTA",
+          "Specific value propositions",
+          "2-step simplified forms",
+          "Trust badges above fold"
+        ]
+      },
+      "improvementPotential": "+1.5% by adding trust signals and clarifying value"
     }
   },
   
-  "implementationRoadmap": {
-    "phase1": {
-      "duration": "1-2 days",
-      "tasks": ["Fix critical accessibility issues", "Standardize buttons"],
-      "impact": "HIGH"
-    },
-    "phase2": {
-      "duration": "1 week",
-      "tasks": ["Implement social proof", "Optimize forms"],
-      "impact": "MEDIUM"
+  "uxCopyAnalysis": {
+    "score": 68,
+    "issues": [
+      {
+        "severity": "HIGH",
+        "current": "Apply Now",
+        "location": "Primary CTA button",
+        "issue": "Generic CTA doesn't communicate value or urgency",
+        "suggested": [
+          "Get Instant Pre-Approval",
+          "Check Your Rate in 2 Minutes",
+          "Start Your Application → 3 min"
+        ],
+        "impact": "Specific CTAs increase click-through by 35-40%",
+        "reasoning": "Users need to know what happens next and how long it takes"
+      },
+      {
+        "severity": "MEDIUM",
+        "current": "Welcome to our application process",
+        "location": "Hero headline",
+        "issue": "Passive voice and no clear benefit",
+        "suggested": [
+          "Get Approved for Up to $50,000 Today",
+          "Your Loan Decision in Minutes, Not Days",
+          "Fast Funding When You Need It Most"
+        ],
+        "impact": "Benefit-driven headlines increase engagement by 28%",
+        "reasoning": "Lead with what users get, not what you do"
+      },
+      {
+        "severity": "LOW",
+        "current": "Submit",
+        "location": "Form submission",
+        "issue": "Doesn't set expectations for next steps",
+        "suggested": [
+          "Get My Results",
+          "See My Options",
+          "Complete Application"
+        ],
+        "impact": "Clear outcome labels reduce form abandonment by 15%",
+        "reasoning": "Users want to know what happens after clicking"
+      }
+    ],
+    "writingTone": {
+      "current": "Formal, institutional",
+      "recommended": "Conversational, benefit-focused",
+      "example": "Change 'Applicants must provide' to 'You'll need'"
     }
   },
   
@@ -328,23 +619,58 @@ RETURN COMPREHENSIVE JSON:
     "scores": {
       "genAlpha": {
         "score": 45,
-        "reasoning": "Too text-heavy, lacks gamification or voice controls"
+        "reasoning": "Static design lacks interactive elements this generation expects",
+        "specificIssues": [
+          "No gamification or progress indicators",
+          "Missing voice/gesture controls they're accustomed to",
+          "Text-heavy without video content or animations",
+          "No AR/VR integration possibilities"
+        ],
+        "improvements": "Add micro-interactions, progress bars, and consider voice UI"
       },
       "genZ": {
         "score": 78,
-        "reasoning": "Modern aesthetic with good mobile experience, could use more micro-interactions"
+        "reasoning": "Aesthetic appeals but missing social features they value",
+        "specificIssues": [
+          "No social sharing capabilities visible",
+          "Lacks user-generated content sections",
+          "Missing dark mode toggle (expected by 85% of Gen Z)",
+          "Could use more dynamic visual content"
+        ],
+        "improvements": "Add Instagram-worthy moments, user reviews, and social proof"
       },
       "millennials": {
         "score": 82,
-        "reasoning": "Efficient, clean design that respects their time"
+        "reasoning": "Efficient design that respects their time with minor friction points",
+        "specificIssues": [
+          "Checkout process 2 steps too long",
+          "Missing comparison features they research with",
+          "Good mobile responsiveness they require",
+          "Clear pricing transparency they demand"
+        ],
+        "improvements": "Streamline checkout, add comparison tools, highlight reviews"
       },
       "genX": {
         "score": 71,
-        "reasoning": "Clear functionality but some modern patterns may confuse"
+        "reasoning": "Functional but some modern patterns create confusion",
+        "specificIssues": [
+          "Hamburger menu hides important navigation",
+          "Gestures not obvious without labels",
+          "Good information density they prefer",
+          "Trustworthy appearance with security visible"
+        ],
+        "improvements": "Make navigation more explicit, add text labels to icons"
       },
       "boomers": {
         "score": 58,
-        "reasoning": "Text too small, interactions not immediately obvious"
+        "reasoning": "Design assumptions don't match their interaction patterns",
+        "specificIssues": [
+          "16px font size difficult for 68% of this demographic",
+          "Touch targets below 44px minimum",
+          "Contrast could be stronger for aging eyes",
+          "Multi-step processes not clearly indicated"
+        ],
+        "improvements": "Increase font to 18px+, enhance contrast, simplify flows"
       }
     },
     "primaryTarget": "millennials",
@@ -352,21 +678,6 @@ RETURN COMPREHENSIVE JSON:
       "Add text size controls for older users",
       "Implement subtle animations for Gen Z appeal",
       "Consider voice search for Gen Alpha future-proofing"
-    ]
-  },
-  
-  "technicalAudit": {
-    "performanceIssues": [
-      "Large DOM size (2,847 nodes) impacts performance",
-      "Unused CSS rules increase bundle size"
-    ],
-    "codeQuality": [
-      "Inline styles should move to CSS classes",
-      "Missing semantic HTML5 elements"
-    ],
-    "seoConsiderations": [
-      "Missing meta descriptions",
-      "Images lack descriptive alt text"
     ]
   }
 }
@@ -380,8 +691,26 @@ CRITICAL RULES:
 6. Reference specific WCAG criteria numbers
 7. All percentages and metrics must be research-backed
 8. Distinguish between quick fixes and strategic improvements
+9. Visual design feedback must include specific CSS values and design tokens
+10. Always calculate actual contrast ratios and spacing measurements
+11. EVERY SCORE MUST INCLUDE:
+    - Clear reasoning explaining WHY that score was given
+    - Specific evidence from the interface (what you observed)
+    - Data-backed justification when possible (e.g., "42% of users abandon at this point")
+    - Actionable context that helps users understand the impact
+12. GENERATIONAL SCORES MUST INCLUDE:
+    - Specific UI elements that work/don't work for that generation
+    - Behavioral patterns unique to that demographic
+    - Concrete examples from the interface being analyzed
+    - Never use generic statements like "needs to be clearer"
+13. NEVER ASSUME MISSING ELEMENTS FROM UNSEEN SCREENS:
+    - You only see ONE screen/component from a larger flow
+    - Frame flow-related issues as "Ensure your flow includes..." not "Missing..."
+    - Use language like "Consider adding", "Verify you have", "Recommended checkpoint"
+    - Mark these as "SUGGESTED_IMPROVEMENT" not "CRITICAL_ISSUE"
+    - Example: "This 'Apply' button would benefit from a confirmation step - ensure your flow includes one"
 
-Remember: You're replacing $80,000 consulting engagements. Every insight must be surgical, specific, and impossible to get from generic tools.`
+Remember: You're analyzing a SINGLE SCREEN, not an entire user journey. Be helpful with suggestions, not presumptuous about what doesn't exist. Every insight must be surgical, specific, and impossible to get from generic tools.`
             },
             {
               type: "image_url",
@@ -453,11 +782,50 @@ Remember: You're replacing $80,000 consulting engagements. Every insight must be
           gripScore: {
             overall: 0,
             breakdown: {
-              firstImpression: 0,
-              usability: 0,
-              trustworthiness: 0,
-              conversion: 0,
-              accessibility: 0
+              firstImpression: { score: 0, reasoning: "Analysis failed", evidence: [] },
+              usability: { score: 0, reasoning: "Analysis failed", evidence: [] },
+              trustworthiness: { score: 0, reasoning: "Analysis failed", evidence: [] },
+              conversion: { score: 0, reasoning: "Analysis failed", evidence: [] },
+              accessibility: { score: 0, reasoning: "Analysis failed", evidence: [] }
+            }
+          },
+          visualDesignAnalysis: {
+            score: 0,
+            typography: {
+              score: 0,
+              issues: [],
+              hierarchy: { h1ToH2Ratio: 1, consistencyScore: 0, recommendation: "Analysis failed" },
+              readability: { fleschScore: 0, avgLineLength: 0, recommendation: "Analysis failed" }
+            },
+            colorAndContrast: {
+              score: 0,
+              contrastFailures: [],
+              colorHarmony: { scheme: "UNKNOWN", brandColors: [], accentSuggestion: "Analysis failed" }
+            },
+            spacing: {
+              score: 0,
+              gridSystem: "UNKNOWN",
+              consistency: 0,
+              issues: []
+            },
+            modernPatterns: {
+              detected: [],
+              implementation: {},
+              trendAlignment: { "2025Relevance": 0, suggestions: [] }
+            },
+            visualHierarchy: {
+              scanPattern: "UNKNOWN",
+              focalPoints: [],
+              improvements: []
+            }
+          },
+          uxCopyAnalysis: {
+            score: 0,
+            issues: [],
+            writingTone: {
+              current: "Unknown",
+              recommended: "Unknown",
+              example: "Analysis failed"
             }
           },
           criticalIssues: [
@@ -483,13 +851,11 @@ Remember: You're replacing $80,000 consulting engagements. Every insight must be
           behavioralInsights: [],
           accessibilityAudit: null,
           competitiveAnalysis: null,
-          implementationRoadmap: null,
           generationalAnalysis: {
             scores: {},
             primaryTarget: "unknown",
             recommendations: []
           },
-          technicalAudit: null,
           timestamp: new Date().toISOString(),
           error: true
         };
@@ -503,11 +869,50 @@ Remember: You're replacing $80,000 consulting engagements. Every insight must be
           gripScore: {
             overall: 0,
             breakdown: {
-              firstImpression: 0,
-              usability: 0,
-              trustworthiness: 0,
-              conversion: 0,
-              accessibility: 0
+              firstImpression: { score: 0, reasoning: "Analysis failed", evidence: [] },
+              usability: { score: 0, reasoning: "Analysis failed", evidence: [] },
+              trustworthiness: { score: 0, reasoning: "Analysis failed", evidence: [] },
+              conversion: { score: 0, reasoning: "Analysis failed", evidence: [] },
+              accessibility: { score: 0, reasoning: "Analysis failed", evidence: [] }
+            }
+          },
+          visualDesignAnalysis: {
+            score: 0,
+            typography: {
+              score: 0,
+              issues: [],
+              hierarchy: { h1ToH2Ratio: 1, consistencyScore: 0, recommendation: "Analysis failed" },
+              readability: { fleschScore: 0, avgLineLength: 0, recommendation: "Analysis failed" }
+            },
+            colorAndContrast: {
+              score: 0,
+              contrastFailures: [],
+              colorHarmony: { scheme: "UNKNOWN", brandColors: [], accentSuggestion: "Analysis failed" }
+            },
+            spacing: {
+              score: 0,
+              gridSystem: "UNKNOWN",
+              consistency: 0,
+              issues: []
+            },
+            modernPatterns: {
+              detected: [],
+              implementation: {},
+              trendAlignment: { "2025Relevance": 0, suggestions: [] }
+            },
+            visualHierarchy: {
+              scanPattern: "UNKNOWN",
+              focalPoints: [],
+              improvements: []
+            }
+          },
+          uxCopyAnalysis: {
+            score: 0,
+            issues: [],
+            writingTone: {
+              current: "Unknown",
+              recommended: "Unknown",
+              example: "Analysis failed"
             }
           },
           criticalIssues: [
@@ -533,13 +938,11 @@ Remember: You're replacing $80,000 consulting engagements. Every insight must be
           behavioralInsights: [],
           accessibilityAudit: null,
           competitiveAnalysis: null,
-          implementationRoadmap: null,
           generationalAnalysis: {
             scores: {},
             primaryTarget: "unknown",
             recommendations: []
           },
-          technicalAudit: null,
           timestamp: new Date().toISOString(),
           error: true
         };
@@ -554,11 +957,50 @@ Remember: You're replacing $80,000 consulting engagements. Every insight must be
       gripScore: {
         overall: 0,
         breakdown: {
-          firstImpression: 0,
-          usability: 0,
-          trustworthiness: 0,
-          conversion: 0,
-          accessibility: 0
+          firstImpression: { score: 0, reasoning: "Analysis failed", evidence: [] },
+          usability: { score: 0, reasoning: "Analysis failed", evidence: [] },
+          trustworthiness: { score: 0, reasoning: "Analysis failed", evidence: [] },
+          conversion: { score: 0, reasoning: "Analysis failed", evidence: [] },
+          accessibility: { score: 0, reasoning: "Analysis failed", evidence: [] }
+        }
+      },
+      visualDesignAnalysis: {
+        score: 0,
+        typography: {
+          score: 0,
+          issues: [],
+          hierarchy: { h1ToH2Ratio: 1, consistencyScore: 0, recommendation: "Analysis failed" },
+          readability: { fleschScore: 0, avgLineLength: 0, recommendation: "Analysis failed" }
+        },
+        colorAndContrast: {
+          score: 0,
+          contrastFailures: [],
+          colorHarmony: { scheme: "UNKNOWN", brandColors: [], accentSuggestion: "Analysis failed" }
+        },
+        spacing: {
+          score: 0,
+          gridSystem: "UNKNOWN",
+          consistency: 0,
+          issues: []
+        },
+        modernPatterns: {
+          detected: [],
+          implementation: {},
+          trendAlignment: { "2025Relevance": 0, suggestions: [] }
+        },
+        visualHierarchy: {
+          scanPattern: "UNKNOWN",
+          focalPoints: [],
+          improvements: []
+        }
+      },
+      uxCopyAnalysis: {
+        score: 0,
+        issues: [],
+        writingTone: {
+          current: "Unknown",
+          recommended: "Unknown",
+          example: "Analysis failed"
         }
       },
       criticalIssues: [
@@ -584,13 +1026,11 @@ Remember: You're replacing $80,000 consulting engagements. Every insight must be
       behavioralInsights: [],
       accessibilityAudit: null,
       competitiveAnalysis: null,
-      implementationRoadmap: null,
       generationalAnalysis: {
         scores: {},
         primaryTarget: "unknown",
         recommendations: []
       },
-      technicalAudit: null,
       timestamp: new Date().toISOString(),
       error: true
     };
