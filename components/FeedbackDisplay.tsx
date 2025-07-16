@@ -38,11 +38,11 @@ export type FeedbackTabId = 'overview' | 'critical' | 'opportunities' | 'insight
 
 export const feedbackTabs = [
   { id: 'overview', label: 'OVERVIEW', getCount: () => 0 },
-  { id: 'critical', label: 'CRITICAL SIGNALS', getCount: (a: ZombifyAnalysis) => a.criticalIssues.length + a.usabilityIssues.length },
-  { id: 'opportunities', label: 'GROWTH VECTORS', getCount: (a: ZombifyAnalysis) => a.opportunities?.length || 0, pro: true },
-  { id: 'insights', label: 'MIND PATTERNS', getCount: (a: ZombifyAnalysis) => a.behavioralInsights?.length || 0, pro: true },
-  { id: 'accessibility', label: 'UNIVERSAL ACCESS', getCount: (a: ZombifyAnalysis) => a.accessibilityAudit?.criticalFailures?.length || 0 },
-  { id: 'competitive', label: 'INTEL REPORT', getCount: (a: ZombifyAnalysis) => 1, pro: true }
+  { id: 'critical', label: 'CRITICAL ISSUES', getCount: (a: ZombifyAnalysis) => a.criticalIssues.length + a.usabilityIssues.length },
+  { id: 'opportunities', label: 'OPPORTUNITIES', getCount: (a: ZombifyAnalysis) => a.opportunities?.length || 0, pro: true },
+  { id: 'insights', label: 'BEHAVIORAL INSIGHTS', getCount: (a: ZombifyAnalysis) => a.behavioralInsights?.length || 0, pro: true },
+  { id: 'accessibility', label: 'ACCESSIBILITY', getCount: (a: ZombifyAnalysis) => a.accessibilityAudit?.criticalFailures?.length || 0 },
+  { id: 'competitive', label: 'COMPETITIVE ANALYSIS', getCount: (a: ZombifyAnalysis) => 1, pro: true }
 ];
 
 export default function FeedbackDisplay(props: FeedbackDisplayProps) {
@@ -94,7 +94,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
       >
         <div className="flex items-center gap-2 mb-2">
           <span className="animate-pulse">●</span>
-          <span>ZOMBIFY ANALYSIS ENGINE v2.1.0</span>
+          <span>UX ANALYSIS ENGINE v2.1.0</span>
         </div>
         <div className="text-xs opacity-60">
           {analysis.context} • {analysis.industry} • Confidence: {Math.round(analysis.industryConfidence * 100)}%
@@ -330,10 +330,10 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                 className="mb-6"
               >
                 <GlitchText className="text-2xl font-bold mb-2" trigger="mount">
-                  CRITICAL ANOMALIES
+                  CRITICAL ISSUES
                 </GlitchText>
                 <div className="text-sm opacity-70 font-mono">
-                  System-breaking patterns and usability issues
+                  Issues requiring immediate attention
                 </div>
               </motion.div>
               
@@ -360,10 +360,10 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                     className="mb-6"
                   >
                     <GlitchText className="text-2xl font-bold mb-2" trigger="mount">
-                      USABILITY FRICTION
+                      USABILITY ISSUES
                     </GlitchText>
                     <div className="text-sm opacity-70 font-mono">
-                      User experience barriers
+                      Areas for improvement
                     </div>
                   </motion.div>
                   
@@ -385,10 +385,10 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                         animate={{ opacity: 1 }}
                       >
                         <div className="font-mono text-sm opacity-70 mb-2">
-                          + {analysis.usabilityIssues.length - 2} more signals detected
+                          + {analysis.usabilityIssues.length - 2} more issues detected
                         </div>
                         <button className="zombify-primary-button px-6 py-2 text-sm">
-                          SIGN UP TO DECODE ALL
+                          SIGN UP TO VIEW ALL
                         </button>
                       </motion.div>
                     )}
@@ -407,10 +407,10 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                 className="mb-6"
               >
                 <GlitchText className="text-2xl font-bold mb-2" trigger="mount">
-                  GROWTH VECTORS
+                  OPPORTUNITIES
                 </GlitchText>
                 <div className="text-sm opacity-70 font-mono">
-                  Revenue amplification opportunities
+                  Growth and improvement opportunities
                 </div>
               </motion.div>
 
@@ -440,7 +440,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                   )) || (
                     <div className="text-center py-12 opacity-60">
                       <div className="text-4xl mb-4">🎯</div>
-                      <div className="font-mono">No growth opportunities detected in this analysis</div>
+                      <div className="font-mono">No opportunities detected in this analysis</div>
                     </div>
                   )}
                 </div>
@@ -472,10 +472,10 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                 className="mb-6"
               >
                 <GlitchText className="text-2xl font-bold mb-2" trigger="mount">
-                  MIND PATTERNS
+                  BEHAVIORAL INSIGHTS
                 </GlitchText>
                 <div className="text-sm opacity-70 font-mono">
-                  Psychological behavior analysis
+                  User behavior patterns and psychology
                 </div>
               </motion.div>
 
@@ -503,7 +503,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                   )) || (
                     <div className="text-center py-12 opacity-60">
                       <div className="text-4xl mb-4">🧠</div>
-                      <div className="font-mono">No behavioral patterns detected</div>
+                      <div className="font-mono">No behavioral insights detected</div>
                     </div>
                   )}
                 </div>
@@ -535,10 +535,10 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                 className="mb-6"
               >
                 <GlitchText className="text-2xl font-bold mb-2" trigger="mount">
-                  UNIVERSAL ACCESS
+                  ACCESSIBILITY
                 </GlitchText>
                 <div className="text-sm opacity-70 font-mono">
-                  WCAG compliance & inclusivity analysis
+                  WCAG compliance and accessibility analysis
                 </div>
               </motion.div>
 
@@ -682,7 +682,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                       <div className="flex items-center gap-3 mb-6">
                         <div className="text-3xl">🎯</div>
                         <GlitchText className="text-2xl font-bold text-red-400" trigger="mount">
-                          CRITICAL ACCESSIBILITY BREACHES
+                          CRITICAL ACCESSIBILITY ISSUES
                         </GlitchText>
                       </div>
 
@@ -753,7 +753,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                       <div className="flex items-center gap-3 mb-6">
                         <div className="text-3xl">🎛️</div>
                         <GlitchText className="text-2xl font-bold text-cyan-400" trigger="mount">
-                          PRIORITY REMEDIATION MATRIX
+                          PRIORITY RECOMMENDATIONS
                         </GlitchText>
                       </div>
 
@@ -819,7 +819,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                   <GlitchText className="text-xl font-bold mb-2" trigger="mount">
                     NO ACCESSIBILITY DATA
                   </GlitchText>
-                  <div className="font-mono text-sm opacity-60">Analysis module offline</div>
+                  <div className="font-mono text-sm opacity-60">Accessibility analysis not available</div>
                 </motion.div>
               )}
             </div>
@@ -834,10 +834,10 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                 className="mb-6"
               >
                 <GlitchText className="text-2xl font-bold mb-2" trigger="mount">
-                  COMPETITIVE INTELLIGENCE
+                  COMPETITIVE ANALYSIS
                 </GlitchText>
                 <div className="text-sm opacity-70 font-mono">
-                  Market positioning & benchmark analysis
+                  Market positioning and benchmark analysis
                 </div>
               </motion.div>
 
@@ -867,7 +867,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                       <div className="relative z-10">
                         <div className="text-center mb-6">
                           <GlitchText className="text-xl font-bold mb-2" trigger="hover">
-                            CONVERSION INTELLIGENCE MATRIX
+                            CONVERSION BENCHMARKS
                           </GlitchText>
                           <div className="font-mono text-sm opacity-70">Performance vs industry standards</div>
                         </div>
@@ -1013,11 +1013,11 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                       <div className="flex items-center gap-3 mb-4">
                         <div className="text-2xl">🏆</div>
                         <GlitchText className="text-xl font-bold text-green-400" trigger="hover">
-                          TOP PERFORMER DNA
+                          TOP PERFORMER TRAITS
                         </GlitchText>
                       </div>
                       <div className="text-sm font-mono text-green-300 mb-4">
-                        Common traits of industry-leading designs
+                        Common characteristics of industry-leading designs
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {analysis.competitiveAnalysis.conversionBenchmarks.topPerformers.characteristics.map((characteristic, i) => (
@@ -1162,7 +1162,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                 >
                   <div className="text-6xl mb-4">🔒</div>
                   <GlitchText className="text-xl font-bold mb-2" trigger="mount">
-                    COMPETITIVE INTELLIGENCE
+                    COMPETITIVE ANALYSIS
                   </GlitchText>
                   <p className="text-sm mb-4 max-w-md mx-auto opacity-70 font-mono">
                     Compare your design against industry leaders and conversion benchmarks

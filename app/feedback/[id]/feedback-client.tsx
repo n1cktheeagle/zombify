@@ -158,7 +158,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
             ⚠️
           </motion.div>
           <GlitchText className="text-2xl mb-4" trigger="continuous">
-            SIGNAL CORRUPTED
+            ERROR LOADING ANALYSIS
           </GlitchText>
           <motion.p 
             className="mb-4 text-gray-600"
@@ -183,7 +183,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              RETRY TRANSMISSION
+              RETRY LOADING
             </motion.button>
             <motion.button 
               onClick={() => router.push('/dashboard')}
@@ -191,7 +191,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              RETURN TO BASE
+              RETURN TO DASHBOARD
             </motion.button>
           </div>
         </motion.div>
@@ -221,7 +221,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
             ⏳
           </motion.div>
           <GlitchText className="text-xl mb-2" trigger="continuous">
-            DECODING SIGNALS...
+            LOADING ANALYSIS...
           </GlitchText>
           <motion.div className="flex justify-center mb-4">
             {[0, 1, 2, 3, 4].map((i) => (
@@ -241,7 +241,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
               />
             ))}
           </motion.div>
-          <p className="text-sm opacity-60 font-mono">TRACE: {params.id}</p>
+          <p className="text-sm opacity-60 font-mono">Analysis ID: {params.id}</p>
         </motion.div>
       </div>
     );
@@ -270,17 +270,17 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
             👻
           </motion.div>
           <GlitchText className="text-2xl mb-4" trigger="continuous">
-            GHOST IN THE MACHINE
+            ANALYSIS NOT FOUND
           </GlitchText>
-          <p className="mb-4">This analysis doesn't exist in our reality.</p>
-          <p className="text-sm opacity-60 mb-4 font-mono">VOID ID: {params.id}</p>
+          <p className="mb-4">This analysis could not be found.</p>
+          <p className="text-sm opacity-60 mb-4 font-mono">Analysis ID: {params.id}</p>
           <motion.button 
             onClick={() => router.push('/dashboard')}
             className="zombify-primary-button px-6 py-2"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            ESCAPE THE VOID
+            RETURN TO DASHBOARD
           </motion.button>
         </motion.div>
       </div>
@@ -330,10 +330,10 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
           
           <div className="w-full text-center relative z-10">
             <GlitchText className="font-mono text-purple-200 mb-4 text-lg" trigger="continuous">
-              NEURAL LINK DETECTED • UPGRADE CONSCIOUSNESS?
+              PREMIUM ANALYSIS AVAILABLE • UPGRADE TO PRO?
             </GlitchText>
             <p className="font-mono text-purple-100 mb-4 text-sm">
-              Join the awakened. Get 3 free deep-scans per lunar cycle.
+              Get unlimited analysis with advanced insights and detailed reports.
             </p>
             <div className="flex gap-3 justify-center">
               <motion.button 
@@ -342,7 +342,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                JACK IN
+                SIGN IN
               </motion.button>
               <motion.button 
                 onClick={openSignUp}
@@ -350,7 +350,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                DOWNLOAD CONSCIOUSNESS
+                UPGRADE TO PRO
               </motion.button>
             </div>
           </div>
@@ -418,7 +418,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.5 }}
           >
-            <div className="text-xs opacity-60 mb-2 font-mono">NEURAL EXPANSION AVAILABLE</div>
+            <div className="text-xs opacity-60 mb-2 font-mono">PREMIUM FEATURES AVAILABLE</div>
             <motion.button 
               className="zombify-primary-button px-6 py-2 text-sm font-bold tracking-wider"
               whileHover={{ scale: 1.05 }}
@@ -493,7 +493,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
                   animate={{ opacity: 1 }}
                   transition={{ delay: 1 }}
                 >
-                  SCAN COMPLETE • {new Date(data.created_at).toLocaleString()}
+                  ANALYSIS COMPLETE • {new Date(data.created_at).toLocaleString()}
                 </motion.p>
               </div>
             </motion.div>
@@ -738,7 +738,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
             </motion.div>
             
             <GlitchText className="text-2xl font-bold mb-4" trigger="continuous">
-              CONSCIOUSNESS EXPANSION PROTOCOL
+              UPGRADE TO PREMIUM
             </GlitchText>
             
             <motion.p 
@@ -747,7 +747,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
               animate={{ opacity: 1 }}
               transition={{ delay: 1.8 }}
             >
-              Join the resistance. Track design evolution. Decode deeper patterns.
+              Get unlimited analysis with advanced insights and detailed reports.
             </motion.p>
             
             <motion.button 
@@ -762,7 +762,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
               animate={{ scale: 1 }}
               transition={{ delay: 2, type: "spring", stiffness: 200 }}
             >
-              JACK INTO THE MATRIX
+              UPGRADE TO PRO
             </motion.button>
             
             <motion.div 
@@ -771,7 +771,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
               animate={{ opacity: 1 }}
               transition={{ delay: 2.2 }}
             >
-              Signal received. Pattern recognized. Wake them up.
+              Get advanced UX insights and detailed analysis reports.
             </motion.div>
           </div>
         </motion.div>
