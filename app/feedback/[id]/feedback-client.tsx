@@ -289,14 +289,6 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
 
   const isLoggedIn = !!user;
 
-  // Extract filename from image URL
-  const getImageFileName = (url: string) => {
-    if (!url) return 'Current Analysis';
-    const segments = url.split('/');
-    const filename = segments[segments.length - 1];
-    return filename.replace('.png', '').replace('.jpg', '').replace('.jpeg', '') || 'Current Analysis';
-  };
-
   // Parse analysis data
   const analysis = data.analysis || {};
   const isNewFormat = isNewAnalysisFormat(analysis);
@@ -577,65 +569,6 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
               </motion.div>
             )}
           </div>
-
-
-
-          {/* Quick Action Items */}
-          {isNewFormat && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7 }}
-              className="zombify-card p-6 scan-line relative overflow-hidden"
-            >
-              <div className="text-center mb-6">
-                <GlitchText className="text-xl font-bold mb-2" trigger="hover">
-                  IMMEDIATE ACTION ITEMS
-                </GlitchText>
-                <div className="text-sm opacity-70 font-mono">Priority fixes and opportunities</div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Critical Issues Preview */}
-                <div className="bg-red-50 border border-red-200 p-4 rounded-lg">
-                  <h5 className="font-semibold mb-2 text-red-800">Critical Issues</h5>
-                  <div className="text-2xl font-bold text-red-600 mb-2">{analysis.criticalIssues?.length || 0}</div>
-                  <div className="text-xs opacity-60 mb-3">Issues requiring immediate attention</div>
-                  {analysis.criticalIssues?.slice(0, 2).map((issue: any, i: number) => (
-                    <div key={i} className="text-sm mb-2 last:mb-0">
-                      • {issue.issue}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Opportunities Preview */}
-                <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
-                  <h5 className="font-semibold mb-2 text-green-800">Quick Wins</h5>
-                  <div className="text-2xl font-bold text-green-600 mb-2">{analysis.opportunities?.length || 0}</div>
-                  <div className="text-xs opacity-60 mb-3">Low-effort, high-impact improvements</div>
-                  {analysis.opportunities?.slice(0, 2).map((opp: any, i: number) => (
-                    <div key={i} className="text-sm mb-2 last:mb-0">
-                      • {opp.opportunity}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Scanning line effect */}
-              <motion.div
-                className="absolute inset-0 bg-gradient-to-b from-transparent via-yellow-400/10 to-transparent pointer-events-none"
-                animate={{
-                  y: ['-100%', '100%']
-                }}
-                transition={{
-                  repeat: Infinity,
-                  duration: 4,
-                  ease: "linear"
-                }}
-                style={{ height: '20px' }}
-              />
-            </motion.div>
-          )}
         </div>
       ) : (
         // All other tabs use FeedbackDisplay component
@@ -698,7 +631,6 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
               usabilityIssues: [],
               opportunities: [],
               behavioralInsights: [],
-              competitiveAnalysis: null,
               generationalAnalysis: { scores: {}, primaryTarget: 'unknown', recommendations: [] },
               timestamp: new Date().toISOString(),
               accessibilityAudit: null

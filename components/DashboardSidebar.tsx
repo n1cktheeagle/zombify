@@ -93,7 +93,7 @@ export default function DashboardSidebar({
       {/* Header with Logo */}
       <div className="p-4 border-b border-black/10">
         <div 
-          className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+          className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
           onClick={() => router.push('/dashboard')}
         >
           <Image 

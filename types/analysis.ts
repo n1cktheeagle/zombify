@@ -230,44 +230,6 @@ export interface AccessibilityAudit {
   }>;
 }
 
-// ENHANCED: Competitive analysis with detailed benchmarks  
-export interface CompetitiveAnalysis {
-  strengths: Array<{
-    finding: string;
-    evidence: string;
-    competitiveAdvantage: string;
-  }>;
-  weaknesses: Array<{
-    finding: string;
-    evidence: string;
-    impact: string;
-    fix: string;
-  }>;
-  // Keep old benchmarks for backward compatibility
-  benchmarks: {
-    industryAvgConversion: string;
-    topPerformerConversion: string;
-    yourEstimatedConversion: string;
-  };
-  // New enhanced benchmarks
-  conversionBenchmarks: {
-    explanation: string;
-    yourEstimated: {
-      rate: string;
-      reasoning: string;
-    };
-    industryAverage: {
-      rate: string;
-      source: string;
-    };
-    topPerformers: {
-      rate: string;
-      characteristics: string[];
-    };
-    improvementPotential: string;
-  };
-}
-
 // ENHANCED: Generational analysis with specific issues
 export interface GenerationalAnalysis {
   scores: {
@@ -294,7 +256,6 @@ export interface ZombifyAnalysis {
   opportunities: Opportunity[];
   behavioralInsights: BehavioralInsight[];
   accessibilityAudit: AccessibilityAudit | null;
-  competitiveAnalysis: CompetitiveAnalysis | null;
   generationalAnalysis: GenerationalAnalysis;
   timestamp: string;
   error?: boolean;

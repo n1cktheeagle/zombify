@@ -33,16 +33,15 @@ function isNewFormat(props: FeedbackDisplayProps): props is NewFeedbackDisplayPr
   return 'analysis' in props;
 }
 
-// Export tab types and tab array for use in parent - CLEANED UP
-export type FeedbackTabId = 'overview' | 'critical' | 'opportunities' | 'insights' | 'accessibility' | 'competitive';
+// Export tab types and tab array for use in parent - UPDATED WITH NEW STRUCTURE
+export type FeedbackTabId = 'overview' | 'issues' | 'opportunities' | 'insights' | 'accessibility';
 
 export const feedbackTabs = [
   { id: 'overview', label: 'OVERVIEW', getCount: () => 0 },
-  { id: 'critical', label: 'CRITICAL ISSUES', getCount: (a: ZombifyAnalysis) => a.criticalIssues.length + a.usabilityIssues.length },
+  { id: 'issues', label: 'ISSUES & FIXES', getCount: (a: ZombifyAnalysis) => a.criticalIssues.length + a.usabilityIssues.length },
   { id: 'opportunities', label: 'OPPORTUNITIES', getCount: (a: ZombifyAnalysis) => a.opportunities?.length || 0, pro: true },
   { id: 'insights', label: 'BEHAVIORAL INSIGHTS', getCount: (a: ZombifyAnalysis) => a.behavioralInsights?.length || 0, pro: true },
-  { id: 'accessibility', label: 'ACCESSIBILITY', getCount: (a: ZombifyAnalysis) => a.accessibilityAudit?.criticalFailures?.length || 0 },
-  { id: 'competitive', label: 'COMPETITIVE ANALYSIS', getCount: (a: ZombifyAnalysis) => 1, pro: true }
+  { id: 'accessibility', label: 'ACCESSIBILITY', getCount: (a: ZombifyAnalysis) => a.accessibilityAudit?.criticalFailures?.length || 0 }
 ];
 
 export default function FeedbackDisplay(props: FeedbackDisplayProps) {
@@ -242,87 +241,11 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                   </motion.div>
                 )}
               </div>
-
-              {/* Badges Section */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 }}
-                className="text-center"
-              >
-                <GlitchText className="text-xl font-bold mb-4" trigger="hover">
-                  ANALYSIS BADGES
-                </GlitchText>
-                <div className="flex justify-center gap-4">
-                  {/* Placeholder badges - these would be dynamic based on analysis */}
-                  <div className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-4 py-2 rounded-full text-sm font-bold">
-                    SOCIAL (85% CERTAINTY)
-                  </div>
-                  <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-full text-sm font-bold">
-                    CONVERSION READY
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Quick Action Items */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.7 }}
-                className="zombify-card p-6 scan-line relative overflow-hidden"
-              >
-                <div className="text-center mb-6">
-                  <GlitchText className="text-xl font-bold mb-2" trigger="hover">
-                    IMMEDIATE ACTION ITEMS
-                  </GlitchText>
-                  <div className="text-sm opacity-70 font-mono">Priority fixes and opportunities</div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Critical Issues Preview */}
-                  <div className="bg-red-50 border border-red-200 p-4 rounded-lg">
-                    <h5 className="font-semibold mb-2 text-red-800">Critical Issues</h5>
-                    <div className="text-2xl font-bold text-red-600 mb-2">{analysis.criticalIssues.length}</div>
-                    <div className="text-xs opacity-60 mb-3">Issues requiring immediate attention</div>
-                    {analysis.criticalIssues.slice(0, 2).map((issue, i) => (
-                      <div key={i} className="text-sm mb-2 last:mb-0">
-                        • {issue.issue}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Opportunities Preview */}
-                  <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
-                    <h5 className="font-semibold mb-2 text-green-800">Quick Wins</h5>
-                    <div className="text-2xl font-bold text-green-600 mb-2">{analysis.opportunities?.length || 0}</div>
-                    <div className="text-xs opacity-60 mb-3">Low-effort, high-impact improvements</div>
-                    {analysis.opportunities?.slice(0, 2).map((opp, i) => (
-                      <div key={i} className="text-sm mb-2 last:mb-0">
-                        • {opp.opportunity}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Scanning line effect */}
-                <motion.div
-                  className="absolute inset-0 bg-gradient-to-b from-transparent via-yellow-400/10 to-transparent pointer-events-none"
-                  animate={{
-                    y: ['-100%', '100%']
-                  }}
-                  transition={{
-                    repeat: Infinity,
-                    duration: 4,
-                    ease: "linear"
-                  }}
-                  style={{ height: '20px' }}
-                />
-              </motion.div>
             </div>
           )}
 
-          {/* Critical Issues & Usability Tab */}
-          {activeTab === 'critical' && (
+          {/* COMBINED Issues & Fixes Tab (Critical + Usability) */}
+          {activeTab === 'issues' && (
             <div className="space-y-6">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -330,15 +253,20 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                 className="mb-6"
               >
                 <GlitchText className="text-2xl font-bold mb-2" trigger="mount">
-                  CRITICAL ISSUES
+                  ISSUES & FIXES
                 </GlitchText>
                 <div className="text-sm opacity-70 font-mono">
-                  Issues requiring immediate attention
+                  Issues requiring immediate attention and areas for improvement
                 </div>
               </motion.div>
               
+              {/* Critical Issues Section */}
               {analysis.criticalIssues.length > 0 && (
                 <div className="space-y-4">
+                  <div className="border-l-4 border-red-500 pl-4">
+                    <h3 className="text-xl font-bold text-red-700 mb-2">Critical Issues</h3>
+                    <p className="text-sm text-red-600 mb-4">These issues need immediate attention</p>
+                  </div>
                   {analysis.criticalIssues.map((issue, index) => (
                     <IssueCard
                       key={`critical-${index}`}
@@ -351,49 +279,55 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                 </div>
               )}
 
+              {/* Usability Issues Section */}
               {analysis.usabilityIssues.length > 0 && (
-                <div>
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="mb-6"
-                  >
-                    <GlitchText className="text-2xl font-bold mb-2" trigger="mount">
-                      USABILITY ISSUES
-                    </GlitchText>
-                    <div className="text-sm opacity-70 font-mono">
-                      Areas for improvement
-                    </div>
-                  </motion.div>
-                  
-                  <div className="space-y-4">
-                    {analysis.usabilityIssues.slice(0, isLoggedIn ? undefined : 2).map((issue, index) => (
-                      <IssueCard
-                        key={`usability-${index}`}
-                        issue={issue}
-                        index={index + analysis.criticalIssues.length}
-                        type="usability"
-                        isPro={isPro}
-                      />
-                    ))}
-                    
-                    {!isLoggedIn && analysis.usabilityIssues.length > 2 && (
-                      <motion.div
-                        className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                      >
-                        <div className="font-mono text-sm opacity-70 mb-2">
-                          + {analysis.usabilityIssues.length - 2} more issues detected
-                        </div>
-                        <button className="zombify-primary-button px-6 py-2 text-sm">
-                          SIGN UP TO VIEW ALL
-                        </button>
-                      </motion.div>
-                    )}
+                <div className="space-y-4">
+                  <div className="border-l-4 border-orange-500 pl-4">
+                    <h3 className="text-xl font-bold text-orange-700 mb-2">Usability Issues</h3>
+                    <p className="text-sm text-orange-600 mb-4">Areas for improvement to enhance user experience</p>
                   </div>
+                  {analysis.usabilityIssues.slice(0, isLoggedIn ? undefined : 2).map((issue, index) => (
+                    <IssueCard
+                      key={`usability-${index}`}
+                      issue={issue}
+                      index={index + analysis.criticalIssues.length}
+                      type="usability"
+                      isPro={isPro}
+                    />
+                  ))}
+                  
+                  {!isLoggedIn && analysis.usabilityIssues.length > 2 && (
+                    <motion.div
+                      className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                    >
+                      <div className="font-mono text-sm opacity-70 mb-2">
+                        + {analysis.usabilityIssues.length - 2} more issues detected
+                      </div>
+                      <button className="zombify-primary-button px-6 py-2 text-sm">
+                        SIGN UP TO VIEW ALL
+                      </button>
+                    </motion.div>
+                  )}
                 </div>
+              )}
+
+              {/* No Issues State */}
+              {analysis.criticalIssues.length === 0 && analysis.usabilityIssues.length === 0 && (
+                <motion.div
+                  className="text-center py-12 bg-green-50 border border-green-200 rounded-lg"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                >
+                  <div className="text-6xl mb-4">✨</div>
+                  <GlitchText className="text-xl font-bold mb-2" trigger="mount">
+                    NO CRITICAL ISSUES DETECTED
+                  </GlitchText>
+                  <p className="text-sm opacity-70 font-mono">
+                    Your design follows good UX practices
+                  </p>
+                </motion.div>
               )}
             </div>
           )}
@@ -526,7 +460,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
             </div>
           )}
 
-          {/* Enhanced Accessibility Audit - NO HIGHLIGHT BUTTONS */}
+          {/* Accessibility Audit - CLEANED UP, NO FAKE FEATURES */}
           {activeTab === 'accessibility' && (
             <div className="space-y-6">
               <motion.div
@@ -538,13 +472,13 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                   ACCESSIBILITY
                 </GlitchText>
                 <div className="text-sm opacity-70 font-mono">
-                  WCAG compliance and accessibility analysis
+                  Visual accessibility analysis for static images
                 </div>
               </motion.div>
 
               {analysis.accessibilityAudit ? (
                 <>
-                  {/* Enhanced Accessibility Score Matrix */}
+                  {/* Accessibility Score Matrix */}
                   <motion.div 
                     className="zombify-card p-6 scan-line relative overflow-hidden"
                     initial={{ opacity: 0, scale: 0.95 }}
@@ -567,49 +501,29 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                     <div className="relative z-10">
                       <div className="text-center mb-6">
                         <GlitchText className="text-xl font-bold mb-2" trigger="hover">
-                          ACCESSIBILITY MATRIX
+                          VISUAL ACCESSIBILITY ANALYSIS
                         </GlitchText>
-                        <div className="font-mono text-sm opacity-70">Real-time compliance monitoring</div>
+                        <div className="font-mono text-sm opacity-70">Visual elements only - no alt text, keyboard nav, or screen reader analysis</div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                         <div className="text-center p-4 bg-white/50 rounded border border-black/10">
                           <div className="text-3xl font-bold text-black mb-1">{analysis.accessibilityAudit.score}</div>
                           <div className="text-xs font-mono opacity-70">ACCESSIBILITY SCORE</div>
                         </div>
                         <div className="text-center p-4 bg-white/50 rounded border border-black/10">
-                          <div className="text-3xl font-bold text-black mb-1">WCAG {analysis.accessibilityAudit.wcagLevel}</div>
-                          <div className="text-xs font-mono opacity-70">COMPLIANCE LEVEL</div>
+                          <div className="text-3xl font-bold text-black mb-1">VISUAL</div>
+                          <div className="text-xs font-mono opacity-70">ANALYSIS TYPE</div>
                         </div>
                         <div className="text-center p-4 bg-white/50 rounded border border-black/10">
                           <div className="text-3xl font-bold text-black mb-1">{analysis.accessibilityAudit.criticalFailures?.length || 0}</div>
-                          <div className="text-xs font-mono opacity-70">CRITICAL ISSUES</div>
-                        </div>
-                        <div className="text-center p-4 bg-white/50 rounded border border-black/10">
-                          <div className="text-lg font-bold text-black mb-1">{analysis.accessibilityAudit.keyboardNav}</div>
-                          <div className="text-xs font-mono opacity-70">KEYBOARD NAV</div>
-                        </div>
-                      </div>
-
-                      {/* Enhanced Mobile & Screen Reader Info */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="bg-white/50 border border-black/10 p-4 rounded">
-                          <div className="text-sm font-bold text-black mb-2">📱 MOBILE ACCESSIBILITY</div>
-                          <div className="text-sm font-mono opacity-70">
-                            {analysis.accessibilityAudit.mobileAccessibility || 'Not analyzed'}
-                          </div>
-                        </div>
-                        <div className="bg-white/50 border border-black/10 p-4 rounded">
-                          <div className="text-sm font-bold text-black mb-2">🔊 SCREEN READER</div>
-                          <div className="text-sm font-mono opacity-70">
-                            {analysis.accessibilityAudit.screenReaderCompat}
-                          </div>
+                          <div className="text-xs font-mono opacity-70">VISUAL ISSUES</div>
                         </div>
                       </div>
                     </div>
                   </motion.div>
 
-                  {/* Strengths and Weaknesses Matrix */}
+                  {/* Strengths and Weaknesses */}
                   {(analysis.accessibilityAudit.strengths || analysis.accessibilityAudit.weaknesses) && (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                       {analysis.accessibilityAudit.strengths && analysis.accessibilityAudit.strengths.length > 0 && (
@@ -650,7 +564,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                           <div className="flex items-center gap-3 mb-4">
                             <div className="text-2xl">⚠️</div>
                             <GlitchText className="text-lg font-bold text-black" trigger="hover">
-                              VULNERABILITY POINTS
+                              AREAS FOR IMPROVEMENT
                             </GlitchText>
                           </div>
                           <div className="space-y-2">
@@ -672,7 +586,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                     </div>
                   )}
 
-                  {/* Critical Failures - NO HIGHLIGHT BUTTONS */}
+                  {/* Critical Failures - VISUAL ONLY */}
                   {analysis.accessibilityAudit.criticalFailures?.length > 0 && (
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
@@ -682,7 +596,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                       <div className="flex items-center gap-3 mb-6">
                         <div className="text-3xl">🎯</div>
                         <GlitchText className="text-2xl font-bold text-red-400" trigger="mount">
-                          CRITICAL ACCESSIBILITY ISSUES
+                          VISUAL ACCESSIBILITY ISSUES
                         </GlitchText>
                       </div>
 
@@ -694,20 +608,6 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: i * 0.1 }}
                         >
-                          {/* Glitch effect background */}
-                          <motion.div
-                            className="absolute inset-0 bg-gradient-to-r from-red-500/10 to-transparent pointer-events-none"
-                            animate={{
-                              opacity: [0, 0.3, 0],
-                              x: ['-100%', '100%']
-                            }}
-                            transition={{
-                              duration: 2,
-                              repeat: Infinity,
-                              repeatDelay: 3
-                            }}
-                          />
-
                           <div className="relative z-10">
                             <div className="flex justify-between items-start mb-4">
                               <div className="flex-1">
@@ -743,7 +643,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                     </motion.div>
                   )}
 
-                  {/* Enhanced Priority Recommendations Matrix */}
+                  {/* Priority Recommendations */}
                   {analysis.accessibilityAudit.recommendations?.length > 0 && (
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
@@ -820,356 +720,6 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                     NO ACCESSIBILITY DATA
                   </GlitchText>
                   <div className="font-mono text-sm opacity-60">Accessibility analysis not available</div>
-                </motion.div>
-              )}
-            </div>
-          )}
-
-          {/* Enhanced Competitive Analysis Tab */}
-          {activeTab === 'competitive' && (
-            <div className="space-y-6">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mb-6"
-              >
-                <GlitchText className="text-2xl font-bold mb-2" trigger="mount">
-                  COMPETITIVE ANALYSIS
-                </GlitchText>
-                <div className="text-sm opacity-70 font-mono">
-                  Market positioning and benchmark analysis
-                </div>
-              </motion.div>
-
-              {isPro && analysis.competitiveAnalysis ? (
-                <>
-                  {/* Enhanced Conversion Benchmarks */}
-                  {analysis.competitiveAnalysis.conversionBenchmarks && (
-                    <motion.div
-                      className="zombify-card p-6 scan-line relative overflow-hidden"
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                    >
-                      {/* Scanning line effect */}
-                      <motion.div
-                        className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-400/20 to-transparent pointer-events-none"
-                        animate={{
-                          x: ['-100%', '100%']
-                        }}
-                        transition={{
-                          repeat: Infinity,
-                          duration: 3,
-                          ease: "linear"
-                        }}
-                        style={{ width: '30%', height: '100%' }}
-                      />
-
-                      <div className="relative z-10">
-                        <div className="text-center mb-6">
-                          <GlitchText className="text-xl font-bold mb-2" trigger="hover">
-                            CONVERSION BENCHMARKS
-                          </GlitchText>
-                          <div className="font-mono text-sm opacity-70">Performance vs industry standards</div>
-                        </div>
-
-                        {/* Benchmark Comparison Chart */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                          {/* Your Performance */}
-                          <motion.div
-                            className="text-center p-6 bg-white/50 border border-black/10 rounded-lg relative"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 }}
-                          >
-                            <div className="text-2xl mb-3">🎯</div>
-                            <div className="text-3xl font-bold text-black mb-2">
-                              {analysis.competitiveAnalysis.conversionBenchmarks.yourEstimated.rate}
-                            </div>
-                            <div className="text-sm font-mono mb-3 opacity-70">YOUR ESTIMATED</div>
-                            <div className="text-xs opacity-60 font-mono">
-                              {analysis.competitiveAnalysis.conversionBenchmarks.yourEstimated.reasoning}
-                            </div>
-                          </motion.div>
-
-                          {/* Industry Average */}
-                          <motion.div
-                            className="text-center p-6 bg-white/50 border border-black/10 rounded-lg relative"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.2 }}
-                          >
-                            <div className="text-2xl mb-3">📊</div>
-                            <div className="text-3xl font-bold text-black mb-2">
-                              {analysis.competitiveAnalysis.conversionBenchmarks.industryAverage.rate}
-                            </div>
-                            <div className="text-sm font-mono mb-3 opacity-70">INDUSTRY AVG</div>
-                            <div className="text-xs opacity-60 font-mono">
-                              Source: {analysis.competitiveAnalysis.conversionBenchmarks.industryAverage.source}
-                            </div>
-                          </motion.div>
-
-                          {/* Top Performers */}
-                          <motion.div
-                            className="text-center p-6 bg-white/50 border border-black/10 rounded-lg relative"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.3 }}
-                          >
-                            <div className="text-2xl mb-3">🏆</div>
-                            <div className="text-3xl font-bold text-black mb-2">
-                              {analysis.competitiveAnalysis.conversionBenchmarks.topPerformers.rate}
-                            </div>
-                            <div className="text-sm font-mono mb-3 opacity-70">TOP PERFORMERS</div>
-                            <div className="text-xs opacity-60">
-                              Industry leaders in conversion optimization
-                            </div>
-                          </motion.div>
-                        </div>
-
-                        {/* Visual Comparison Bar */}
-                        <div className="mb-6">
-                          <div className="text-center mb-4">
-                            <div className="text-lg font-bold text-purple-400 mb-2">PERFORMANCE COMPARISON</div>
-                            <div className="font-mono text-sm opacity-70">Relative positioning analysis</div>
-                          </div>
-                          
-                          <div className="space-y-3">
-                            {[
-                              { label: 'Your Design', rate: analysis.competitiveAnalysis.conversionBenchmarks.yourEstimated.rate, color: 'blue' },
-                              { label: 'Industry Average', rate: analysis.competitiveAnalysis.conversionBenchmarks.industryAverage.rate, color: 'orange' },
-                              { label: 'Top Performers', rate: analysis.competitiveAnalysis.conversionBenchmarks.topPerformers.rate, color: 'green' }
-                            ].map((item, index) => {
-                              const percentage = parseFloat(item.rate.replace('%', ''));
-                              const maxPercentage = 15; // Assuming max reasonable conversion rate for visualization
-                              const width = Math.min((percentage / maxPercentage) * 100, 100);
-                              
-                              const colorMap = {
-                                blue: 'bg-blue-500',
-                                orange: 'bg-orange-500', 
-                                green: 'bg-green-500'
-                              };
-
-                              return (
-                                <motion.div
-                                  key={index}
-                                  className="flex items-center gap-4"
-                                  initial={{ opacity: 0, x: -20 }}
-                                  animate={{ opacity: 1, x: 0 }}
-                                  transition={{ delay: index * 0.1 }}
-                                >
-                                  <div className="w-24 text-sm font-mono text-right">{item.label}</div>
-                                  <div className="flex-1 bg-gray-700 rounded-full h-4 relative overflow-hidden">
-                                    <motion.div
-                                      className={`h-full ${colorMap[item.color as keyof typeof colorMap]} rounded-full relative`}
-                                      initial={{ width: 0 }}
-                                      animate={{ width: `${width}%` }}
-                                      transition={{ delay: index * 0.2 + 0.5, duration: 1 }}
-                                    >
-                                      <motion.div
-                                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
-                                        animate={{
-                                          x: ['-100%', '100%']
-                                        }}
-                                        transition={{
-                                          repeat: Infinity,
-                                          duration: 2,
-                                          ease: "linear",
-                                          delay: index * 0.3
-                                        }}
-                                      />
-                                    </motion.div>
-                                  </div>
-                                  <div className="w-16 text-sm font-bold text-right">{item.rate}</div>
-                                </motion.div>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        {/* Improvement Potential */}
-                        <motion.div
-                          className="bg-gradient-to-r from-cyan-900/30 to-cyan-800/20 border border-cyan-500/30 p-4 rounded-lg text-center"
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.6 }}
-                        >
-                          <div className="text-lg font-bold text-cyan-400 mb-2">💡 IMPROVEMENT POTENTIAL</div>
-                          <div className="text-sm font-mono">
-                            {analysis.competitiveAnalysis.conversionBenchmarks.improvementPotential}
-                          </div>
-                        </motion.div>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {/* Top Performer Characteristics */}
-                  {analysis.competitiveAnalysis.conversionBenchmarks?.topPerformers?.characteristics && (
-                    <motion.div
-                      className="bg-gradient-to-br from-green-900/20 to-emerald-900/20 border-2 border-green-500/30 p-6 rounded-lg"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.4 }}
-                    >
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="text-2xl">🏆</div>
-                        <GlitchText className="text-xl font-bold text-green-400" trigger="hover">
-                          TOP PERFORMER TRAITS
-                        </GlitchText>
-                      </div>
-                      <div className="text-sm font-mono text-green-300 mb-4">
-                        Common characteristics of industry-leading designs
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {analysis.competitiveAnalysis.conversionBenchmarks.topPerformers.characteristics.map((characteristic, i) => (
-                          <motion.div
-                            key={i}
-                            className="flex items-start gap-3 p-3 bg-green-900/20 rounded border border-green-400/20"
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.1 }}
-                          >
-                            <div className="text-green-400 text-sm">▶</div>
-                            <div className="text-sm text-green-300 font-mono">{characteristic}</div>
-                          </motion.div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {/* Competitive Strengths vs Weaknesses Matrix */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Strengths */}
-                    <motion.div 
-                      className="zombify-card p-6 scan-line relative overflow-hidden"
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.2 }}
-                    >
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="text-2xl">💪</div>
-                        <GlitchText className="text-lg font-bold text-black" trigger="hover">
-                          COMPETITIVE ADVANTAGES
-                        </GlitchText>
-                      </div>
-                      <div className="space-y-3">
-                        {analysis.competitiveAnalysis.strengths.map((strength, i) => (
-                          <motion.div
-                            key={i}
-                            className="p-4 bg-white/50 rounded border border-black/10"
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.1 }}
-                          >
-                            <div className="font-medium text-sm text-black mb-2">
-                              {typeof strength === 'string' ? strength : strength.finding}
-                            </div>
-                            {typeof strength === 'object' && (
-                              <>
-                                <div className="text-xs text-green-600 mb-1">Evidence:</div>
-                                <div className="text-xs opacity-70 font-mono mb-2">{strength.evidence}</div>
-                                <div className="text-xs bg-green-50 border border-green-200 p-2 rounded">
-                                  <strong>Advantage:</strong> {strength.competitiveAdvantage}
-                                </div>
-                              </>
-                            )}
-                          </motion.div>
-                        ))}
-                      </div>
-                    </motion.div>
-
-                    {/* Weaknesses */}
-                    <motion.div 
-                      className="zombify-card p-6 scan-line relative overflow-hidden"
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.3 }}
-                    >
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="text-2xl">🎯</div>
-                        <GlitchText className="text-lg font-bold text-black" trigger="hover">
-                          OPPORTUNITY GAPS
-                        </GlitchText>
-                      </div>
-                      <div className="space-y-3">
-                        {analysis.competitiveAnalysis.weaknesses.map((weakness, i) => (
-                          <motion.div
-                            key={i}
-                            className="p-4 bg-white/50 rounded border border-black/10"
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.1 }}
-                          >
-                            <div className="font-medium text-sm text-black mb-2">
-                              {typeof weakness === 'string' ? weakness : weakness.finding}
-                            </div>
-                            {typeof weakness === 'object' && (
-                              <>
-                                <div className="text-xs text-red-600 mb-1">Evidence:</div>
-                                <div className="text-xs opacity-70 font-mono mb-2">{weakness.evidence}</div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-                                  <div className="bg-red-50 border border-red-200 p-2 rounded">
-                                    <strong>Impact:</strong> {weakness.impact}
-                                  </div>
-                                  <div className="bg-blue-50 border border-blue-200 p-2 rounded">
-                                    <strong>Fix:</strong> {weakness.fix}
-                                  </div>
-                                </div>
-                              </>
-                            )}
-                          </motion.div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  </div>
-
-                  {/* Legacy Benchmarks (Fallback) */}
-                  {!analysis.competitiveAnalysis.conversionBenchmarks && analysis.competitiveAnalysis.benchmarks && (
-                    <motion.div 
-                      className="bg-gradient-to-r from-gray-900/30 to-gray-800/20 border-2 border-gray-500/40 rounded-lg p-6"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.4 }}
-                    >
-                      <h4 className="font-semibold mb-3 text-center">Industry Benchmarks</h4>
-                      <div className="grid grid-cols-3 gap-4 text-center">
-                        <div>
-                          <div className="text-lg font-bold text-orange-400">
-                            {analysis.competitiveAnalysis.benchmarks.industryAvgConversion}
-                          </div>
-                          <div className="text-xs opacity-60">Industry Average</div>
-                        </div>
-                        <div>
-                          <div className="text-lg font-bold text-green-400">
-                            {analysis.competitiveAnalysis.benchmarks.topPerformerConversion}
-                          </div>
-                          <div className="text-xs opacity-60">Top Performers</div>
-                        </div>
-                        <div>
-                          <div className="text-lg font-bold text-blue-400">
-                            {analysis.competitiveAnalysis.benchmarks.yourEstimatedConversion}
-                          </div>
-                          <div className="text-xs opacity-60">Your Estimate</div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </>
-              ) : (
-                <motion.div
-                  className="text-center py-12 border-2 border-purple-300 rounded-lg bg-gradient-to-br from-purple-900/20 to-purple-800/20"
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                >
-                  <div className="text-6xl mb-4">🔒</div>
-                  <GlitchText className="text-xl font-bold mb-2" trigger="mount">
-                    COMPETITIVE ANALYSIS
-                  </GlitchText>
-                  <p className="text-sm mb-4 max-w-md mx-auto opacity-70 font-mono">
-                    Compare your design against industry leaders and conversion benchmarks
-                  </p>
-                  <button className="bg-purple-600 text-white px-6 py-2 rounded font-bold hover:bg-purple-700 font-mono">
-                    UPGRADE TO PRO
-                  </button>
                 </motion.div>
               )}
             </div>

@@ -66,4 +66,4 @@ export default function FeedbackTabs({ analysis, activeTab, setActiveTab, isPro 
       })}
     </motion.div>
   );
-} 
+}
