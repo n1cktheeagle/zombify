@@ -17,16 +17,21 @@ interface AnnotationOverlayProps {
   annotations: AnnotationPoint[];
   onAnnotationClick?: (annotation: AnnotationPoint) => void;
   className?: string;
+  selectedAnnotation?: string | null; // Controlled selection from parent
 }
 
 export default function AnnotationOverlay({ 
   imageUrl, 
   annotations, 
   onAnnotationClick,
-  className = ""
+  className = "",
+  selectedAnnotation: controlledSelection = null
 }: AnnotationOverlayProps) {
   const [hoveredAnnotation, setHoveredAnnotation] = useState<string | null>(null);
-  const [selectedAnnotation, setSelectedAnnotation] = useState<string | null>(null);
+  
+  // Use controlled selection from parent if provided, otherwise use internal state
+  const [internalSelection, setInternalSelection] = useState<string | null>(null);
+  const selectedAnnotation = controlledSelection !== undefined ? controlledSelection : internalSelection;
 
   const getSeverityConfig = (severity: number) => {
     switch (severity) {
@@ -62,7 +67,10 @@ export default function AnnotationOverlay({
   };
 
   const handleAnnotationClick = (annotation: AnnotationPoint) => {
-    setSelectedAnnotation(annotation.id === selectedAnnotation ? null : annotation.id);
+    // Only update internal state if not controlled by parent
+    if (controlledSelection === undefined) {
+      setInternalSelection(annotation.id === selectedAnnotation ? null : annotation.id);
+    }
     onAnnotationClick?.(annotation);
   };
 

@@ -74,6 +74,7 @@ export interface Opportunity {
   potentialImpact: string;
   implementation: string;
   reasoning: string;
+  location?: Location;
 }
 
 // Behavioral insight

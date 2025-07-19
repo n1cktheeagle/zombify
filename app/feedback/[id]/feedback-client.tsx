@@ -639,6 +639,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
             isPro={true}
             activeTab={activeTab}
             setActiveTab={setActiveTab}
+            imageUrl={data.image_url}
           />
         </div>
       )}

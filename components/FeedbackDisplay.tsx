@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ZombifyAnalysis } from '@/types/analysis';
 import GlitchText from './GlitchText';
@@ -9,6 +9,7 @@ import GripScoreCard from './GripScoreCard';
 import GenerationalRadarChart from './GenerationalRadarChart';
 import VisualDesignAnalysisCard from './VisualDesignAnalysisCard';
 import UXCopyAnalysisCard from './UXCopyAnalysisCard';
+import AnnotationOverlay from './AnnotationOverlay';
 
 // Keep backward compatibility with old props
 type LegacyFeedbackDisplayProps = {
@@ -24,6 +25,7 @@ type NewFeedbackDisplayProps = {
   isPro?: boolean;
   activeTab: FeedbackTabId;
   setActiveTab: (tab: FeedbackTabId) => void;
+  imageUrl?: string; // Added for annotation overlay
 };
 
 type FeedbackDisplayProps = LegacyFeedbackDisplayProps | NewFeedbackDisplayProps;
@@ -44,7 +46,78 @@ export const feedbackTabs = [
   { id: 'accessibility', label: 'ACCESSIBILITY', getCount: (a: ZombifyAnalysis) => a.accessibilityAudit?.criticalFailures?.length || 0 }
 ];
 
+// Helper function to convert analysis data to annotation points
+function createAnnotationPoints(analysis: ZombifyAnalysis, type: 'issues' | 'opportunities') {
+  const annotations: Array<{
+    id: string;
+    x: number;
+    y: number;
+    severity: number;
+    issue: string;
+    category: string;
+  }> = [];
+
+  if (type === 'issues') {
+    // Add critical issues
+    analysis.criticalIssues.forEach((issue, index) => {
+      if (issue.location?.percentage) {
+        annotations.push({
+          id: `critical-${index}`,
+          x: parseFloat(issue.location.percentage.x),
+          y: parseFloat(issue.location.percentage.y),
+          severity: issue.severity,
+          issue: issue.issue,
+          category: issue.category,
+        });
+      }
+    });
+
+    // Add usability issues
+    analysis.usabilityIssues.forEach((issue, index) => {
+      if (issue.location?.percentage) {
+        annotations.push({
+          id: `usability-${index}`,
+          x: parseFloat(issue.location.percentage.x),
+          y: parseFloat(issue.location.percentage.y),
+          severity: issue.severity || 2,
+          issue: issue.issue,
+          category: issue.category || 'USABILITY',
+        });
+      }
+    });
+  } else if (type === 'opportunities') {
+    // Add opportunities with location data
+    analysis.opportunities?.forEach((opportunity, index) => {
+      if (opportunity.location?.percentage) {
+        annotations.push({
+          id: `opportunity-${index}`,
+          x: parseFloat(opportunity.location.percentage.x),
+          y: parseFloat(opportunity.location.percentage.y),
+          severity: 1, // Opportunities are generally low severity (informational)
+          issue: opportunity.opportunity,
+          category: opportunity.category,
+        });
+      }
+    });
+  }
+
+  return annotations;
+}
+
 export default function FeedbackDisplay(props: FeedbackDisplayProps) {
+  // State for annotation highlighting
+  const [selectedAnnotation, setSelectedAnnotation] = useState<string | null>(null);
+
+  // Handle annotation clicks
+  const handleAnnotationClick = (annotation: any) => {
+    setSelectedAnnotation(annotation.id === selectedAnnotation ? null : annotation.id);
+  };
+
+  // Handle issue location clicks (connect to annotations)
+  const handleLocationClick = (location: any, issueId: string) => {
+    setSelectedAnnotation(issueId);
+  };
+
   // For new format, use props.activeTab and props.setActiveTab
   if (!isNewFormat(props)) {
     return (
@@ -259,6 +332,27 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                   Issues requiring immediate attention and areas for improvement
                 </div>
               </motion.div>
+
+              {/* Visual Annotation Overlay */}
+              {props.imageUrl && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-8"
+                >
+                  <div className="border-l-4 border-purple-500 pl-4 mb-4">
+                    <h3 className="text-xl font-bold text-purple-700 mb-2">Visual Issue Map</h3>
+                    <p className="text-sm text-purple-600 mb-4">Click on the points below to see exactly where issues occur in your interface</p>
+                  </div>
+                  <AnnotationOverlay
+                    imageUrl={props.imageUrl}
+                    annotations={createAnnotationPoints(analysis, 'issues')}
+                    onAnnotationClick={handleAnnotationClick}
+                    selectedAnnotation={selectedAnnotation}
+                    className="mx-auto max-w-4xl"
+                  />
+                </motion.div>
+              )}
               
               {/* Critical Issues Section */}
               {analysis.criticalIssues.length > 0 && (
@@ -274,6 +368,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                       index={index}
                       type="critical"
                       isPro={isPro}
+                      onLocationClick={(location) => handleLocationClick(location, `critical-${index}`)}
                     />
                   ))}
                 </div>
@@ -293,6 +388,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                       index={index + analysis.criticalIssues.length}
                       type="usability"
                       isPro={isPro}
+                      onLocationClick={(location) => handleLocationClick(location, `usability-${index}`)}
                     />
                   ))}
                   
@@ -350,6 +446,27 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
 
               {isPro ? (
                 <div className="space-y-4">
+                  {/* Visual Annotation Overlay for Opportunities */}
+                  {props.imageUrl && analysis.opportunities?.some(opp => opp.location?.percentage) && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mb-8"
+                    >
+                      <div className="border-l-4 border-green-500 pl-4 mb-4">
+                        <h3 className="text-xl font-bold text-green-700 mb-2">Growth Opportunity Map</h3>
+                        <p className="text-sm text-green-600 mb-4">Click on the points below to see where improvement opportunities exist</p>
+                      </div>
+                                             <AnnotationOverlay
+                         imageUrl={props.imageUrl}
+                         annotations={createAnnotationPoints(analysis, 'opportunities')}
+                         onAnnotationClick={handleAnnotationClick}
+                         selectedAnnotation={selectedAnnotation}
+                         className="mx-auto max-w-4xl"
+                       />
+                    </motion.div>
+                  )}
+
                   {analysis.opportunities?.map((opp, index) => (
                     <motion.div
                       key={index}
