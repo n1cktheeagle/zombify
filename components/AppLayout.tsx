@@ -16,7 +16,7 @@ interface AppLayoutProps {
     context: string;
     timestamp: string;
   };
-  fullWidth?: boolean; // Add option for full-width pages
+  fullWidth?: boolean;
 }
 
 interface FeedbackItem {

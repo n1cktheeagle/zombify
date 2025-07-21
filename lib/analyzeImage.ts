@@ -1,7 +1,7 @@
-// analyzeImage.ts (Full Audit)
+// analyzeImage.ts - SIMPLIFIED HOLISTIC APPROACH
 import { ZombifyAnalysis } from '@/types/analysis';
 
-// Robust JSON extraction function
+// Keep your existing extractAndParseJSON function exactly as is
 function extractAndParseJSON(content: string): any {
   console.log('[DEBUG] Raw content length:', content.length);
   console.log('[DEBUG] Raw content preview:', content.substring(0, 200) + '...');
@@ -126,7 +126,7 @@ function extractAndParseJSON(content: string): any {
 }
 
 export async function analyzeImage(imageUrl: string): Promise<ZombifyAnalysis> {
-  console.log('[ANALYZE_IMAGE] Starting analysis for:', imageUrl);
+  console.log('[ANALYZE_IMAGE] Starting holistic analysis for:', imageUrl);
   
   try {
     const { OpenAI } = await import('openai');
@@ -141,7 +141,7 @@ export async function analyzeImage(imageUrl: string): Promise<ZombifyAnalysis> {
 
     const response = await openai.chat.completions.create({
       model: 'gpt-4o',
-      temperature: 0.3, // Lower temperature for more consistent JSON
+      temperature: 0.3,
       max_tokens: 4000,
       messages: [
         {
@@ -149,58 +149,148 @@ export async function analyzeImage(imageUrl: string): Promise<ZombifyAnalysis> {
           content: [
             {
               type: 'text',
-                            text: `Analyze this interface image for visual design quality. Focus only on what you can see in the static image.
+              text: `You are an expert UX designer providing strategic design critique. Focus on what matters for user experience, not pixel-perfect measurements.
 
-CRITICAL: For each issue you identify, you MUST provide precise visual coordinates by looking at the image.
+ANALYSIS APPROACH:
+1. First understand what this interface is trying to achieve
+2. Identify design issues that impact user goals
+3. Provide actionable feedback based on design principles
+4. Focus on perceived hierarchy, clarity, and user flow
 
-RULES:
-- Only analyze visible elements (colors, typography, spacing, layout)
-- Don't suggest adding new features or functionality 
-- Give contextually appropriate recommendations
-- Be specific to this exact interface type
-- For EVERY issue, provide exact percentage coordinates where that element appears in the image
+IMPORTANT RULES:
+- Describe locations in plain language: "the main CTA in the hero section" not coordinates
+- When identifying elements, describe what you see: "circular refresh icon" not "C button"
+- Focus on holistic issues: hierarchy, contrast, clarity, flow
+- Provide 2-5 items per category where relevant
+- Give specific but realistic fixes
 
-COORDINATE REQUIREMENTS:
-- Use percentage coordinates (0-100%) relative to image dimensions
-- X: left edge = 0%, right edge = 100%
-- Y: top edge = 0%, bottom edge = 100%
-- Measure from the TOP-LEFT corner of elements
-- Be precise - look carefully at where each problematic element is located
-
-Return ONLY this JSON structure:
+Return this JSON structure:
 
 {
-  "context": "INTERFACE_TYPE_YOU_SEE",
-  "industry": "INDUSTRY_FROM_VISUAL_CUES",
-  "industryConfidence": 85,
+  "context": "What type of interface this is",
+  "industry": "Industry based on visual cues or UNKNOWN",
+  "industryConfidence": 0.85,
   "gripScore": {
     "overall": 75,
     "breakdown": {
-      "firstImpression": {"score": 80, "reasoning": "Visual impact assessment", "evidence": ["Specific visual elements"]},
-      "usability": {"score": 70, "reasoning": "Layout clarity assessment", "evidence": ["Navigation clarity", "Information architecture"]},
-      "trustworthiness": {"score": 75, "reasoning": "Professional appearance", "evidence": ["Design consistency"]},
-      "conversion": {"score": 65, "reasoning": "Visual emphasis of key actions", "evidence": ["Button prominence"]},
-      "accessibility": {"score": 60, "reasoning": "Contrast and readability", "evidence": ["Text contrast", "Font sizing"]}
+      "firstImpression": {"score": 80, "reasoning": "Does it immediately communicate purpose?", "evidence": ["What supports this score"]},
+      "usability": {"score": 70, "reasoning": "Can users easily understand what to do?", "evidence": ["Specific observations"]},
+      "trustworthiness": {"score": 75, "reasoning": "Does it look professional and reliable?", "evidence": ["Visual elements that build/hurt trust"]},
+      "conversion": {"score": 65, "reasoning": "Are key actions prominent and compelling?", "evidence": ["CTA visibility and appeal"]},
+      "accessibility": {"score": 60, "reasoning": "Can everyone use this effectively?", "evidence": ["Contrast, text size, clarity issues"]}
     }
+  },
+  "verdict": {
+    "summary": "One-line assessment combining main strength and weakness",
+    "attentionSpan": "Realistic estimate of how long users will stay engaged",
+    "likelyAction": "What most users will probably do on this interface",
+    "dropoffPoint": "Where users are most likely to lose interest or leave",
+    "memorable": "What elements users will remember after leaving",
+    "attentionFlow": [
+      "First element that draws the eye",
+      "Second place attention goes",
+      "Areas that get skipped or ignored",
+      "Final focus point before action or exit"
+    ]
   },
   "visualDesignAnalysis": {
     "score": 80,
-    "typography": {"score": 85, "issues": [], "hierarchy": {"h1ToH2Ratio": 1.2, "consistencyScore": 90, "recommendation": "Specific typography improvement"}, "readability": {"fleschScore": 70, "avgLineLength": 50, "recommendation": "Readability assessment"}},
-    "colorAndContrast": {"score": 85, "contrastFailures": [], "colorHarmony": {"scheme": "Color scheme type", "brandColors": ["#color1", "#color2"], "accentSuggestion": "Color recommendation"}},
-    "spacing": {"score": 80, "gridSystem": "Layout system used", "consistency": 85, "issues": []},
-    "modernPatterns": {"detected": ["Pattern 1", "Pattern 2"], "implementation": {"assessment": "Quality rating"}, "trendAlignment": {"2025Relevance": 90, "suggestions": ["Specific visual improvements"]}},
-    "visualHierarchy": {"scanPattern": "Pattern type", "focalPoints": ["Element 1", "Element 2"], "improvements": ["Specific hierarchy improvements"]}
+    "typography": {
+      "score": 85, 
+      "issues": [],
+      "hierarchy": {"h1ToH2Ratio": 0, "consistencyScore": 90, "recommendation": "How to improve visual hierarchy"},
+      "readability": {"fleschScore": 0, "avgLineLength": 0, "recommendation": "General readability assessment"}
+    },
+    "colorAndContrast": {
+      "score": 85,
+      "contrastFailures": [
+        {
+          "foreground": "describe color",
+          "background": "describe color",
+          "ratio": 0,
+          "location": "plain language description of where",
+          "fix": {
+            "suggestion": "Make text darker/lighter or change background",
+            "css": ""
+          }
+        }
+      ],
+      "colorHarmony": {"scheme": "What you observe", "brandColors": ["main colors used"], "accentSuggestion": "How to improve"}
+    },
+    "spacing": {"score": 80, "gridSystem": "What you observe", "consistency": 85, "issues": []},
+    "modernPatterns": {"detected": ["What modern patterns you see"], "implementation": {}, "trendAlignment": {"2025Relevance": 70, "suggestions": ["How to modernize"]}},
+    "visualHierarchy": {"scanPattern": "How the eye moves", "focalPoints": ["What draws attention"], "improvements": ["How to improve flow"]}
   },
-  "uxCopyAnalysis": {"score": 70, "issues": [], "writingTone": {"current": "Tone assessment", "recommended": "Recommended tone", "example": "Copy improvement example"}},
-  "criticalIssues": [{"severity": 3, "category": "VISUAL_ISSUE", "issue": "Specific visual problem", "location": {"element": "specific element", "region": "location", "percentage": {"x": "45", "y": "23"}}, "impact": "User impact", "evidence": "What you see", "fix": {"immediate": "Quick fix", "better": "Better solution", "implementation": "How to implement"}}],
-  "usabilityIssues": [{"severity": 2, "category": "LAYOUT", "issue": "Layout issue", "location": {"element": "element", "region": "area", "percentage": {"x": "67", "y": "45"}}, "impact": "Usability impact", "evidence": "Visual evidence", "fix": {"immediate": "Quick improvement", "better": "Better approach", "implementation": "Implementation details"}}],
-  "opportunities": [{"category": "VISUAL_IMPROVEMENT", "opportunity": "Specific visual enhancement", "potentialImpact": "Expected improvement", "implementation": "Visual design change", "location": {"element": "specific element", "region": "area", "percentage": {"x": "30", "y": "60"}}}],
-  "behavioralInsights": [{"pattern": "Visual pattern observed", "observation": "What you notice", "psychology": "Design principle", "recommendation": "Visual improvement"}],
-  "accessibilityAudit": {"score": 65, "violations": ["Contrast issues"], "wcagLevel": "AA", "colorContrast": {"issues": ["Specific contrast problems"], "recommendations": ["Contrast improvements"]}, "keyboardNavigation": {"score": 70, "issues": []}, "screenReader": {"compatibility": 60, "issues": ["Accessibility issues"]}, "cognitiveLoad": {"assessment": "Load level", "recommendations": ["Cognitive improvements"]}},
-  "generationalAnalysis": {"scores": {"genZ": {"score": 75, "reasoning": "Appeal reasoning", "improvements": "Visual improvements", "specificIssues": []}, "millennials": {"score": 85, "reasoning": "Appeal reasoning", "improvements": "Improvements", "specificIssues": []}, "genX": {"score": 80, "reasoning": "Appeal reasoning", "improvements": "Improvements", "specificIssues": []}, "boomers": {"score": 70, "reasoning": "Appeal reasoning", "improvements": "Improvements", "specificIssues": []}}, "primaryTarget": "target generation", "recommendations": ["Design recommendations"]}
+  "uxCopyAnalysis": {
+    "score": 70,
+    "issues": [
+      {
+        "severity": "HIGH",
+        "current": "Exact text you see",
+        "location": "Where it appears in plain language",
+        "issue": "Why this copy doesn't work",
+        "suggested": ["Better alternative", "Another option"],
+        "impact": "How this affects users",
+        "reasoning": "UX writing principle"
+      }
+    ],
+    "writingTone": {"current": "Observed tone", "recommended": "Better tone", "example": "Specific rewrite"}
+  },
+  "criticalIssues": [
+    {
+      "severity": 3,
+      "category": "HIERARCHY",
+      "issue": "Clear issue title",
+      "location": {
+        "element": "Plain language description of element",
+        "region": "Where in the interface",
+        "visualContext": "What's around it"
+      },
+      "impact": "How this affects users",
+      "evidence": "What you specifically see",
+      "fix": {
+        "immediate": "Quick improvement",
+        "better": "Optimal solution",
+        "implementation": "How to achieve it"
+      }
+    }
+  ],
+  "usabilityIssues": [],
+  "opportunities": [
+    {
+      "category": "ENGAGEMENT",
+      "opportunity": "Specific enhancement",
+      "potentialImpact": "Expected benefit",
+      "implementation": "How to do it",
+      "reasoning": "Why this matters",
+      "location": {
+        "element": "What element",
+        "region": "Where it is"
+      }
+    }
+  ],
+  "behavioralInsights": [
+    {
+      "pattern": "User behavior pattern",
+      "observation": "What triggers this",
+      "psychology": "Why users do this",
+      "recommendation": "How to design for it"
+    }
+  ],
+  "accessibilityAudit": null,
+  "generationalAnalysis": {
+    "scores": {
+      "genZ": {"score": 70, "reasoning": "Visual appeal assessment", "improvements": "What would resonate more", "specificIssues": []},
+      "millennials": {"score": 80, "reasoning": "Design appropriateness", "improvements": "Minor adjustments", "specificIssues": []},
+      "genX": {"score": 85, "reasoning": "Clarity assessment", "improvements": "Suggestions", "specificIssues": []},
+      "boomers": {"score": 75, "reasoning": "Ease of use", "improvements": "Accessibility improvements", "specificIssues": []}
+    },
+    "primaryTarget": "Based on design style",
+    "recommendations": ["How to better serve target"]
+  }
 }
 
-Replace all placeholder text with real analysis of this specific image. IMPORTANT: Look at the actual image and provide real percentage coordinates for where each issue is located.`
+Focus on strategic design insights that help designers improve their work, not technical precision.`
             },
             {
               type: 'image_url',
@@ -209,10 +299,9 @@ Replace all placeholder text with real analysis of this specific image. IMPORTAN
           ]
         }
       ]
-          });
+    });
 
     console.log('[ANALYZE_IMAGE] API call completed. Response status:', response.choices?.length || 0, 'choices');
-    console.log('[GPT-4o RAW OUTPUT]', response.choices?.[0]?.message?.content || 'No content');
     
     const content = response.choices[0]?.message?.content;
     if (!content) {
@@ -241,6 +330,7 @@ Replace all placeholder text with real analysis of this specific image. IMPORTAN
     console.error('[ANALYZE_IMAGE] Error type:', typeof error);
     console.error('[ANALYZE_IMAGE] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
 
+    // Keep your existing error handling exactly as is
     if (error instanceof Error) {
       if (error.message.includes('Timeout while downloading')) {
         return {

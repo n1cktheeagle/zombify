@@ -13,8 +13,7 @@ interface CriticalIssue {
   location?: {
     element: string;
     region: string;
-    coordinates?: { x: number; y: number };
-    selector?: string;
+    visualContext?: string;
   };
   impact: string;
   evidence?: string;
@@ -29,6 +28,11 @@ interface UsabilityIssue {
   severity?: number;
   category?: string;
   issue: string;
+  location?: {
+    element: string;
+    region: string;
+    visualContext?: string;
+  };
   impact: string;
   fix?: {
     immediate?: string;
@@ -41,11 +45,10 @@ interface IssueCardProps {
   issue: CriticalIssue | UsabilityIssue;
   index: number;
   type: 'critical' | 'usability';
-  onLocationClick?: (location: any) => void;
   isPro?: boolean;
 }
 
-export default function IssueCard({ issue, index, type, onLocationClick, isPro = false }: IssueCardProps) {
+export default function IssueCard({ issue, index, type, isPro = false }: IssueCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -182,29 +185,19 @@ export default function IssueCard({ issue, index, type, onLocationClick, isPro =
         {issue.impact}
       </p>
 
-      {/* Location (if available and clickable) */}
-      {isCritical && (issue as CriticalIssue).location && (
+      {/* Location (simplified, non-clickable) */}
+      {issue.location && (
         <motion.div 
-          className="flex items-center gap-2 mb-3 text-xs bg-black/20 rounded p-2 hover:bg-black/30 transition-colors"
-          onClick={(e) => {
-            e.stopPropagation();
-            onLocationClick?.((issue as CriticalIssue).location);
-          }}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+          className="flex items-start gap-2 mb-3 text-xs bg-black/20 rounded p-2"
         >
-          <span className="opacity-60">📍</span>
-          <span className="font-semibold">{(issue as CriticalIssue).location!.element}</span>
-          <span className="opacity-40">•</span>
-          <span className="opacity-60">{(issue as CriticalIssue).location!.region}</span>
-          {(issue as CriticalIssue).location!.coordinates && (
-            <>
-              <span className="opacity-40">•</span>
-              <span className="opacity-50 font-mono">
-                {(issue as CriticalIssue).location!.coordinates!.x}, {(issue as CriticalIssue).location!.coordinates!.y}
-              </span>
-            </>
-          )}
+          <span className="opacity-60 mt-0.5">📍</span>
+          <div className="flex-1">
+            <div className="font-semibold">{issue.location.element}</div>
+            <div className="opacity-60">{issue.location.region}</div>
+            {issue.location.visualContext && (
+              <div className="opacity-50 italic mt-1">{issue.location.visualContext}</div>
+            )}
+          </div>
         </motion.div>
       )}
 

@@ -1,15 +1,12 @@
 // types/analysis.ts - Enhanced for v2.1.0 - CLEANED
 // Place this file in your project root: /types/analysis.ts
 
-// Location information for issues
+// Simplified Location interface
 export interface Location {
-  element: string;
-  coordinates?: { x: number; y: number };
-  percentage?: { x: string; y: string };
-  region: string;
-  selector?: string;
-  elements?: string[];
-  boundingBox?: { x: number; y: number; width: number; height: number }; // For accessibility highlighting
+  element: string;     // Plain language description
+  region: string;      // General area description
+  visualContext?: string;  // What's around it
+  // Remove: coordinates, percentage, boundingBox, selector, elements
 }
 
 // Fix information with implementation details

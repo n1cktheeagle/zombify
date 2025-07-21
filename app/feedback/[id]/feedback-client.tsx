@@ -134,157 +134,159 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
     }
   }, [cooldownTime]);
 
+
+
   // Error state
   if (error) {
     return (
       <div className="min-h-screen bg-[#f5f1e6] text-black font-mono flex items-center justify-center">
-        <motion.div 
-          className="text-center max-w-md"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
           <motion.div 
-            className="text-6xl mb-6"
-            animate={{ 
-              rotate: [0, -10, 10, 0],
-              scale: [1, 1.1, 1]
-            }}
-            transition={{ 
-              repeat: Infinity, 
-              duration: 2,
-              ease: "easeInOut"
-            }}
+            className="text-center max-w-md"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
           >
-            ⚠️
+            <motion.div 
+              className="text-6xl mb-6"
+              animate={{ 
+                rotate: [0, -10, 10, 0],
+                scale: [1, 1.1, 1]
+              }}
+              transition={{ 
+                repeat: Infinity, 
+                duration: 2,
+                ease: "easeInOut"
+              }}
+            >
+              ⚠️
+            </motion.div>
+            <GlitchText className="text-2xl mb-4" trigger="continuous">
+              ERROR LOADING ANALYSIS
+            </GlitchText>
+            <motion.p 
+              className="mb-4 text-gray-600"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+            >
+              {error}
+            </motion.p>
+            <motion.p 
+              className="text-sm opacity-60 mb-6 font-mono"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.7 }}
+            >
+              TRACE ID: {params.id}
+            </motion.p>
+            <div className="space-x-4">
+              <motion.button 
+                onClick={() => window.location.reload()}
+                className="zombify-primary-button px-6 py-2"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                RETRY LOADING
+              </motion.button>
+              <motion.button 
+                onClick={() => router.push('/dashboard')}
+                className="px-6 py-2 border-2 border-black rounded hover:bg-gray-100 font-mono font-bold"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                RETURN TO DASHBOARD
+              </motion.button>
+            </div>
           </motion.div>
-          <GlitchText className="text-2xl mb-4" trigger="continuous">
-            ERROR LOADING ANALYSIS
-          </GlitchText>
-          <motion.p 
-            className="mb-4 text-gray-600"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-          >
-            {error}
-          </motion.p>
-          <motion.p 
-            className="text-sm opacity-60 mb-6 font-mono"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.7 }}
-          >
-            TRACE ID: {params.id}
-          </motion.p>
-          <div className="space-x-4">
-            <motion.button 
-              onClick={() => window.location.reload()}
-              className="zombify-primary-button px-6 py-2"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              RETRY LOADING
-            </motion.button>
-            <motion.button 
-              onClick={() => router.push('/dashboard')}
-              className="px-6 py-2 border-2 border-black rounded hover:bg-gray-100 font-mono font-bold"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              RETURN TO DASHBOARD
-            </motion.button>
-          </div>
-        </motion.div>
-      </div>
-    );
+        </div>
+      );
   }
 
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f5f1e6] text-black font-mono flex items-center justify-center">
-        <motion.div 
-          className="text-center"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-        >
           <motion.div 
-            className="text-4xl mb-4"
-            animate={{ 
-              rotate: 360,
-              scale: [1, 1.2, 1]
-            }}
-            transition={{ 
-              rotate: { repeat: Infinity, duration: 2, ease: "linear" },
-              scale: { repeat: Infinity, duration: 1, ease: "easeInOut" }
-            }}
+            className="text-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
           >
-            ⏳
+            <motion.div 
+              className="text-4xl mb-4"
+              animate={{ 
+                rotate: 360,
+                scale: [1, 1.2, 1]
+              }}
+              transition={{ 
+                rotate: { repeat: Infinity, duration: 2, ease: "linear" },
+                scale: { repeat: Infinity, duration: 1, ease: "easeInOut" }
+              }}
+            >
+              ⏳
+            </motion.div>
+            <GlitchText className="text-xl mb-2" trigger="continuous">
+              LOADING ANALYSIS...
+            </GlitchText>
+            <motion.div className="flex justify-center mb-4">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <motion.div
+                  key={i}
+                  className="w-2 h-8 bg-black mx-1 rounded"
+                  animate={{
+                    scaleY: [0.3, 1, 0.3],
+                    opacity: [0.3, 1, 0.3]
+                  }}
+                  transition={{
+                    repeat: Infinity,
+                    duration: 1,
+                    delay: i * 0.2,
+                    ease: "easeInOut"
+                  }}
+                />
+              ))}
+            </motion.div>
+            <p className="text-sm opacity-60 font-mono">Analysis ID: {params.id}</p>
           </motion.div>
-          <GlitchText className="text-xl mb-2" trigger="continuous">
-            LOADING ANALYSIS...
-          </GlitchText>
-          <motion.div className="flex justify-center mb-4">
-            {[0, 1, 2, 3, 4].map((i) => (
-              <motion.div
-                key={i}
-                className="w-2 h-8 bg-black mx-1 rounded"
-                animate={{
-                  scaleY: [0.3, 1, 0.3],
-                  opacity: [0.3, 1, 0.3]
-                }}
-                transition={{
-                  repeat: Infinity,
-                  duration: 1,
-                  delay: i * 0.2,
-                  ease: "easeInOut"
-                }}
-              />
-            ))}
-          </motion.div>
-          <p className="text-sm opacity-60 font-mono">Analysis ID: {params.id}</p>
-        </motion.div>
-      </div>
-    );
+        </div>
+      );
   }
 
   if (!data) {
     return (
       <div className="min-h-screen bg-[#f5f1e6] text-black font-mono flex items-center justify-center">
-        <motion.div 
-          className="text-center"
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-        >
-          <motion.div
-            className="text-6xl mb-4"
-            animate={{ 
-              opacity: [0.5, 1, 0.5],
-              rotate: [0, 5, -5, 0]
-            }}
-            transition={{ 
-              repeat: Infinity, 
-              duration: 3,
-              ease: "easeInOut"
-            }}
+          <motion.div 
+            className="text-center"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
           >
-            👻
+            <motion.div
+              className="text-6xl mb-4"
+              animate={{ 
+                opacity: [0.5, 1, 0.5],
+                rotate: [0, 5, -5, 0]
+              }}
+              transition={{ 
+                repeat: Infinity, 
+                duration: 3,
+                ease: "easeInOut"
+              }}
+            >
+              👻
+            </motion.div>
+            <GlitchText className="text-2xl mb-4" trigger="continuous">
+              ANALYSIS NOT FOUND
+            </GlitchText>
+            <p className="mb-4">This analysis could not be found.</p>
+            <p className="text-sm opacity-60 mb-4 font-mono">Analysis ID: {params.id}</p>
+            <motion.button 
+              onClick={() => router.push('/dashboard')}
+              className="zombify-primary-button px-6 py-2"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              RETURN TO DASHBOARD
+            </motion.button>
           </motion.div>
-          <GlitchText className="text-2xl mb-4" trigger="continuous">
-            ANALYSIS NOT FOUND
-          </GlitchText>
-          <p className="mb-4">This analysis could not be found.</p>
-          <p className="text-sm opacity-60 mb-4 font-mono">Analysis ID: {params.id}</p>
-          <motion.button 
-            onClick={() => router.push('/dashboard')}
-            className="zombify-primary-button px-6 py-2"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            RETURN TO DASHBOARD
-          </motion.button>
-        </motion.div>
-      </div>
-    );
+        </div>
+      );
   }
 
   const isLoggedIn = !!user;
@@ -297,7 +299,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
   const score = isNewFormat ? analysis.gripScore.overall : (data.score || 0);
 
   const feedbackContent = (
-    <>
+    <div className="p-12">
       {/* Guest CTA - Only show for non-logged in users */}
       {!user && (
         <motion.div 
@@ -709,7 +711,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
           </div>
         </motion.div>
       )}
-    </>
+    </div>
   );
 
   return (
@@ -719,7 +721,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
       
       {/* Main content - positioned absolutely to fill remaining space */}
       <div 
-        className="absolute top-0 bottom-0 overflow-y-auto p-12"
+        className="absolute top-0 bottom-0 overflow-y-auto"
         style={{
           left: '256px',
           right: '0',
