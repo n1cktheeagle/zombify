@@ -1,4 +1,4 @@
-// types/analysis.ts - Enhanced for v2.1.0 - CLEANED
+// types/analysis.ts - Enhanced for v2.1.0 with Verdict
 // Place this file in your project root: /types/analysis.ts
 
 // Simplified Location interface
@@ -6,7 +6,6 @@ export interface Location {
   element: string;     // Plain language description
   region: string;      // General area description
   visualContext?: string;  // What's around it
-  // Remove: coordinates, percentage, boundingBox, selector, elements
 }
 
 // Fix information with implementation details
@@ -54,6 +53,16 @@ export interface GripScoreBreakdown {
 export interface GripScore {
   overall: number;
   breakdown: GripScoreBreakdown;
+}
+
+// NEW: Verdict interface for holistic summary
+export interface Verdict {
+  summary: string;
+  attentionSpan: string;
+  likelyAction: string;
+  dropoffPoint: string;
+  memorable: string;
+  attentionFlow: string[];
 }
 
 // Enhanced Generational Score with specific issues
@@ -241,12 +250,13 @@ export interface GenerationalAnalysis {
   recommendations: string[];
 }
 
-// MAIN ANALYSIS INTERFACE - Enhanced for v2.1.0 - CLEANED
+// MAIN ANALYSIS INTERFACE - Enhanced for v2.1.0 with Verdict
 export interface ZombifyAnalysis {
   context: 'COMPONENT' | 'FULL_INTERFACE' | 'WIREFRAME' | 'DATA_VIZ' | 'MARKETING' | 'MOBILE' | 'ERROR';
   industry: 'SAAS' | 'ECOMMERCE' | 'FINTECH' | 'HEALTHCARE' | 'EDUCATION' | 'SOCIAL' | 'ENTERPRISE' | 'UNKNOWN';
   industryConfidence: number;
   gripScore: GripScore;
+  verdict: Verdict; // NEW: Holistic summary insights
   visualDesignAnalysis: VisualDesignAnalysis;
   uxCopyAnalysis: UXCopyAnalysis;
   criticalIssues: Issue[];

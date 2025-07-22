@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import UploadZone from '@/components/UploadZone';
 import { useAuth } from '@/hooks/useAuth';
+import { ZombifyAnalysis } from '@/types/analysis';
 
 interface FeedbackItem {
   id: string;
@@ -13,7 +14,15 @@ interface FeedbackItem {
   user_id: string | null;
   is_guest: boolean;
   image_url: string;
-  analysis?: any;
+  analysis?: ZombifyAnalysis | any; // Support both new and old formats
+}
+
+// Helper to check if analysis is new format
+function isNewAnalysisFormat(analysis: any): analysis is ZombifyAnalysis {
+  return analysis && 
+    typeof analysis === 'object' && 
+    'gripScore' in analysis && 
+    'verdict' in analysis;
 }
 
 export default function Dashboard() {
@@ -199,13 +208,23 @@ export default function Dashboard() {
     );
   }
 
-  // Calculate stats
+  // Calculate stats - handle both old and new formats
   const isAtUploadLimit = profile?.plan_type === 'free' && (profile?.feedback_count || 0) >= (profile?.monthly_limit || 3);
-  const avgScore = feedback.length > 0 ? Math.round(feedback.reduce((acc, f) => acc + f.score, 0) / feedback.length) : 0;
+  const avgScore = feedback.length > 0 
+    ? Math.round(
+        feedback.reduce((acc, f) => {
+          // Try to get score from new format first, then fall back to old format
+          const score = isNewAnalysisFormat(f.analysis) 
+            ? f.analysis.gripScore.overall 
+            : (f.score || 0);
+          return acc + score;
+        }, 0) / feedback.length
+      ) 
+    : 0;
 
   return (
     <div className="p-6">
-      <div className="max-w-4xl mx-auto"> {/* Reduced max-width since sidebar takes space */}
+      <div className="max-w-4xl mx-auto">
         
         {/* Header */}
         <div className="mb-8">
@@ -284,62 +303,89 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="space-y-4">
-              {feedback.map((item) => (
-                <div 
-                  key={item.id} 
-                  className={`bg-white border border-black/20 rounded p-4 hover:bg-gray-50 transition-colors cursor-pointer group ${
-                    navigating === item.id ? 'opacity-50 pointer-events-none' : ''
-                  }`}
-                  onClick={() => handleNavigate(item.id)}
-                >
-                  <div className="flex items-center gap-4">
-                    {navigating === item.id ? (
-                      <div className="w-16 h-16 bg-gray-100 rounded border border-black/20 flex items-center justify-center">
-                        <div className="text-xs">⏳</div>
-                      </div>
-                    ) : (
-                      <img
-                        src={item.image_url}
-                        alt="Analysis"
-                        className="w-16 h-16 object-cover rounded border border-black/20"
-                        onError={(e: any) => {
-                          if (e.target.src !== 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yMSAyMUg0M1Y0M0gyMVYyMVoiIGZpbGw9IiNEMUQ1REIiLz4KPHA+PC9wPgo8L3N2Zz4K') {
-                            e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yMSAyMUg0M1Y0M0gyMVYyMVoiIGZpbGw9IiNEMUQ1REIiLz4KPHA+PC9wPgo8L3N2Zz4K';
-                          }
-                        }}
-                      />
-                    )}
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <h3 className="font-medium">
-                          Analysis #{item.id.slice(0, 8)}
-                        </h3>
-                        <span className="text-lg font-bold">{item.score}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs opacity-60">
-                        <span>{item.user_id ? 'User' : 'Guest'}</span>
-                        <span>{new Date(item.created_at).toLocaleDateString()}</span>
-                      </div>
-                      {navigating === item.id && (
-                        <div className="text-xs text-blue-600 mt-1">Navigating...</div>
+              {feedback.map((item) => {
+                // Check if this is new format
+                const isNew = isNewAnalysisFormat(item.analysis);
+                const score = isNew 
+                  ? item.analysis.gripScore.overall 
+                  : (item.score || 0);
+                const verdict = isNew ? item.analysis.verdict : null;
+                const context = isNew ? item.analysis.context : null;
+                const industry = isNew ? item.analysis.industry : null;
+
+                return (
+                  <div 
+                    key={item.id} 
+                    className={`bg-white border border-black/20 rounded p-4 hover:bg-gray-50 transition-colors cursor-pointer group ${
+                      navigating === item.id ? 'opacity-50 pointer-events-none' : ''
+                    }`}
+                    onClick={() => handleNavigate(item.id)}
+                  >
+                    <div className="flex items-center gap-4">
+                      {navigating === item.id ? (
+                        <div className="w-16 h-16 bg-gray-100 rounded border border-black/20 flex items-center justify-center">
+                          <div className="text-xs">⏳</div>
+                        </div>
+                      ) : (
+                        <img
+                          src={item.image_url}
+                          alt="Analysis"
+                          className="w-16 h-16 object-cover rounded border border-black/20"
+                          onError={(e: any) => {
+                            if (e.target.src !== 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yMSAyMUg0M1Y0M0gyMVYyMVoiIGZpbGw9IiNEMUQ1REIiLz4KPHA+PC9wPgo8L3N2Zz4K') {
+                              e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yMSAyMUg0M1Y0M0gyMVYyMVoiIGZpbGw9IiNEMUQ1REIiLz4KPHA+PC9wPgo8L3N2Zz4K';
+                            }
+                          }}
+                        />
                       )}
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <h3 className="font-medium">
+                            Analysis #{item.id.slice(0, 8)}
+                            {context && (
+                              <span className="ml-2 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                                {context.replace('_', ' ')}
+                              </span>
+                            )}
+                            {industry && industry !== 'UNKNOWN' && (
+                              <span className="ml-1 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                                {industry}
+                              </span>
+                            )}
+                          </h3>
+                          <span className="text-lg font-bold">{score}</span>
+                        </div>
+                        {/* Verdict Summary */}
+                        {verdict?.summary && (
+                          <p className="text-sm text-gray-700 mb-1 line-clamp-1">
+                            {verdict.summary}
+                          </p>
+                        )}
+                        <div className="flex items-center justify-between text-xs opacity-60">
+                          <span>{item.user_id ? 'User' : 'Guest'}</span>
+                          <span>{new Date(item.created_at).toLocaleDateString()}</span>
+                        </div>
+                        {navigating === item.id && (
+                          <div className="text-xs text-blue-600 mt-1">Navigating...</div>
+                        )}
+                      </div>
+                      {/* Delete Button */}
+                      <button
+                        className="ml-4 px-3 py-1 text-xs text-red-600 border border-red-200 rounded hover:bg-red-50 transition-opacity opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                        title="Delete upload"
+                        onClick={e => {
+                          e.stopPropagation();
+                          handleDelete(item.id);
+                        }}
+                        disabled={deletingId === item.id}
+                        aria-label="Delete upload"
+                      >
+                        {deletingId === item.id ? 'Deleting...' : 'Delete'}
+                      </button>
                     </div>
-                    {/* Delete Button */}
-                    <button
-                      className="ml-4 px-3 py-1 text-xs text-red-600 border border-red-200 rounded hover:bg-red-50 transition-opacity opacity-0 group-hover:opacity-100 disabled:opacity-50"
-                      title="Delete upload"
-                      onClick={e => {
-                        e.stopPropagation();
-                        handleDelete(item.id);
-                      }}
-                      disabled={deletingId === item.id}
-                      aria-label="Delete upload"
-                    >
-                      {deletingId === item.id ? 'Deleting...' : 'Delete'}
-                    </button>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

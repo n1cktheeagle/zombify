@@ -9,6 +9,7 @@ import GripScoreCard from './GripScoreCard';
 import GenerationalRadarChart from './GenerationalRadarChart';
 import VisualDesignAnalysisCard from './VisualDesignAnalysisCard';
 import UXCopyAnalysisCard from './UXCopyAnalysisCard';
+import VerdictCard from './VerdictCard';
 
 // Keep backward compatibility with old props
 type LegacyFeedbackDisplayProps = {
@@ -24,7 +25,7 @@ type NewFeedbackDisplayProps = {
   isPro?: boolean;
   activeTab: FeedbackTabId;
   setActiveTab: (tab: FeedbackTabId) => void;
-  imageUrl?: string; // Added for annotation overlay
+  imageUrl?: string;
 };
 
 type FeedbackDisplayProps = LegacyFeedbackDisplayProps | NewFeedbackDisplayProps;
@@ -67,7 +68,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
       </motion.div>
     );
   }
-  const { analysis, isLoggedIn = false, isPro = false, activeTab, setActiveTab } = props;
+  const { analysis, isLoggedIn = false, isPro = false, activeTab, setActiveTab, imageUrl } = props;
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -218,6 +219,22 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                 </motion.div>
               </div>
 
+              {/* Verdict Card - Full width */}
+              {analysis.verdict ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                >
+                  <VerdictCard verdict={analysis.verdict} imageUrl={imageUrl} />
+                </motion.div>
+              ) : (
+                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 mb-6">
+                  <p className="text-sm">No verdict data available.</p>
+                  <p className="text-xs opacity-70 mt-1">This might be an older analysis format.</p>
+                </div>
+              )}
+
               {/* Analysis Cards Row */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Visual Design Analysis */}
@@ -225,7 +242,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 }}
+                    transition={{ delay: 0.5 }}
                   >
                     <VisualDesignAnalysisCard visualDesign={analysis.visualDesignAnalysis} />
                   </motion.div>
@@ -236,7 +253,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 }}
+                    transition={{ delay: 0.6 }}
                   >
                     <UXCopyAnalysisCard uxCopy={analysis.uxCopyAnalysis} />
                   </motion.div>

@@ -11,6 +11,7 @@ import FeedbackDisplay from '@/components/FeedbackDisplay';
 import GripScoreCard from '@/components/GripScoreCard';
 import VisualDesignAnalysisCard from '@/components/VisualDesignAnalysisCard';
 import UXCopyAnalysisCard from '@/components/UXCopyAnalysisCard';
+import VerdictCard from '@/components/VerdictCard';
 import GlitchText from '@/components/GlitchText';
 import FeedbackTabs from '@/components/FeedbackTabs';
 import { FeedbackTabId } from '@/components/FeedbackDisplay';
@@ -547,6 +548,28 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
             </div>
           </div>
 
+          {/* Verdict Card - Full width */}
+          {isNewFormat && (
+            <>
+              {/* Debug info - remove after testing */}
+              {console.log('Verdict data:', analysis.verdict)}
+              {analysis.verdict ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                >
+                  <VerdictCard verdict={analysis.verdict} imageUrl={data.image_url} />
+                </motion.div>
+              ) : (
+                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded text-yellow-800">
+                  <p className="text-sm">No verdict data available for this analysis.</p>
+                  <p className="text-xs opacity-70 mt-1">This might be an older analysis or the verdict wasn't generated.</p>
+                </div>
+              )}
+            </>
+          )}
+
           {/* Analysis Cards Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Visual Design Analysis */}
@@ -554,7 +577,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
+                transition={{ delay: 0.5 }}
               >
                 <VisualDesignAnalysisCard visualDesign={analysis.visualDesignAnalysis} />
               </motion.div>
@@ -565,7 +588,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
+                transition={{ delay: 0.6 }}
               >
                 <UXCopyAnalysisCard uxCopy={analysis.uxCopyAnalysis} />
               </motion.div>
@@ -589,6 +612,14 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
                   conversion: { score: 0, reasoning: "Legacy analysis", evidence: [] },
                   accessibility: { score: 0, reasoning: "Legacy analysis", evidence: [] }
                 } 
+              },
+              verdict: {
+                summary: "Legacy analysis format",
+                attentionSpan: "N/A",
+                likelyAction: "N/A",
+                dropoffPoint: "N/A",
+                memorable: "N/A",
+                attentionFlow: []
               },
               visualDesignAnalysis: {
                 score: 0,

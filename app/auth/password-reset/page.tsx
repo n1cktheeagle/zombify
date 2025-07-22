@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
-export default function PasswordResetPage() {
+function PasswordResetContent() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -325,5 +325,21 @@ export default function PasswordResetPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PasswordResetPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#f5f1e6] flex items-center justify-center p-4">
+        <div className="bg-[#f5f1e6] border-2 border-black p-8 rounded-none max-w-md w-full mx-4 font-mono text-center">
+          <div className="text-2xl mb-4 animate-bounce">🧟‍♂️</div>
+          <h2 className="text-xl font-bold mb-2">Loading...</h2>
+          <p className="text-sm opacity-75">Please wait...</p>
+        </div>
+      </div>
+    }>
+      <PasswordResetContent />
+    </Suspense>
   );
 }

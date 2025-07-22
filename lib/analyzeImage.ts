@@ -347,6 +347,14 @@ Focus on strategic design insights that help designers improve their work, not t
               accessibility: { score: 0, reasoning: 'Analysis failed', evidence: [] }
             }
           },
+          verdict: {
+            summary: 'Analysis failed due to image download timeout',
+            attentionSpan: 'Unable to analyze',
+            likelyAction: 'Unable to analyze',
+            dropoffPoint: 'Unable to analyze',
+            memorable: 'Unable to analyze',
+            attentionFlow: []
+          },
           visualDesignAnalysis: {
             score: 0,
             typography: {
@@ -432,6 +440,14 @@ Focus on strategic design insights that help designers improve their work, not t
           conversion: { score: 0, reasoning: 'Analysis failed', evidence: [] },
           accessibility: { score: 0, reasoning: 'Analysis failed', evidence: [] }
         }
+      },
+      verdict: {
+        summary: 'Analysis failed due to system error',
+        attentionSpan: 'Unable to analyze',
+        likelyAction: 'Unable to analyze',
+        dropoffPoint: 'Unable to analyze',
+        memorable: 'Unable to analyze',
+        attentionFlow: []
       },
       visualDesignAnalysis: {
         score: 0,
