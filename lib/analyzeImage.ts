@@ -1,5 +1,5 @@
-// analyzeImage.ts - SIMPLIFIED HOLISTIC APPROACH
-import { ZombifyAnalysis } from '@/types/analysis';
+// analyzeImage.ts - HYBRID GPT + Vision API Analysis
+import { ZombifyAnalysis, VisionAnalysisResult } from '@/types/analysis';
 
 // Keep your existing extractAndParseJSON function exactly as is
 function extractAndParseJSON(content: string): any {
@@ -125,10 +125,202 @@ function extractAndParseJSON(content: string): any {
   throw new Error('Could not extract valid JSON from response');
 }
 
+// NEW: Google Vision API analysis function
+async function analyzeImageWithVision(imageUrl: string): Promise<VisionAnalysisResult | null> {
+  try {
+    console.log('[VISION_API] Starting Vision analysis for:', imageUrl);
+    
+    if (!process.env.GOOGLE_CLOUD_VISION_API_KEY) {
+      console.log('[VISION_API] No Vision API key found, skipping Vision analysis');
+      return null;
+    }
+
+    // Import Vision API client
+    const { ImageAnnotatorClient } = await import('@google-cloud/vision');
+    
+    // Initialize client with API key
+    const client = new ImageAnnotatorClient({
+      apiKey: process.env.GOOGLE_CLOUD_VISION_API_KEY
+    });
+
+    // Perform multiple detection types in parallel
+    const [
+      textResult,
+      logoResult,
+      propertiesResult,
+      webResult
+    ] = await Promise.all([
+      client.textDetection({ image: { source: { imageUri: imageUrl } } }),
+      client.logoDetection({ image: { source: { imageUri: imageUrl } } }),
+      client.imageProperties({ image: { source: { imageUri: imageUrl } } }),
+      client.webDetection({ image: { source: { imageUri: imageUrl } } })
+    ]);
+
+    console.log('[VISION_API] All detections completed successfully');
+
+    // Helper function to convert bounding box
+    function convertBoundingBox(vertices: any[]): { x: number; y: number; width: number; height: number } {
+      if (!vertices || vertices.length < 4) {
+        return { x: 0, y: 0, width: 0, height: 0 };
+      }
+
+      const xs = vertices.map(v => v.x || 0);
+      const ys = vertices.map(v => v.y || 0);
+      
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs);
+      const minY = Math.min(...ys);
+      const maxY = Math.max(...ys);
+
+      return {
+        x: minX,
+        y: minY,
+        width: maxX - minX,
+        height: maxY - minY
+      };
+    }
+
+    // Process text annotations
+    const textAnnotations: any[] = [];
+    if (textResult[0].textAnnotations && textResult[0].textAnnotations.length > 1) {
+      // Skip the first annotation as it's the full text, we want individual words/phrases
+      for (let i = 1; i < textResult[0].textAnnotations.length; i++) {
+        const annotation = textResult[0].textAnnotations[i];
+        if (annotation.description && annotation.boundingPoly?.vertices) {
+          textAnnotations.push({
+            text: annotation.description,
+            confidence: 0.9, // Vision API doesn't provide confidence for text
+            boundingBox: convertBoundingBox(annotation.boundingPoly.vertices)
+          });
+        }
+      }
+    }
+
+    // Process logo annotations
+    const logoAnnotations = (logoResult[0].logoAnnotations || []).map(logo => ({
+      description: logo.description || '',
+      confidence: logo.score || 0,
+      boundingBox: convertBoundingBox(logo.boundingPoly?.vertices || [])
+    }));
+
+    // Process color properties
+    const dominantColors = (propertiesResult[0].imagePropertiesAnnotation?.dominantColors?.colors || []).map(colorInfo => ({
+      color: {
+        red: Math.round(colorInfo.color?.red || 0),
+        green: Math.round(colorInfo.color?.green || 0),
+        blue: Math.round(colorInfo.color?.blue || 0)
+      },
+      score: colorInfo.score || 0,
+      pixelFraction: colorInfo.pixelFraction || 0
+    }));
+
+    // Process web detection
+    const webDetection = webResult[0].webDetection ? {
+      webEntities: (webResult[0].webDetection.webEntities || []).map(entity => ({
+        entityId: entity.entityId || '',
+        description: entity.description || '',
+        score: entity.score || 0
+      })),
+      bestGuessLabels: (webResult[0].webDetection.bestGuessLabels || []).map(label => ({
+        label: label.label || '',
+        languageCode: label.languageCode || 'en'
+      }))
+    } : undefined;
+
+    const result: VisionAnalysisResult = {
+      textAnnotations,
+      logoAnnotations,
+      imageProperties: {
+        dominantColors
+      },
+      webDetection
+    };
+
+    console.log('[VISION_API] Analysis completed:', {
+      textCount: textAnnotations.length,
+      logoCount: logoAnnotations.length,
+      colorCount: dominantColors.length
+    });
+
+    return result;
+
+  } catch (error) {
+    console.error('[VISION_API] Vision analysis failed:', error);
+    console.log('[VISION_API] Continuing without Vision data...');
+    return null; // Don't fail the whole analysis, just skip Vision data
+  }
+}
+
+// NEW: Function to enhance GPT analysis with Vision data
+function enhanceAnalysisWithVision(analysis: any, visionData: VisionAnalysisResult | null): any {
+  if (!visionData || !analysis.verdict) {
+    console.log('[ENHANCE] No vision data or verdict available, returning original analysis');
+    return analysis;
+  }
+
+  console.log('[ENHANCE] Enhancing analysis with Vision data...');
+
+  // Generate real heatmap data based on text positions
+  const heatmapData = {
+    hotspots: [] as any[],
+    coldspots: [] as any[]
+  };
+
+  // Convert text annotations to hotspots based on size and position
+  visionData.textAnnotations.forEach((text, index) => {
+    const area = text.boundingBox.width * text.boundingBox.height;
+    const isLargeText = area > 1000; // Adjust threshold as needed
+    
+    // Prioritize larger text elements and top-left positions
+    const intensity = isLargeText ? 0.9 : 0.6;
+    const topLeftBonus = (1 - (text.boundingBox.x + text.boundingBox.y) / 2000) * 0.3;
+    
+    heatmapData.hotspots.push({
+      x: text.boundingBox.x + text.boundingBox.width / 2,
+      y: text.boundingBox.y + text.boundingBox.height / 2,
+      intensity: Math.min(intensity + topLeftBonus, 1),
+      element: text.text,
+      description: `Text element: "${text.text}"`
+    });
+  });
+
+  // Add logo positions as high-priority hotspots
+  visionData.logoAnnotations.forEach(logo => {
+    heatmapData.hotspots.push({
+      x: logo.boundingBox.x + logo.boundingBox.width / 2,
+      y: logo.boundingBox.y + logo.boundingBox.height / 2,
+      intensity: 1.0, // Logos are always high priority
+      element: logo.description,
+      description: `Logo: ${logo.description}`
+    });
+  });
+
+  // Sort hotspots by intensity (highest first)
+  heatmapData.hotspots.sort((a, b) => b.intensity - a.intensity);
+
+  // Take top 6 hotspots to avoid clutter
+  heatmapData.hotspots = heatmapData.hotspots.slice(0, 6);
+
+  // Enhance the verdict with real heatmap data
+  const enhancedVerdict = {
+    ...analysis.verdict,
+    heatmapData
+  };
+
+  console.log('[ENHANCE] Enhanced verdict with', heatmapData.hotspots.length, 'hotspots');
+
+  return {
+    ...analysis,
+    verdict: enhancedVerdict,
+    visionData // Include raw vision data for debugging
+  };
+}
+
 export async function analyzeImage(imageUrl: string): Promise<ZombifyAnalysis> {
-  console.log('[ANALYZE_IMAGE] Starting holistic analysis for:', imageUrl);
+  console.log('[ANALYZE_IMAGE] Starting hybrid analysis for:', imageUrl);
   
   try {
+    // Step 1: Run your existing GPT-4V analysis (unchanged)
     const { OpenAI } = await import('openai');
     
     if (!process.env.OPENAI_API_KEY) {
@@ -137,7 +329,7 @@ export async function analyzeImage(imageUrl: string): Promise<ZombifyAnalysis> {
     }
     
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    console.log('[ANALYZE_IMAGE] OpenAI client created, making API call...');
+    console.log('[ANALYZE_IMAGE] Starting GPT-4V analysis...');
 
     const response = await openai.chat.completions.create({
       model: 'gpt-4o',
@@ -301,35 +493,47 @@ Focus on strategic design insights that help designers improve their work, not t
       ]
     });
 
-    console.log('[ANALYZE_IMAGE] API call completed. Response status:', response.choices?.length || 0, 'choices');
+    console.log('[ANALYZE_IMAGE] GPT-4V analysis completed');
     
     const content = response.choices[0]?.message?.content;
     if (!content) {
       console.error('[ANALYZE_IMAGE] No content in OpenAI response:', response);
       throw new Error('No response from OpenAI');
     }
-    
-    console.log('[ANALYZE_IMAGE] Content received, length:', content.length);
 
-    // Use our robust JSON extraction
-    const analysis = extractAndParseJSON(content);
-    console.log('[✅ Successfully parsed analysis]', analysis);
+    // Parse GPT analysis
+    const gptAnalysis = extractAndParseJSON(content);
+    console.log('[ANALYZE_IMAGE] GPT analysis parsed successfully');
+
+    // Step 2: Run Google Vision API analysis in parallel (new!)
+    console.log('[ANALYZE_IMAGE] Starting Vision API analysis...');
+    const visionData = await analyzeImageWithVision(imageUrl);
+    
+    // Step 3: Combine both analyses (new!)
+    console.log('[ANALYZE_IMAGE] Combining GPT and Vision analyses...');
+    const enhancedAnalysis = enhanceAnalysisWithVision(gptAnalysis, visionData);
 
     // Validate required fields
-    if (!analysis.gripScore || !analysis.criticalIssues || !analysis.context) {
-      throw new Error('Invalid response format from OpenAI');
+    if (!enhancedAnalysis.gripScore || !enhancedAnalysis.criticalIssues || !enhancedAnalysis.context) {
+      throw new Error('Invalid response format from analysis');
     }
 
-    return {
-      ...analysis,
+    const finalAnalysis = {
+      ...enhancedAnalysis,
       timestamp: new Date().toISOString()
     };
 
-  } catch (error) {
-    console.error('[ANALYZE_IMAGE] Analysis failed with error:', error);
-    console.error('[ANALYZE_IMAGE] Error type:', typeof error);
-    console.error('[ANALYZE_IMAGE] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    console.log('[✅ HYBRID ANALYSIS COMPLETE]', {
+      gptSuccess: !!gptAnalysis,
+      visionSuccess: !!visionData,
+      hotspotsGenerated: finalAnalysis.verdict?.heatmapData?.hotspots?.length || 0
+    });
 
+    return finalAnalysis;
+
+  } catch (error) {
+    console.error('[ANALYZE_IMAGE] Hybrid analysis failed:', error);
+    
     // Keep your existing error handling exactly as is
     if (error instanceof Error) {
       if (error.message.includes('Timeout while downloading')) {

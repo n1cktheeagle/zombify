@@ -1,11 +1,67 @@
-// types/analysis.ts - Enhanced for v2.1.0 with Verdict
+// types/analysis.ts - Enhanced for v2.1.0 with Verdict + Vision API
 // Place this file in your project root: /types/analysis.ts
+
+// === VISION API TYPES ===
+export interface VisionTextAnnotation {
+  text: string;
+  confidence: number;
+  boundingBox: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  fontSize?: number;
+  fontWeight?: string;
+}
+
+export interface VisionColorInfo {
+  color: { red: number; green: number; blue: number };
+  score: number;
+  pixelFraction: number;
+}
+
+export interface VisionAnalysisResult {
+  textAnnotations: VisionTextAnnotation[];
+  logoAnnotations: Array<{
+    description: string;
+    confidence: number;
+    boundingBox: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    };
+  }>;
+  imageProperties: {
+    dominantColors: VisionColorInfo[];
+  };
+  webDetection?: {
+    webEntities: Array<{
+      entityId: string;
+      description: string;
+      score: number;
+    }>;
+    bestGuessLabels: Array<{
+      label: string;
+      languageCode: string;
+    }>;
+  };
+}
+
+// === EXISTING TYPES (keeping everything you had) ===
 
 // Simplified Location interface
 export interface Location {
   element: string;     // Plain language description
   region: string;      // General area description
   visualContext?: string;  // What's around it
+  boundingBox?: {      // NEW: Real coordinates from Vision API
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
 }
 
 // Fix information with implementation details
@@ -55,7 +111,7 @@ export interface GripScore {
   breakdown: GripScoreBreakdown;
 }
 
-// NEW: Verdict interface for holistic summary
+// NEW: Enhanced Verdict interface with Vision data
 export interface Verdict {
   summary: string;
   attentionSpan: string;
@@ -63,6 +119,21 @@ export interface Verdict {
   dropoffPoint: string;
   memorable: string;
   attentionFlow: string[];
+  heatmapData?: {      // NEW: Real heatmap coordinates
+    hotspots: Array<{
+      x: number;
+      y: number;
+      intensity: number;
+      element: string;
+      description: string;
+    }>;
+    coldspots: Array<{
+      x: number;
+      y: number;
+      element: string;
+      reason: string;
+    }>;
+  };
 }
 
 // Enhanced Generational Score with specific issues
@@ -250,13 +321,13 @@ export interface GenerationalAnalysis {
   recommendations: string[];
 }
 
-// MAIN ANALYSIS INTERFACE - Enhanced for v2.1.0 with Verdict
+// MAIN ANALYSIS INTERFACE - Enhanced for v2.1.0 with Verdict + Vision API
 export interface ZombifyAnalysis {
   context: 'COMPONENT' | 'FULL_INTERFACE' | 'WIREFRAME' | 'DATA_VIZ' | 'MARKETING' | 'MOBILE' | 'ERROR';
   industry: 'SAAS' | 'ECOMMERCE' | 'FINTECH' | 'HEALTHCARE' | 'EDUCATION' | 'SOCIAL' | 'ENTERPRISE' | 'UNKNOWN';
   industryConfidence: number;
   gripScore: GripScore;
-  verdict: Verdict; // NEW: Holistic summary insights
+  verdict: Verdict; // Enhanced with heatmap data
   visualDesignAnalysis: VisualDesignAnalysis;
   uxCopyAnalysis: UXCopyAnalysis;
   criticalIssues: Issue[];
@@ -265,6 +336,7 @@ export interface ZombifyAnalysis {
   behavioralInsights: BehavioralInsight[];
   accessibilityAudit: AccessibilityAudit | null;
   generationalAnalysis: GenerationalAnalysis;
+  visionData?: VisionAnalysisResult; // NEW: Raw Vision API results
   timestamp: string;
   error?: boolean;
 }
