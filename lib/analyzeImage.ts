@@ -1,5 +1,5 @@
-// analyzeImage.ts - HYBRID GPT + Vision API Analysis
-import { ZombifyAnalysis, VisionAnalysisResult } from '@/types/analysis';
+// analyzeImage.ts - Clean version with Vision enhancements and Visual Annotations
+import { ZombifyAnalysis, VisionAnalysisResult, VisualAnnotation, Issue, Opportunity } from '@/types/analysis';
 
 // Keep your existing extractAndParseJSON function exactly as is
 function extractAndParseJSON(content: string): any {
@@ -125,7 +125,7 @@ function extractAndParseJSON(content: string): any {
   throw new Error('Could not extract valid JSON from response');
 }
 
-// NEW: Google Vision API analysis function
+// Google Vision API analysis function (keep as is)
 async function analyzeImageWithVision(imageUrl: string): Promise<VisionAnalysisResult | null> {
   try {
     console.log('[VISION_API] Starting Vision analysis for:', imageUrl);
@@ -251,76 +251,292 @@ async function analyzeImageWithVision(imageUrl: string): Promise<VisionAnalysisR
   }
 }
 
-// NEW: Function to enhance GPT analysis with Vision data
+// Helper function to find Vision element by text
+function findVisionElementByText(visionData: VisionAnalysisResult, searchText: string): any | null {
+  if (!visionData || !searchText) return null;
+  
+  // Clean search text
+  const cleanSearch = searchText.toLowerCase().trim();
+  
+  // Try exact match first
+  let found = visionData.textAnnotations.find(t => 
+    t.text.toLowerCase().trim() === cleanSearch
+  );
+  
+  // Try partial match
+  if (!found) {
+    found = visionData.textAnnotations.find(t => 
+      t.text.toLowerCase().includes(cleanSearch) || 
+      cleanSearch.includes(t.text.toLowerCase())
+    );
+  }
+  
+  // Try word match
+  if (!found) {
+    const searchWords = cleanSearch.split(' ');
+    found = visionData.textAnnotations.find(t => {
+      const elementWords = t.text.toLowerCase().split(' ');
+      return searchWords.some(word => elementWords.includes(word));
+    });
+  }
+  
+  return found;
+}
+
+// Create visual annotations from issues and opportunities
+function createVisualAnnotations(analysis: any, visionData: VisionAnalysisResult | null): VisualAnnotation[] {
+  if (!visionData) return [];
+  
+  const annotations: VisualAnnotation[] = [];
+  let annotationId = 1;
+  
+  // Process critical issues
+  analysis.criticalIssues?.forEach((issue: Issue, index: number) => {
+    if (issue.location?.element) {
+      const visionElement = findVisionElementByText(visionData, issue.location.element);
+      if (visionElement && visionElement.boundingBox) {
+        annotations.push({
+          id: `critical-${annotationId++}`,
+          type: 'critical',
+          boundingBox: visionElement.boundingBox,
+          elementText: visionElement.text,
+          title: issue.issue,
+          description: issue.impact,
+          fix: issue.fix,
+          category: issue.category,
+          severity: issue.severity
+        });
+      }
+    }
+  });
+  
+  // Process usability issues
+  analysis.usabilityIssues?.forEach((issue: Issue, index: number) => {
+    if (issue.location?.element) {
+      const visionElement = findVisionElementByText(visionData, issue.location.element);
+      if (visionElement && visionElement.boundingBox) {
+        annotations.push({
+          id: `warning-${annotationId++}`,
+          type: 'warning',
+          boundingBox: visionElement.boundingBox,
+          elementText: visionElement.text,
+          title: issue.issue,
+          description: issue.impact,
+          fix: issue.fix,
+          category: issue.category,
+          severity: issue.severity
+        });
+      }
+    }
+  });
+  
+  // Process opportunities
+  analysis.opportunities?.forEach((opp: Opportunity, index: number) => {
+    if (opp.location?.element) {
+      const visionElement = findVisionElementByText(visionData, opp.location.element);
+      if (visionElement && visionElement.boundingBox) {
+        annotations.push({
+          id: `opportunity-${annotationId++}`,
+          type: 'opportunity',
+          boundingBox: visionElement.boundingBox,
+          elementText: visionElement.text,
+          title: opp.opportunity,
+          description: opp.reasoning,
+          potentialImpact: opp.potentialImpact,
+          category: opp.category
+        });
+      }
+    }
+  });
+  
+  console.log('[ANNOTATIONS] Created', annotations.length, 'visual annotations');
+  return annotations;
+}
+
+// Enhanced analysis with Vision data for better insights
 function enhanceAnalysisWithVision(analysis: any, visionData: VisionAnalysisResult | null): any {
-  if (!visionData || !analysis.verdict) {
-    console.log('[ENHANCE] No vision data or verdict available, returning original analysis');
+  if (!visionData) {
+    console.log('[ENHANCE] No vision data available, returning original analysis');
     return analysis;
   }
 
   console.log('[ENHANCE] Enhancing analysis with Vision data...');
 
-  // Generate real heatmap data based on text positions
-  const heatmapData = {
-    hotspots: [] as any[],
-    coldspots: [] as any[]
-  };
+  // Calculate real contrast ratios for detected text
+  const contrastIssues: any[] = [];
+  const dominantColors = visionData.imageProperties.dominantColors;
+  
+  if (dominantColors.length >= 2) {
+    // Simple contrast check between dominant colors
+    const color1 = dominantColors[0].color;
+    const color2 = dominantColors[1].color;
+    const contrast = calculateContrast(color1, color2);
+    
+    if (contrast < 4.5) {
+      contrastIssues.push({
+        severity: contrast < 3 ? 'HIGH' : 'MEDIUM',
+        colors: [color1, color2],
+        ratio: contrast.toFixed(2),
+        recommendation: 'Increase contrast between these dominant colors'
+      });
+    }
+  }
 
-  // Convert text annotations to hotspots based on size and position
-  visionData.textAnnotations.forEach((text, index) => {
-    const area = text.boundingBox.width * text.boundingBox.height;
-    const isLargeText = area > 1000; // Adjust threshold as needed
-    
-    // Prioritize larger text elements and top-left positions
-    const intensity = isLargeText ? 0.9 : 0.6;
-    const topLeftBonus = (1 - (text.boundingBox.x + text.boundingBox.y) / 2000) * 0.3;
-    
-    heatmapData.hotspots.push({
-      x: text.boundingBox.x + text.boundingBox.width / 2,
-      y: text.boundingBox.y + text.boundingBox.height / 2,
-      intensity: Math.min(intensity + topLeftBonus, 1),
-      element: text.text,
-      description: `Text element: "${text.text}"`
-    });
+  // Detect small text that might be hard to read
+  const smallTextElements = visionData.textAnnotations.filter(text => {
+    return text.boundingBox.height < 12; // Approximately 16px or smaller
   });
 
-  // Add logo positions as high-priority hotspots
-  visionData.logoAnnotations.forEach(logo => {
-    heatmapData.hotspots.push({
-      x: logo.boundingBox.x + logo.boundingBox.width / 2,
-      y: logo.boundingBox.y + logo.boundingBox.height / 2,
-      intensity: 1.0, // Logos are always high priority
-      element: logo.description,
-      description: `Logo: ${logo.description}`
-    });
+  // Find CTAs and important buttons
+  const ctaElements = visionData.textAnnotations.filter(text => {
+    const lower = text.text.toLowerCase();
+    return ['buy', 'start', 'sign', 'get', 'download', 'submit', 'continue', 'next', 'add to cart'].some(cta => 
+      lower.includes(cta)
+    );
   });
 
-  // Sort hotspots by intensity (highest first)
-  heatmapData.hotspots.sort((a, b) => b.intensity - a.intensity);
+  // Create visual annotations
+  const visualAnnotations = createVisualAnnotations(analysis, visionData);
 
-  // Take top 6 hotspots to avoid clutter
-  heatmapData.hotspots = heatmapData.hotspots.slice(0, 6);
-
-  // Enhance the verdict with real heatmap data
-  const enhancedVerdict = {
-    ...analysis.verdict,
-    heatmapData
-  };
-
-  console.log('[ENHANCE] Enhanced verdict with', heatmapData.hotspots.length, 'hotspots');
-
-  return {
+  // Enhance the analysis with Vision insights
+  const enhancedAnalysis = {
     ...analysis,
-    verdict: enhancedVerdict,
-    visionData // Include raw vision data for debugging
+    // Add visual annotations
+    visualAnnotations,
+    // Add Vision-specific enhancements to existing analysis
+    visualDesignAnalysis: {
+      ...analysis.visualDesignAnalysis,
+      colorAndContrast: {
+        ...analysis.visualDesignAnalysis.colorAndContrast,
+        // Add real contrast measurements
+        measuredContrasts: contrastIssues,
+        dominantColorPalette: dominantColors.slice(0, 5).map(c => ({
+          hex: rgbToHex(c.color),
+          percentage: (c.pixelFraction * 100).toFixed(1) + '%'
+        }))
+      },
+      typography: {
+        ...analysis.visualDesignAnalysis.typography,
+        // Add small text warnings
+        smallTextWarnings: smallTextElements.length > 0 ? {
+          count: smallTextElements.length,
+          message: `${smallTextElements.length} text elements may be too small for comfortable reading`
+        } : null
+      }
+    },
+    // Enhance critical issues with specific Vision data and location
+    criticalIssues: [
+      ...analysis.criticalIssues.map((issue: any) => ({
+        ...issue,
+        // Add bounding box if we can find the element
+        location: issue.location ? {
+          ...issue.location,
+          boundingBox: findVisionElementByText(visionData, issue.location.element)?.boundingBox
+        } : issue.location
+      })),
+      // Add issues for detected problems
+      ...contrastIssues.filter(issue => issue.severity === 'HIGH').map(issue => ({
+        severity: 3,
+        category: 'ACCESSIBILITY',
+        issue: 'Low color contrast detected',
+        location: {
+          element: 'Color combination',
+          region: 'Multiple areas'
+        },
+        impact: `Contrast ratio of ${issue.ratio}:1 fails WCAG standards`,
+        evidence: 'Vision API detected these colors are used together',
+        fix: {
+          immediate: 'Darken text or lighten background',
+          better: 'Ensure all text has at least 4.5:1 contrast ratio',
+          implementation: 'Use a contrast checking tool to verify changes'
+        }
+      }))
+    ],
+    // Add opportunities based on Vision findings with location
+    opportunities: [
+      ...analysis.opportunities.map((opp: any) => ({
+        ...opp,
+        // Add bounding box if we can find the element
+        location: opp.location ? {
+          ...opp.location,
+          boundingBox: findVisionElementByText(visionData, opp.location.element)?.boundingBox
+        } : opp.location
+      })),
+      // If we found CTAs, suggest making them more prominent
+      ...(ctaElements.length > 0 && ctaElements.some(cta => cta.boundingBox.height < 40) ? [{
+        category: 'CONVERSION',
+        opportunity: 'Make call-to-action buttons larger',
+        potentialImpact: 'Increased click-through rates',
+        implementation: 'Increase button height to at least 44px for better mobile usability',
+        reasoning: 'Vision detected CTA buttons that may be too small for optimal interaction',
+        location: {
+          element: 'CTA buttons',
+          region: 'Various',
+          boundingBox: ctaElements[0]?.boundingBox
+        }
+      }] : [])
+    ],
+    // Include Vision data for reference
+    visionData: {
+      textCount: visionData.textAnnotations.length,
+      hasLogos: visionData.logoAnnotations.length > 0,
+      dominantColors: dominantColors.slice(0, 5),
+      hasCTAs: ctaElements.length > 0
+    }
   };
+
+  return enhancedAnalysis;
+}
+
+// Helper function to calculate contrast ratio
+function calculateContrast(color1: any, color2: any): number {
+  const l1 = relativeLuminance(color1);
+  const l2 = relativeLuminance(color2);
+  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+}
+
+function relativeLuminance(color: any): number {
+  const rsRGB = color.red / 255;
+  const gsRGB = color.green / 255;
+  const bsRGB = color.blue / 255;
+
+  const r = rsRGB <= 0.03928 ? rsRGB / 12.92 : Math.pow((rsRGB + 0.055) / 1.055, 2.4);
+  const g = gsRGB <= 0.03928 ? gsRGB / 12.92 : Math.pow((gsRGB + 0.055) / 1.055, 2.4);
+  const b = bsRGB <= 0.03928 ? bsRGB / 12.92 : Math.pow((bsRGB + 0.055) / 1.055, 2.4);
+
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function rgbToHex(color: any): string {
+  const toHex = (n: number) => n.toString(16).padStart(2, '0');
+  return '#' + toHex(color.red) + toHex(color.green) + toHex(color.blue);
 }
 
 export async function analyzeImage(imageUrl: string): Promise<ZombifyAnalysis> {
   console.log('[ANALYZE_IMAGE] Starting hybrid analysis for:', imageUrl);
   
   try {
-    // Step 1: Run your existing GPT-4V analysis (unchanged)
+    // Step 1: Run Vision API FIRST to get element data
+    console.log('[ANALYZE_IMAGE] Starting Vision API analysis...');
+    const visionData = await analyzeImageWithVision(imageUrl);
+    
+    // Step 2: Prepare Vision context for GPT
+    let visionContext = '';
+    if (visionData) {
+      visionContext = `
+Based on Vision API analysis:
+- Detected ${visionData.textAnnotations.length} text elements
+- Found ${visionData.logoAnnotations.length} logos
+- Dominant colors: ${visionData.imageProperties.dominantColors.slice(0, 3).map(c => 
+  `rgb(${c.color.red},${c.color.green},${c.color.blue})`
+).join(', ')}
+- Text elements include: ${visionData.textAnnotations.slice(0, 10).map(t => t.text).join(', ')}...
+
+IMPORTANT: When identifying issues or opportunities, mention specific text elements you can see in the interface so we can map them to exact locations.
+`;
+    }
+    
+    // Step 3: Run GPT-4V analysis with Vision context
     const { OpenAI } = await import('openai');
     
     if (!process.env.OPENAI_API_KEY) {
@@ -341,7 +557,9 @@ export async function analyzeImage(imageUrl: string): Promise<ZombifyAnalysis> {
           content: [
             {
               type: 'text',
-              text: `You are an expert UX designer providing strategic design critique. Focus on what matters for user experience, not pixel-perfect measurements.
+              text: `You are an expert UX designer providing strategic design critique. Focus on what matters for user experience.
+
+${visionContext}
 
 ANALYSIS APPROACH:
 1. First understand what this interface is trying to achieve
@@ -349,17 +567,35 @@ ANALYSIS APPROACH:
 3. Provide actionable feedback based on design principles
 4. Focus on perceived hierarchy, clarity, and user flow
 
-IMPORTANT RULES:
-- Describe locations in plain language: "the main CTA in the hero section" not coordinates
-- When identifying elements, describe what you see: "circular refresh icon" not "C button"
-- Focus on holistic issues: hierarchy, contrast, clarity, flow
-- Provide 2-5 items per category where relevant
-- Give specific but realistic fixes
+IMPORTANT FOR LOCATION DATA:
+When identifying issues or opportunities, always specify the exact text or element you're referring to. For example:
+- Instead of "the button", say "the 'Sign Up' button"
+- Instead of "the heading", say "the 'Welcome to Our Service' heading"
+- Instead of "navigation", say "the 'Home About Contact' navigation"
+
+This helps us map your feedback to exact locations on the interface.
+
+IMPORTANT FOR ATTENTION FLOW:
+Describe what users will look at and why, in order of importance. Focus on:
+- Primary actions (what can users do?)
+- Key information (what do users need to know?)
+- Navigation (how do users explore?)
+- Trust signals (what builds confidence?)
+- Supporting content (what provides context?)
+
+Example attention flow:
+"attentionFlow": [
+  "Primary CTA 'Start Free Trial' - users look for how to get started",
+  "Pricing information - users need to know the cost",
+  "Feature list - users evaluate if it meets their needs",
+  "Testimonials section - users seek social proof",
+  "Navigation menu - users explore other options"
+]
 
 Return this JSON structure:
 
 {
-  "context": "What type of interface this is",
+  "context": "What type of interface this is (FORM, DASHBOARD, LANDING_PAGE, ECOMMERCE, GAME_UI, etc)",
   "industry": "Industry based on visual cues or UNKNOWN",
   "industryConfidence": 0.85,
   "gripScore": {
@@ -378,12 +614,7 @@ Return this JSON structure:
     "likelyAction": "What most users will probably do on this interface",
     "dropoffPoint": "Where users are most likely to lose interest or leave",
     "memorable": "What elements users will remember after leaving",
-    "attentionFlow": [
-      "First element that draws the eye",
-      "Second place attention goes",
-      "Areas that get skipped or ignored",
-      "Final focus point before action or exit"
-    ]
+    "attentionFlow": [LIST OF ATTENTION POINTS WITH EXPLANATIONS]
   },
   "visualDesignAnalysis": {
     "score": 80,
@@ -400,7 +631,7 @@ Return this JSON structure:
           "foreground": "describe color",
           "background": "describe color",
           "ratio": 0,
-          "location": "plain language description of where",
+          "location": "specific text element like 'Contact Us' button",
           "fix": {
             "suggestion": "Make text darker/lighter or change background",
             "css": ""
@@ -419,7 +650,7 @@ Return this JSON structure:
       {
         "severity": "HIGH",
         "current": "Exact text you see",
-        "location": "Where it appears in plain language",
+        "location": "specific element like 'hero heading' or 'Sign Up button'",
         "issue": "Why this copy doesn't work",
         "suggested": ["Better alternative", "Another option"],
         "impact": "How this affects users",
@@ -434,7 +665,7 @@ Return this JSON structure:
       "category": "HIERARCHY",
       "issue": "Clear issue title",
       "location": {
-        "element": "Plain language description of element",
+        "element": "Specific text or element name like 'Get Started' button",
         "region": "Where in the interface",
         "visualContext": "What's around it"
       },
@@ -456,7 +687,7 @@ Return this JSON structure:
       "implementation": "How to do it",
       "reasoning": "Why this matters",
       "location": {
-        "element": "What element",
+        "element": "Specific element name",
         "region": "Where it is"
       }
     }
@@ -480,9 +711,7 @@ Return this JSON structure:
     "primaryTarget": "Based on design style",
     "recommendations": ["How to better serve target"]
   }
-}
-
-Focus on strategic design insights that help designers improve their work, not technical precision.`
+}`
             },
             {
               type: 'image_url',
@@ -504,13 +733,8 @@ Focus on strategic design insights that help designers improve their work, not t
     // Parse GPT analysis
     const gptAnalysis = extractAndParseJSON(content);
     console.log('[ANALYZE_IMAGE] GPT analysis parsed successfully');
-
-    // Step 2: Run Google Vision API analysis in parallel (new!)
-    console.log('[ANALYZE_IMAGE] Starting Vision API analysis...');
-    const visionData = await analyzeImageWithVision(imageUrl);
     
-    // Step 3: Combine both analyses (new!)
-    console.log('[ANALYZE_IMAGE] Combining GPT and Vision analyses...');
+    // Step 4: Enhance analysis with Vision data
     const enhancedAnalysis = enhanceAnalysisWithVision(gptAnalysis, visionData);
 
     // Validate required fields
@@ -523,16 +747,17 @@ Focus on strategic design insights that help designers improve their work, not t
       timestamp: new Date().toISOString()
     };
 
-    console.log('[✅ HYBRID ANALYSIS COMPLETE]', {
+    console.log('[✅ ANALYSIS COMPLETE]', {
       gptSuccess: !!gptAnalysis,
       visionSuccess: !!visionData,
-      hotspotsGenerated: finalAnalysis.verdict?.heatmapData?.hotspots?.length || 0
+      enhancedWithVision: !!enhancedAnalysis.visionData,
+      annotationsCreated: enhancedAnalysis.visualAnnotations?.length || 0
     });
 
     return finalAnalysis;
 
   } catch (error) {
-    console.error('[ANALYZE_IMAGE] Hybrid analysis failed:', error);
+    console.error('[ANALYZE_IMAGE] Analysis failed:', error);
     
     // Keep your existing error handling exactly as is
     if (error instanceof Error) {

@@ -4,7 +4,6 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Verdict } from '@/types/analysis';
 import GlitchText from './GlitchText';
-import AttentionHeatmapOverlay from './AttentionHeatmapOverlay';
 
 interface VerdictCardProps {
   verdict: Verdict;
@@ -12,9 +11,7 @@ interface VerdictCardProps {
   className?: string;
 }
 
-export default function VerdictCard({ verdict, imageUrl, className = '' }: VerdictCardProps) {
-  const [showHeatmapInline, setShowHeatmapInline] = React.useState(false);
-  
+export default function VerdictCard({ verdict, className = '' }: VerdictCardProps) {
   return (
     <motion.div 
       className={`zombify-card p-6 scan-line relative overflow-hidden ${className}`}
@@ -41,11 +38,6 @@ export default function VerdictCard({ verdict, imageUrl, className = '' }: Verdi
           <GlitchText className="text-xl font-bold text-black" trigger="hover">
             VERDICT
           </GlitchText>
-          {verdict.heatmapData?.hotspots && verdict.heatmapData.hotspots.length > 0 && (
-            <div className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-mono">
-              ✨ VISION AI ENHANCED
-            </div>
-          )}
         </div>
 
         {/* Main Summary */}
@@ -114,58 +106,22 @@ export default function VerdictCard({ verdict, imageUrl, className = '' }: Verdi
           </motion.div>
         </div>
 
-        {/* Attention Flow with Enhanced Heatmap */}
+        {/* Attention Flow - Simple List */}
         {verdict.attentionFlow && verdict.attentionFlow.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
           >
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <div className="text-lg">👁️</div>
-                <div className="text-sm font-mono opacity-70">ATTENTION FLOW</div>
-                {verdict.heatmapData?.hotspots && verdict.heatmapData.hotspots.length > 0 && (
-                  <div className="text-xs bg-gradient-to-r from-green-100 to-blue-100 text-green-700 px-2 py-1 rounded font-mono border border-green-200">
-                    {verdict.heatmapData.hotspots.length} REAL HOTSPOTS
-                  </div>
-                )}
-              </div>
-              {imageUrl && (
-                <motion.button
-                  onClick={() => setShowHeatmapInline(!showHeatmapInline)}
-                  className="text-xs font-mono px-3 py-1 bg-black text-white rounded hover:bg-gray-800 transition-colors"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  {showHeatmapInline ? 'HIDE HEATMAP' : 'SHOW HEATMAP'}
-                </motion.button>
-              )}
+            <div className="flex items-center gap-2 mb-3">
+              <div className="text-lg">👁️</div>
+              <div className="text-sm font-mono opacity-70">ATTENTION FLOW</div>
             </div>
 
-            {/* Inline Heatmap View with Vision API Data */}
-            {showHeatmapInline && imageUrl && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="mb-4"
-              >
-                <AttentionHeatmapOverlay
-                  imageUrl={imageUrl}
-                  attentionFlow={verdict.attentionFlow}
-                  heatmapData={verdict.heatmapData}
-                  className="rounded-lg overflow-hidden border-2 border-black/20"
-                />
-              </motion.div>
-            )}
-
-            {/* Text List View */}
             <div className="space-y-2">
-              {verdict.attentionFlow.map((step, index) => {
-                // Show real element info if available from Vision API
-                const hasRealData = verdict.heatmapData?.hotspots && verdict.heatmapData.hotspots[index];
-                const elementInfo = hasRealData ? verdict.heatmapData?.hotspots[index] : null;
+              {verdict.attentionFlow.slice(0, 5).map((step, index) => {
+                // attentionFlow is now a simple string array
+                const description = step;
                 
                 return (
                   <motion.div 
@@ -175,51 +131,16 @@ export default function VerdictCard({ verdict, imageUrl, className = '' }: Verdi
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.7 + index * 0.1 }}
                   >
-                    <div className={`flex-shrink-0 w-6 h-6 text-white text-xs font-bold rounded-full flex items-center justify-center ${
-                      hasRealData 
-                        ? 'bg-gradient-to-br from-green-500 to-emerald-500' 
-                        : 'bg-gradient-to-br from-cyan-500 to-blue-500'
-                    }`}>
+                    <div className="flex-shrink-0 w-6 h-6 bg-gradient-to-br from-cyan-500 to-blue-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
                       {index + 1}
                     </div>
                     <div className="flex-1">
-                      <div className="text-sm font-mono opacity-80">{step}</div>
-                      {elementInfo && (
-                        <div className="text-xs text-green-600 mt-1 font-mono">
-                          📍 Real element: {elementInfo.element} 
-                          <span className="ml-2 opacity-60">
-                            (intensity: {Math.round(elementInfo.intensity * 100)}%)
-                          </span>
-                        </div>
-                      )}
+                      <div className="text-sm text-gray-700">{description}</div>
                     </div>
                   </motion.div>
                 );
               })}
             </div>
-
-            {/* Vision API Debug Info (you can remove this later) */}
-            {verdict.heatmapData?.hotspots && verdict.heatmapData.hotspots.length > 0 && (
-              <motion.div
-                className="mt-4 p-3 bg-green-50 border border-green-200 rounded text-xs font-mono"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 1 }}
-              >
-                <div className="text-green-700 font-bold mb-2">🔍 VISION API DATA:</div>
-                <div className="space-y-1 text-green-600">
-                  {verdict.heatmapData.hotspots.slice(0, 3).map((hotspot, i) => (
-                    <div key={i}>
-                      • Element "{hotspot.element}" at coordinates ({Math.round(hotspot.x)}, {Math.round(hotspot.y)}) 
-                      - Intensity: {Math.round(hotspot.intensity * 100)}%
-                    </div>
-                  ))}
-                  {verdict.heatmapData.hotspots.length > 3 && (
-                    <div>... and {verdict.heatmapData.hotspots.length - 3} more hotspots</div>
-                  )}
-                </div>
-              </motion.div>
-            )}
           </motion.div>
         )}
       </div>

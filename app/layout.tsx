@@ -1,6 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
-import "/styles/globals.css"
+import "./globals.css"
 import { AuthProvider } from '@/hooks/useAuth'
 import { UploadProvider } from '@/contexts/UploadContext'
 import { AppLayout } from '@/components/AppLayout'
@@ -19,6 +19,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <link rel="icon" href="/favicon.ico" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link

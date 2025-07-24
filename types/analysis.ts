@@ -1,4 +1,4 @@
-// types/analysis.ts - Enhanced for v2.1.0 with Verdict + Vision API
+// types/analysis.ts - Updated without heatmap, with visual annotations
 // Place this file in your project root: /types/analysis.ts
 
 // === VISION API TYPES ===
@@ -49,14 +49,38 @@ export interface VisionAnalysisResult {
   };
 }
 
+// === VISUAL ANNOTATION TYPES (For Issues & Opportunities) ===
+export interface VisualAnnotation {
+  id: string;
+  type: 'critical' | 'warning' | 'opportunity' | 'info';
+  // Exact coordinates from Vision API
+  boundingBox: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  // What element this refers to
+  elementText?: string;
+  elementType?: string;
+  // The issue/opportunity details
+  title: string;
+  description: string;
+  impact?: string;
+  fix?: Fix;
+  category: string;
+  severity?: number; // For issues
+  potentialImpact?: string; // For opportunities
+}
+
 // === EXISTING TYPES (keeping everything you had) ===
 
-// Simplified Location interface
+// Enhanced Location interface with real coordinates
 export interface Location {
   element: string;     // Plain language description
   region: string;      // General area description
   visualContext?: string;  // What's around it
-  boundingBox?: {      // NEW: Real coordinates from Vision API
+  boundingBox?: {      // Real coordinates from Vision API
     x: number;
     y: number;
     width: number;
@@ -76,7 +100,7 @@ export interface Fix {
   suggestion?: string;
 }
 
-// Issue structure - ENHANCED with more specific data
+// Issue structure - ENHANCED with visual annotation support
 export interface Issue {
   severity: number; // 0-4
   category: string;
@@ -88,6 +112,8 @@ export interface Issue {
   assumption?: string;
   context?: string;
   finding?: string;
+  // NEW: Link to visual annotation
+  visualAnnotationId?: string;
 }
 
 // Enhanced Grip Score Breakdown with reasoning
@@ -111,29 +137,14 @@ export interface GripScore {
   breakdown: GripScoreBreakdown;
 }
 
-// NEW: Enhanced Verdict interface with Vision data
+// Simplified Verdict interface - NO MORE HEATMAP
 export interface Verdict {
   summary: string;
   attentionSpan: string;
   likelyAction: string;
   dropoffPoint: string;
   memorable: string;
-  attentionFlow: string[];
-  heatmapData?: {      // NEW: Real heatmap coordinates
-    hotspots: Array<{
-      x: number;
-      y: number;
-      intensity: number;
-      element: string;
-      description: string;
-    }>;
-    coldspots: Array<{
-      x: number;
-      y: number;
-      element: string;
-      reason: string;
-    }>;
-  };
+  attentionFlow: string[]; // Simple string array of what matters and why
 }
 
 // Enhanced Generational Score with specific issues
@@ -144,7 +155,7 @@ export interface GenerationalScore {
   improvements: string;
 }
 
-// Growth opportunity
+// Growth opportunity - Enhanced with visual annotation support
 export interface Opportunity {
   category: string;
   opportunity: string;
@@ -152,6 +163,8 @@ export interface Opportunity {
   implementation: string;
   reasoning: string;
   location?: Location;
+  // NEW: Link to visual annotation
+  visualAnnotationId?: string;
 }
 
 // Behavioral insight
@@ -283,12 +296,12 @@ export interface AccessibilityFailure {
   location: {
     element: string;
     selector: string;
-    boundingBox: { x: number; y: number; width: number; height: number };
+    boundingBox?: { x: number; y: number; width: number; height: number };
   };
   currentValue: string;
   requiredValue: string;
   fix: string;
-  visualContext: "AREA_HIGHLIGHT";
+  visualContext?: "AREA_HIGHLIGHT";
 }
 
 // ENHANCED: Accessibility audit with strengths and weaknesses
@@ -321,13 +334,13 @@ export interface GenerationalAnalysis {
   recommendations: string[];
 }
 
-// MAIN ANALYSIS INTERFACE - Enhanced for v2.1.0 with Verdict + Vision API
+// MAIN ANALYSIS INTERFACE - Enhanced with Vision API and Visual Annotations
 export interface ZombifyAnalysis {
   context: 'COMPONENT' | 'FULL_INTERFACE' | 'WIREFRAME' | 'DATA_VIZ' | 'MARKETING' | 'MOBILE' | 'ERROR';
   industry: 'SAAS' | 'ECOMMERCE' | 'FINTECH' | 'HEALTHCARE' | 'EDUCATION' | 'SOCIAL' | 'ENTERPRISE' | 'UNKNOWN';
   industryConfidence: number;
   gripScore: GripScore;
-  verdict: Verdict; // Enhanced with heatmap data
+  verdict: Verdict; // Simplified - no more heatmap
   visualDesignAnalysis: VisualDesignAnalysis;
   uxCopyAnalysis: UXCopyAnalysis;
   criticalIssues: Issue[];
@@ -336,23 +349,11 @@ export interface ZombifyAnalysis {
   behavioralInsights: BehavioralInsight[];
   accessibilityAudit: AccessibilityAudit | null;
   generationalAnalysis: GenerationalAnalysis;
-  visionData?: VisionAnalysisResult; // NEW: Raw Vision API results
+  visionData?: VisionAnalysisResult; // Raw Vision API results
+  // NEW: Visual annotations for showing issues/opportunities on the image
+  visualAnnotations?: VisualAnnotation[];
   timestamp: string;
   error?: boolean;
-}
-
-// Visual annotation for overlay (for future visual highlighting)
-export interface VisualAnnotation {
-  id: string;
-  type: 'critical' | 'warning' | 'info';
-  position: { x: string; y: string };
-  coordinates?: { x: number; y: number };
-  label: string;
-  category: string;
-  severity: number;
-  description: string;
-  fix: Fix;
-  selector?: string;
 }
 
 // Grip score visualization data

@@ -10,6 +10,7 @@ import GenerationalRadarChart from './GenerationalRadarChart';
 import VisualDesignAnalysisCard from './VisualDesignAnalysisCard';
 import UXCopyAnalysisCard from './UXCopyAnalysisCard';
 import VerdictCard from './VerdictCard';
+import VisualAnnotationsOverlay from './VisualAnnotationsOverlay';
 
 // Keep backward compatibility with old props
 type LegacyFeedbackDisplayProps = {
@@ -278,6 +279,27 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                 </div>
               </motion.div>
               
+              {/* Visual Annotations Overlay - NEW */}
+              {imageUrl && analysis.visualAnnotations && analysis.visualAnnotations.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="mb-8"
+                >
+                  <div className="zombify-card p-6">
+                    <h3 className="text-lg font-bold mb-4">Visual Issue Map</h3>
+                    <p className="text-sm opacity-70 mb-4">Click on numbered markers to see issue details</p>
+                    <VisualAnnotationsOverlay
+                      imageUrl={imageUrl}
+                      annotations={analysis.visualAnnotations.filter(a => 
+                        a.type === 'critical' || a.type === 'warning'
+                      )}
+                      className="rounded-lg overflow-hidden border-2 border-black/20"
+                    />
+                  </div>
+                </motion.div>
+              )}
+              
               {/* Critical Issues Section */}
               {analysis.criticalIssues.length > 0 && (
                 <div className="space-y-4">
@@ -368,6 +390,25 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
 
               {isPro ? (
                 <div className="space-y-4">
+                  {/* Visual Annotations Overlay for Opportunities - NEW */}
+                  {imageUrl && analysis.visualAnnotations && analysis.visualAnnotations.filter(a => a.type === 'opportunity').length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="mb-8"
+                    >
+                      <div className="zombify-card p-6">
+                        <h3 className="text-lg font-bold mb-4">Opportunity Map</h3>
+                        <p className="text-sm opacity-70 mb-4">Green markers show areas with growth potential</p>
+                        <VisualAnnotationsOverlay
+                          imageUrl={imageUrl}
+                          annotations={analysis.visualAnnotations.filter(a => a.type === 'opportunity')}
+                          className="rounded-lg overflow-hidden border-2 border-black/20"
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                  
                   {analysis.opportunities?.map((opp, index) => (
                     <motion.div
                       key={index}
