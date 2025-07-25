@@ -1,7 +1,6 @@
 'use client';
 
-import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { ZombifyAnalysis } from '@/types/analysis';
 
 interface GripScoreCardProps {
@@ -11,8 +10,6 @@ interface GripScoreCardProps {
 }
 
 export default function GripScoreCard({ gripScore, score, showBreakdown = false }: GripScoreCardProps) {
-  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
-
   // Handle legacy format
   if (!gripScore && score !== undefined) {
     return (
@@ -129,10 +126,10 @@ export default function GripScoreCard({ gripScore, score, showBreakdown = false 
         />
       </div>
 
-      {/* Enhanced breakdown */}
+      {/* Enhanced breakdown - converted to info cards */}
       {showBreakdown && breakdown && (
         <motion.div 
-          className="space-y-3"
+          className="space-y-4"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.8 }}
@@ -147,23 +144,17 @@ export default function GripScoreCard({ gripScore, score, showBreakdown = false 
             const categoryData = breakdown[category.key as keyof typeof breakdown];
             if (!categoryData) return null;
 
-            const isExpanded = expandedCategory === category.key;
-
             return (
               <motion.div
                 key={category.key}
-                className={`border rounded-lg overflow-hidden ${getScoreBg(categoryData.score)}`}
+                className={`border rounded-lg ${getScoreBg(categoryData.score)}`}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.1 * index }}
               >
-                <motion.div
-                  className="p-4 cursor-pointer"
-                  onClick={() => setExpandedCategory(isExpanded ? null : category.key)}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <div className="flex justify-between items-center">
+                {/* Header - no longer clickable */}
+                <div className="p-4">
+                  <div className="flex justify-between items-center mb-3">
                     <div className="flex items-center gap-3">
                       <span className="text-lg">{category.icon}</span>
                       <div>
@@ -173,59 +164,37 @@ export default function GripScoreCard({ gripScore, score, showBreakdown = false 
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className={`text-lg font-bold ${getScoreColor(categoryData.score)}`}>
-                        {categoryData.score}
-                      </div>
-                      <motion.div
-                        animate={{ rotate: isExpanded ? 180 : 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="text-gray-400"
-                      >
-                        ▼
-                      </motion.div>
+                    <div className={`text-lg font-bold ${getScoreColor(categoryData.score)}`}>
+                      {categoryData.score}
                     </div>
                   </div>
-                </motion.div>
 
-                <AnimatePresence>
-                  {isExpanded && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="px-4 pb-4 border-t bg-white/50">
-                        <div className="mt-3">
-                          <div className="text-sm font-semibold mb-2">Analysis:</div>
-                          <div className="text-sm mb-4 opacity-80">{categoryData.reasoning}</div>
-                          
-                          {categoryData.evidence && categoryData.evidence.length > 0 && (
-                            <div>
-                              <div className="text-sm font-semibold mb-2">Evidence:</div>
-                              <ul className="text-sm space-y-2">
-                                {categoryData.evidence.map((evidence, i) => (
-                                  <motion.li 
-                                    key={i} 
-                                    className="flex items-start gap-2 opacity-80"
-                                    initial={{ opacity: 0, x: -10 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: i * 0.1 }}
-                                  >
-                                    <span className="text-blue-600 mt-1">•</span>
-                                    <span>{evidence}</span>
-                                  </motion.li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                        </div>
+                  {/* Always visible content */}
+                  <div className="border-t bg-white/50 -mx-4 px-4 pt-3">
+                    <div className="text-sm font-semibold mb-2">Analysis:</div>
+                    <div className="text-sm mb-4 opacity-80">{categoryData.reasoning}</div>
+                    
+                    {categoryData.evidence && categoryData.evidence.length > 0 && (
+                      <div>
+                        <div className="text-sm font-semibold mb-2">Evidence:</div>
+                        <ul className="text-sm space-y-2">
+                          {categoryData.evidence.map((evidence, i) => (
+                            <motion.li 
+                              key={i} 
+                              className="flex items-start gap-2 opacity-80"
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: i * 0.1 }}
+                            >
+                              <span className="text-blue-600 mt-1">•</span>
+                              <span>{evidence}</span>
+                            </motion.li>
+                          ))}
+                        </ul>
                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                    )}
+                  </div>
+                </div>
               </motion.div>
             );
           })}

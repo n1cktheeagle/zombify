@@ -1,20 +1,18 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { motion, AnimatePresence } from 'framer-motion';
-import GenerationalRadarChart from '@/components/GenerationalRadarChart';
-import { AppLayout } from '@/components/AppLayout';
 import { ZombifyAnalysis } from '@/types/analysis';
-import FeedbackDisplay from '@/components/FeedbackDisplay';
-import GripScoreCard from '@/components/GripScoreCard';
-import VisualDesignAnalysisCard from '@/components/VisualDesignAnalysisCard';
-import UXCopyAnalysisCard from '@/components/UXCopyAnalysisCard';
-import VerdictCard from '@/components/VerdictCard';
 import GlitchText from '@/components/GlitchText';
-import FeedbackTabs from '@/components/FeedbackTabs';
-import { FeedbackTabId } from '@/components/FeedbackDisplay';
+import FeedbackSummary from '@/components/feedback/FeedbackSummary';
+import FeedbackCriticalIssues from '@/components/feedback/FeedbackCriticalIssues';
+import FeedbackDetailedAnalysis from '@/components/feedback/FeedbackDetailedAnalysis';
+import FeedbackOpportunities from '@/components/feedback/FeedbackOpportunities';
+import FeedbackInsights from '@/components/feedback/FeedbackInsights';
+import FeedbackAccessibility from '@/components/feedback/FeedbackAccessibility';
+import FeedbackNavigation, { useFeedbackNavigation } from '@/components/feedback/FeedbackNavigation';
 
 // TypeScript interfaces
 interface FeedbackData {
@@ -47,9 +45,31 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
   const [cooldownTime, setCooldownTime] = useState(60);
-  const [activeTab, setActiveTab] = useState<FeedbackTabId>('overview');
 
   const supabase = createClientComponentClient();
+
+  // Parse analysis data early to avoid conditional hook calls
+  const analysis = data?.analysis || {};
+  const isNewFormat = data ? isNewAnalysisFormat(analysis) : false;
+  const score = isNewFormat ? analysis.gripScore?.overall || 0 : (data?.score || 0);
+
+  // Navigation sections for the flowing layout - memoized to prevent hook re-ordering
+  const navigationSections = useMemo(() => [
+    { id: 'summary', title: 'Executive Summary', icon: '📊', completed: true },
+    { id: 'issues', title: 'Issues & Fixes', icon: '🚨', count: (analysis.criticalIssues?.length || 0) + (analysis.usabilityIssues?.length || 0) },
+    { id: 'detailed-analysis', title: 'Detailed Analysis', icon: '🔍' },
+    { id: 'opportunities', title: 'Growth Opportunities', icon: '🚀', count: analysis.opportunities?.length || 0 },
+    { id: 'insights', title: 'Behavioral Insights', icon: '🧠', count: analysis.behavioralInsights?.length || 0 },
+    { id: 'accessibility', title: 'Accessibility', icon: '♿', count: analysis.accessibilityAudit?.criticalFailures?.length || 0 }
+  ], [
+    analysis.criticalIssues?.length,
+    analysis.usabilityIssues?.length,
+    analysis.opportunities?.length,
+    analysis.behavioralInsights?.length,
+    analysis.accessibilityAudit?.criticalFailures?.length
+  ]);
+
+  const { activeSection, setActiveSection } = useFeedbackNavigation(navigationSections);
 
   const openSignIn = () => {
     // Your sign in logic here
@@ -299,13 +319,6 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
 
   const isLoggedIn = !!user;
 
-  // Parse analysis data
-  const analysis = data.analysis || {};
-  const isNewFormat = isNewAnalysisFormat(analysis);
-  
-  // Extract data based on format
-  const score = isNewFormat ? analysis.gripScore.overall : (data.score || 0);
-
   const feedbackContent = (
     <div className="p-12">
       {/* Guest CTA - Only show for non-logged in users */}
@@ -434,158 +447,99 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
         )}
       </motion.div>
 
-      {/* Tab Navigation */}
-      {isNewFormat && (
-        <FeedbackTabs 
-          analysis={analysis} 
-          activeTab={activeTab} 
-          setActiveTab={setActiveTab} 
-          isPro={true} 
-        />
-      )}
+      {/* Navigation Component */}
+      <FeedbackNavigation 
+        sections={navigationSections}
+        activeSection={activeSection}
+        onSectionChange={setActiveSection}
+      />
 
-      {/* Main Content Layout */}
-      {activeTab === 'overview' ? (
-        <div className="space-y-8 w-full">
-          {/* Top Row - Image, Grip Score, Context */}
-          <div className="flex gap-8 w-full">
-            {/* Left Column - Source Image */}
-            <motion.div 
-              className="w-1/3 min-w-[300px]"
-              initial={{ opacity: 0, x: -50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3, duration: 0.6 }}
-            >
-                              <div className="zombify-card p-6">
-                <h3>
-                  <GlitchText className="text-lg font-bold mb-4" trigger="hover">
-                    SOURCE MATERIAL
-                  </GlitchText>
-                </h3>
-                <motion.div 
-                  className="relative overflow-hidden rounded border-2 border-black/20"
-                  whileHover={{ scale: 1.02 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <img
-                    src={data.image_url}
-                    alt="Interface Analysis"
-                    className="w-full h-auto max-h-80 object-contain mx-auto"
-                    onError={(e: any) => {
-                      if (e.target.src !== 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjU2IiBoZWlnaHQ9IjI1NiIgdmlld0JveD0iMCAwIDI1NiAyNTYiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyNTYiIGhlaWdodD0iMjU2IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04MCA4MEgxNzZWMTc2SDgwVjgwWiIgZmlsbD0iI0QxRDVEQiIvPgo8dGV4dCB4PSIxMjgiIHk9IjE0MCIgZm9udC1mYW1pbHk9Im1vbm9zcGFjZSIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzlDQTNBRiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+SW1hZ2U8L3RleHQ+Cjwvc3ZnPgo=') {
-                        e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjU2IiBoZWlnaHQ9IjI1NiIgdmlld0JveD0iMCAwIDI1NiAyNTYiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyNTYiIGhlaWdodD0iMjU2IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04MCA4MEgxNzZWMTc2SDgwVjgwWiIgZmlsbD0iI0QxRDVEQiIvPgo8dGV4dCB4PSIxMjgiIHk9IjE0MCIgZm9udC1mYW1pbHk9Im1vbm9zcGFjZSIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzlDQTNBRiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+SW1hZ2U8L3RleHQ+Cjwvc3ZnPgo=';
-                      }
-                    }}
-                  />
+      {/* Flowing Single-Page Layout */}
+      <div className="space-y-16">
+        {/* Executive Summary */}
+        <section id="summary">
+          <FeedbackSummary 
+            analysis={isNewFormat ? analysis : {
+              context: 'LEGACY' as any,
+              industry: 'UNKNOWN' as any,
+              industryConfidence: 0.85,
+              gripScore: { 
+                overall: score, 
+                breakdown: { 
+                  firstImpression: { score: 0, reasoning: "Legacy analysis", evidence: [] },
+                  usability: { score: 0, reasoning: "Legacy analysis", evidence: [] },
+                  trustworthiness: { score: 0, reasoning: "Legacy analysis", evidence: [] },
+                  conversion: { score: 0, reasoning: "Legacy analysis", evidence: [] },
+                  accessibility: { score: 0, reasoning: "Legacy analysis", evidence: [] }
+                } 
+              },
+              verdict: {
+                summary: "Legacy analysis - upgrade for detailed insights",
+                attentionSpan: "N/A",
+                likelyAction: "N/A", 
+                dropoffPoint: "N/A",
+                memorable: "N/A",
+                attentionFlow: []
+              },
+              visualDesignAnalysis: null as any,
+              uxCopyAnalysis: null as any,
+              criticalIssues: [],
+              usabilityIssues: [],
+              opportunities: [],
+              behavioralInsights: [],
+              generationalAnalysis: null as any,
+              accessibilityAudit: null,
+              timestamp: new Date().toISOString()
+            }}
+            imageUrl={data?.image_url}
+          />
+        </section>
 
-                </motion.div>
-                
-                <motion.p 
-                  className="text-xs opacity-60 mt-3 font-mono text-center"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 1 }}
-                >
-                  ANALYSIS COMPLETE • {new Date(data.created_at).toLocaleString()}
-                </motion.p>
-              </div>
-            </motion.div>
+        {/* Issues & Fixes */}
+        <section id="issues">
+          <FeedbackCriticalIssues 
+            analysis={isNewFormat ? analysis : {
+              context: 'LEGACY' as any,
+              industry: 'UNKNOWN' as any,
+              industryConfidence: 0,
+              gripScore: { 
+                overall: score, 
+                breakdown: { 
+                  firstImpression: { score: 0, reasoning: "Legacy analysis", evidence: [] },
+                  usability: { score: 0, reasoning: "Legacy analysis", evidence: [] },
+                  trustworthiness: { score: 0, reasoning: "Legacy analysis", evidence: [] },
+                  conversion: { score: 0, reasoning: "Legacy analysis", evidence: [] },
+                  accessibility: { score: 0, reasoning: "Legacy analysis", evidence: [] }
+                } 
+              },
+              verdict: {
+                summary: "Legacy analysis format",
+                attentionSpan: "N/A",
+                likelyAction: "N/A",
+                dropoffPoint: "N/A",
+                memorable: "N/A",
+                attentionFlow: []
+              },
+              visualDesignAnalysis: null as any,
+              uxCopyAnalysis: null as any,
+              criticalIssues: [],
+              usabilityIssues: [],
+              opportunities: [],
+              behavioralInsights: [],
+              generationalAnalysis: null as any,
+              accessibilityAudit: null,
+              timestamp: new Date().toISOString()
+            }}
+            imageUrl={data?.image_url}
+            isLoggedIn={isLoggedIn}
+            isPro={true}
+          />
+        </section>
 
-            {/* Right Column - Grip Score and Generational Chart */}
-            <div className="flex-1 space-y-6">
-              {/* Grip Score Card */}
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4, duration: 0.6 }}
-              >
-                {isNewFormat ? (
-                  <GripScoreCard 
-                    gripScore={analysis.gripScore}
-                    showBreakdown={true}
-                  />
-                ) : (
-                  <GripScoreCard score={score} />
-                )}
-              </motion.div>
-
-              {/* Generational Radar Chart */}
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.5, duration: 0.6 }}
-              >
-                <div className="zombify-card p-6 relative overflow-hidden">
-                  {((isNewFormat && analysis.generationalAnalysis) || (!isNewFormat && analysis?.generationalScores)) ? (
-                    <GenerationalRadarChart 
-                      scores={isNewFormat ? analysis.generationalAnalysis.scores : analysis.generationalScores}
-                      primaryTarget={isNewFormat ? analysis.generationalAnalysis.primaryTarget : (analysis.primaryTarget || 'millennials')}
-                    />
-                  ) : (
-                    <div className="text-center p-8">
-                      <div className="text-4xl mb-4">📊</div>
-                      <div className="text-sm font-mono opacity-70">Generational data unavailable</div>
-                    </div>
-                  )}
-
-
-                </div>
-              </motion.div>
-            </div>
-          </div>
-
-          {/* Verdict Card - Full width */}
-          {isNewFormat && (
-            <>
-              {/* Debug info - remove after testing */}
-              {console.log('Verdict data:', analysis.verdict)}
-              {analysis.verdict ? (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
-                >
-                  <VerdictCard verdict={analysis.verdict} imageUrl={data.image_url} />
-                </motion.div>
-              ) : (
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded text-yellow-800">
-                  <p className="text-sm">No verdict data available for this analysis.</p>
-                  <p className="text-xs opacity-70 mt-1">This might be an older analysis or the verdict wasn't generated.</p>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* Analysis Cards Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Visual Design Analysis */}
-            {isNewFormat && analysis.visualDesignAnalysis && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-              >
-                <VisualDesignAnalysisCard visualDesign={analysis.visualDesignAnalysis} />
-              </motion.div>
-            )}
-
-            {/* UX Copy Analysis */}
-            {isNewFormat && analysis.uxCopyAnalysis && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 }}
-              >
-                <UXCopyAnalysisCard uxCopy={analysis.uxCopyAnalysis} />
-              </motion.div>
-            )}
-          </div>
-        </div>
-      ) : (
-        // All other tabs use FeedbackDisplay component
-        <div className="w-full">
-          <FeedbackDisplay 
-            analysis={isNewFormat ? analysis : { 
+        {/* Detailed Analysis */}
+        <section id="detailed-analysis">
+          <FeedbackDetailedAnalysis 
+            analysis={isNewFormat ? analysis : {
               context: 'LEGACY' as any,
               industry: 'UNKNOWN' as any,
               industryConfidence: 0,
@@ -654,14 +608,80 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
               timestamp: new Date().toISOString(),
               accessibilityAudit: null
             }}
-            isLoggedIn={isLoggedIn}
-            isPro={true}
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            imageUrl={data.image_url}
           />
-        </div>
-      )}
+        </section>
+
+        {/* Growth Opportunities - Pro Feature */}
+        <section id="opportunities">
+          <FeedbackOpportunities 
+            analysis={isNewFormat ? analysis : {
+              context: 'LEGACY' as any,
+              industry: 'UNKNOWN' as any,
+              industryConfidence: 0,
+              gripScore: { overall: score, breakdown: {} as any },
+              verdict: { summary: "", attentionSpan: "", likelyAction: "", dropoffPoint: "", memorable: "", attentionFlow: [] },
+              visualDesignAnalysis: null as any,
+              uxCopyAnalysis: null as any,
+              criticalIssues: [],
+              usabilityIssues: [],
+              opportunities: [],
+              behavioralInsights: [],
+              generationalAnalysis: null as any,
+              accessibilityAudit: null,
+              timestamp: new Date().toISOString()
+            }}
+            imageUrl={data?.image_url}
+            isPro={isLoggedIn}
+            onUpgrade={() => {/* Handle upgrade logic */}}
+          />
+        </section>
+
+        {/* Behavioral Insights - Pro Feature */}
+        <section id="insights">
+          <FeedbackInsights 
+            analysis={isNewFormat ? analysis : {
+              context: 'LEGACY' as any,
+              industry: 'UNKNOWN' as any,
+              industryConfidence: 0,
+              gripScore: { overall: score, breakdown: {} as any },
+              verdict: { summary: "", attentionSpan: "", likelyAction: "", dropoffPoint: "", memorable: "", attentionFlow: [] },
+              visualDesignAnalysis: null as any,
+              uxCopyAnalysis: null as any,
+              criticalIssues: [],
+              usabilityIssues: [],
+              opportunities: [],
+              behavioralInsights: [],
+              generationalAnalysis: null as any,
+              accessibilityAudit: null,
+              timestamp: new Date().toISOString()
+            }}
+            isPro={isLoggedIn}
+            onUpgrade={() => {/* Handle upgrade logic */}}
+          />
+        </section>
+
+        {/* Accessibility Analysis */}
+        <section id="accessibility">
+          <FeedbackAccessibility 
+            analysis={isNewFormat ? analysis : {
+              context: 'LEGACY' as any,
+              industry: 'UNKNOWN' as any,
+              industryConfidence: 0,
+              gripScore: { overall: score, breakdown: {} as any },
+              verdict: { summary: "", attentionSpan: "", likelyAction: "", dropoffPoint: "", memorable: "", attentionFlow: [] },
+              visualDesignAnalysis: null as any,
+              uxCopyAnalysis: null as any,
+              criticalIssues: [],
+              usabilityIssues: [],
+              opportunities: [],
+              behavioralInsights: [],
+              generationalAnalysis: null as any,
+              accessibilityAudit: null,
+              timestamp: new Date().toISOString()
+            }}
+          />
+        </section>
+      </div>
 
       {/* Bottom CTA Section - Only show if NOT logged in */}
       {!isLoggedIn && (

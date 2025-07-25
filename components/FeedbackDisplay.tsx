@@ -10,6 +10,7 @@ import GenerationalRadarChart from './GenerationalRadarChart';
 import VisualDesignAnalysisCard from './VisualDesignAnalysisCard';
 import UXCopyAnalysisCard from './UXCopyAnalysisCard';
 import VerdictCard from './VerdictCard';
+import FeedbackSummary from './feedback/FeedbackSummary';
 
 // Keep backward compatibility with old props
 type LegacyFeedbackDisplayProps = {
@@ -116,115 +117,37 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <div className="space-y-8">
-              {/* Header Section */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-center mb-8"
-              >
-                <GlitchText className="text-3xl font-bold mb-4" trigger="mount">
-                  ANALYSIS OVERVIEW
-                </GlitchText>
-                <div className="text-sm opacity-70 font-mono">
-                  Complete UX assessment • {analysis.context} • {analysis.industry}
-                </div>
-              </motion.div>
+              {/* New Summary Section - Replaces old header, grip score, and verdict */}
+              <FeedbackSummary 
+                analysis={analysis}
+                imageUrl={imageUrl}
+              />
 
-              {/* Source Material Section - ENHANCED */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="zombify-card p-6 relative overflow-hidden"
-              >
-                <div className="text-center mb-4">
-                  <GlitchText className="text-xl font-bold mb-2" trigger="hover">
-                    SOURCE MATERIAL
-                  </GlitchText>
-                  <div className="text-sm opacity-60 font-mono">Original interface scan</div>
-                </div>
-                
-                {/* Display the actual uploaded image */}
-                {imageUrl && (
-                  <div className="relative">
-                    <img 
-                      src={imageUrl} 
-                      alt="Analyzed interface" 
-                      className="w-full rounded-lg border border-black/20"
-                    />
-                    <div className="absolute top-4 right-4">
-                      <motion.button
-                        className="bg-black/80 text-white px-3 py-1 rounded text-sm font-mono"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => window.open(imageUrl, '_blank')}
-                      >
-                        View Full Size ↗
-                      </motion.button>
-                    </div>
-                  </div>
-                )}
-
-              </motion.div>
-
-              {/* Main Analysis Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Grip Score Card */}
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.2 }}
-                >
-                  <GripScoreCard 
-                    gripScore={analysis.gripScore} 
-                    showBreakdown={true}
-                  />
-                </motion.div>
-
-                {/* Generational Radar Chart */}
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3 }}
-                >
-                  <div className="zombify-card p-6 relative overflow-hidden">
-                    {analysis.generationalAnalysis ? (
-                      <GenerationalRadarChart
-                        scores={{
-                          genAlpha: analysis.generationalAnalysis.scores.genAlpha || { score: 0, reasoning: 'No data' },
-                          genZ: analysis.generationalAnalysis.scores.genZ || { score: 0, reasoning: 'No data' },
-                          millennials: analysis.generationalAnalysis.scores.millennials || { score: 0, reasoning: 'No data' },
-                          genX: analysis.generationalAnalysis.scores.genX || { score: 0, reasoning: 'No data' },
-                          boomers: analysis.generationalAnalysis.scores.boomers || { score: 0, reasoning: 'No data' }
-                        }}
-                        primaryTarget={analysis.generationalAnalysis.primaryTarget || 'millennials'}
-                      />
-                    ) : (
-                      <div className="text-center p-8">
-                        <div className="text-4xl mb-4">📊</div>
-                        <div className="text-sm font-mono opacity-70">Generational data unavailable</div>
-                      </div>
-                    )}
-
-
-                  </div>
-                </motion.div>
-              </div>
-
-              {/* Verdict Card - Full width */}
-              {analysis.verdict ? (
+              {/* Generational Analysis - Keep this separate for now */}
+              {analysis.generationalAnalysis && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
+                  transition={{ delay: 0.3 }}
+                  className="zombify-card p-6 relative overflow-hidden"
                 >
-                  <VerdictCard verdict={analysis.verdict} imageUrl={imageUrl} />
+                  <div className="text-center mb-4">
+                    <GlitchText className="text-xl font-bold mb-2" trigger="hover">
+                      GENERATIONAL APPEAL
+                    </GlitchText>
+                    <div className="text-sm opacity-60 font-mono">Target audience alignment</div>
+                  </div>
+                  <GenerationalRadarChart
+                    scores={{
+                      genAlpha: analysis.generationalAnalysis.scores.genAlpha || { score: 0, reasoning: 'No data' },
+                      genZ: analysis.generationalAnalysis.scores.genZ || { score: 0, reasoning: 'No data' },
+                      millennials: analysis.generationalAnalysis.scores.millennials || { score: 0, reasoning: 'No data' },
+                      genX: analysis.generationalAnalysis.scores.genX || { score: 0, reasoning: 'No data' },
+                      boomers: analysis.generationalAnalysis.scores.boomers || { score: 0, reasoning: 'No data' }
+                    }}
+                    primaryTarget={analysis.generationalAnalysis.primaryTarget || 'millennials'}
+                  />
                 </motion.div>
-              ) : (
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 mb-6">
-                  <p className="text-sm">No verdict data available.</p>
-                  <p className="text-xs opacity-70 mt-1">This might be an older analysis format.</p>
-                </div>
               )}
 
               {/* Analysis Cards Row */}
