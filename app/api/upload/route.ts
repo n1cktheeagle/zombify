@@ -75,6 +75,7 @@ export async function POST(req: NextRequest) {
       is_guest: finalIsGuest,
       chain_id: uuidv4(),
       created_at: new Date().toISOString(),
+      original_filename: file.name, // Store original uploaded filename for better UX
     };
 
     console.log('About to insert to database:', {

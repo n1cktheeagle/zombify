@@ -10,7 +10,6 @@ import GenerationalRadarChart from './GenerationalRadarChart';
 import VisualDesignAnalysisCard from './VisualDesignAnalysisCard';
 import UXCopyAnalysisCard from './UXCopyAnalysisCard';
 import VerdictCard from './VerdictCard';
-import VisualAnnotationsOverlay from './VisualAnnotationsOverlay';
 
 // Keep backward compatibility with old props
 type LegacyFeedbackDisplayProps = {
@@ -48,6 +47,8 @@ export const feedbackTabs = [
 ];
 
 export default function FeedbackDisplay(props: FeedbackDisplayProps) {
+  const [showImageComparison, setShowImageComparison] = useState(false);
+  
   // For new format, use props.activeTab and props.setActiveTab
   if (!isNewFormat(props)) {
     return (
@@ -129,12 +130,12 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                 </div>
               </motion.div>
 
-              {/* Source Material Section */}
+              {/* Source Material Section - ENHANCED */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="zombify-card p-6 scan-line relative overflow-hidden"
+                className="zombify-card p-6 relative overflow-hidden"
               >
                 <div className="text-center mb-4">
                   <GlitchText className="text-xl font-bold mb-2" trigger="hover">
@@ -143,25 +144,27 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                   <div className="text-sm opacity-60 font-mono">Original interface scan</div>
                 </div>
                 
-                {/* This would contain the uploaded image - placeholder for now */}
-                <div className="bg-black/5 border border-black/10 rounded-lg p-8 text-center">
-                  <div className="text-4xl mb-4">🖼️</div>
-                  <div className="text-sm font-mono opacity-70">Uploaded interface image</div>
-                </div>
-                
-                {/* Scanning line effect */}
-                <motion.div
-                  className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-400/10 to-transparent pointer-events-none"
-                  animate={{
-                    y: ['-100%', '100%']
-                  }}
-                  transition={{
-                    repeat: Infinity,
-                    duration: 4,
-                    ease: "linear"
-                  }}
-                  style={{ height: '20px' }}
-                />
+                {/* Display the actual uploaded image */}
+                {imageUrl && (
+                  <div className="relative">
+                    <img 
+                      src={imageUrl} 
+                      alt="Analyzed interface" 
+                      className="w-full rounded-lg border border-black/20"
+                    />
+                    <div className="absolute top-4 right-4">
+                      <motion.button
+                        className="bg-black/80 text-white px-3 py-1 rounded text-sm font-mono"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => window.open(imageUrl, '_blank')}
+                      >
+                        View Full Size ↗
+                      </motion.button>
+                    </div>
+                  </div>
+                )}
+
               </motion.div>
 
               {/* Main Analysis Grid */}
@@ -184,7 +187,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.3 }}
                 >
-                  <div className="zombify-card p-6 scan-line relative overflow-hidden">
+                  <div className="zombify-card p-6 relative overflow-hidden">
                     {analysis.generationalAnalysis ? (
                       <GenerationalRadarChart
                         scores={{
@@ -203,19 +206,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                       </div>
                     )}
 
-                    {/* Scanning line effect */}
-                    <motion.div
-                      className="absolute inset-0 bg-gradient-to-b from-transparent via-purple-400/10 to-transparent pointer-events-none"
-                      animate={{
-                        y: ['-100%', '100%']
-                      }}
-                      transition={{
-                        repeat: Infinity,
-                        duration: 4,
-                        ease: "linear"
-                      }}
-                      style={{ height: '20px' }}
-                    />
+
                   </div>
                 </motion.div>
               </div>
@@ -271,104 +262,128 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                 animate={{ opacity: 1, y: 0 }}
                 className="mb-6"
               >
-                <GlitchText className="text-2xl font-bold mb-2" trigger="mount">
-                  ISSUES & FIXES
-                </GlitchText>
-                <div className="text-sm opacity-70 font-mono">
-                  Issues requiring immediate attention and areas for improvement
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h2>
+                      <GlitchText className="text-2xl font-bold mb-2" trigger="mount">
+                        ISSUES & FIXES
+                      </GlitchText>
+                    </h2>
+                    <div className="text-sm opacity-70 font-mono">
+                      Issues requiring immediate attention and areas for improvement
+                    </div>
+                  </div>
+                  
+                  {/* Side-by-side comparison toggle */}
+                  {imageUrl && (
+                    <motion.button
+                      className="bg-black text-white px-4 py-2 rounded font-mono text-sm"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setShowImageComparison(!showImageComparison)}
+                    >
+                      {showImageComparison ? 'Hide' : 'Show'} Image Reference
+                    </motion.button>
+                  )}
                 </div>
               </motion.div>
               
-              {/* Visual Annotations Overlay - NEW */}
-              {imageUrl && analysis.visualAnnotations && analysis.visualAnnotations.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="mb-8"
-                >
-                  <div className="zombify-card p-6">
-                    <h3 className="text-lg font-bold mb-4">Visual Issue Map</h3>
-                    <p className="text-sm opacity-70 mb-4">Click on numbered markers to see issue details</p>
-                    <VisualAnnotationsOverlay
-                      imageUrl={imageUrl}
-                      annotations={analysis.visualAnnotations.filter(a => 
-                        a.type === 'critical' || a.type === 'warning'
-                      )}
-                      className="rounded-lg overflow-hidden border-2 border-black/20"
-                    />
-                  </div>
-                </motion.div>
-              )}
-              
-              {/* Critical Issues Section */}
-              {analysis.criticalIssues.length > 0 && (
+              {/* Side-by-side layout when enabled */}
+              <div className={showImageComparison ? 'grid grid-cols-1 lg:grid-cols-2 gap-6' : ''}>
+                {/* Image reference panel */}
+                {showImageComparison && imageUrl && (
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="lg:sticky lg:top-4 h-fit"
+                  >
+                    <div className="zombify-card p-4">
+                      <h3 className="text-lg font-bold mb-3">Reference Image</h3>
+                      <img 
+                        src={imageUrl} 
+                        alt="Reference" 
+                        className="w-full rounded-lg border border-black/20"
+                      />
+                      <p className="text-xs opacity-60 mt-2 font-mono">
+                        Refer to this image while reviewing issues
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+                
+                {/* Issues list */}
                 <div className="space-y-4">
-                  <div className="border-l-4 border-red-500 pl-4">
-                    <h3 className="text-xl font-bold text-red-700 mb-2">Critical Issues</h3>
-                    <p className="text-sm text-red-600 mb-4">These issues need immediate attention</p>
-                  </div>
-                  {analysis.criticalIssues.map((issue, index) => (
-                    <IssueCard
-                      key={`critical-${index}`}
-                      issue={issue}
-                      index={index}
-                      type="critical"
-                      isPro={isPro}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {/* Usability Issues Section */}
-              {analysis.usabilityIssues.length > 0 && (
-                <div className="space-y-4">
-                  <div className="border-l-4 border-orange-500 pl-4">
-                    <h3 className="text-xl font-bold text-orange-700 mb-2">Usability Issues</h3>
-                    <p className="text-sm text-orange-600 mb-4">Areas for improvement to enhance user experience</p>
-                  </div>
-                  {analysis.usabilityIssues.slice(0, isLoggedIn ? undefined : 2).map((issue, index) => (
-                    <IssueCard
-                      key={`usability-${index}`}
-                      issue={issue}
-                      index={index + analysis.criticalIssues.length}
-                      type="usability"
-                      isPro={isPro}
-                    />
-                  ))}
-                  
-                  {!isLoggedIn && analysis.usabilityIssues.length > 2 && (
-                    <motion.div
-                      className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                    >
-                      <div className="font-mono text-sm opacity-70 mb-2">
-                        + {analysis.usabilityIssues.length - 2} more issues detected
+                  {/* Critical Issues Section */}
+                  {analysis.criticalIssues.length > 0 && (
+                    <div className="space-y-4">
+                      <div className="border-l-4 border-red-500 pl-4">
+                        <h3 className="text-xl font-bold text-red-700 mb-2">Critical Issues</h3>
+                        <p className="text-sm text-red-600 mb-4">These issues need immediate attention</p>
                       </div>
-                      <button className="zombify-primary-button px-6 py-2 text-sm">
-                        SIGN UP TO VIEW ALL
-                      </button>
+                      {analysis.criticalIssues.map((issue, index) => (
+                        <IssueCard
+                          key={`critical-${index}`}
+                          issue={issue}
+                          index={index}
+                          type="critical"
+                          isPro={isPro}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Usability Issues Section */}
+                  {analysis.usabilityIssues.length > 0 && (
+                    <div className="space-y-4">
+                      <div className="border-l-4 border-orange-500 pl-4">
+                        <h3 className="text-xl font-bold text-orange-700 mb-2">Usability Issues</h3>
+                        <p className="text-sm text-orange-600 mb-4">Areas for improvement to enhance user experience</p>
+                      </div>
+                      {analysis.usabilityIssues.slice(0, isLoggedIn ? undefined : 2).map((issue, index) => (
+                        <IssueCard
+                          key={`usability-${index}`}
+                          issue={issue}
+                          index={index + analysis.criticalIssues.length}
+                          type="usability"
+                          isPro={isPro}
+                        />
+                      ))}
+                      
+                      {!isLoggedIn && analysis.usabilityIssues.length > 2 && (
+                        <motion.div
+                          className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                        >
+                          <div className="font-mono text-sm opacity-70 mb-2">
+                            + {analysis.usabilityIssues.length - 2} more issues detected
+                          </div>
+                          <button className="zombify-primary-button px-6 py-2 text-sm">
+                            SIGN UP TO VIEW ALL
+                          </button>
+                        </motion.div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* No Issues State */}
+                  {analysis.criticalIssues.length === 0 && analysis.usabilityIssues.length === 0 && (
+                    <motion.div
+                      className="text-center py-12 bg-green-50 border border-green-200 rounded-lg"
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                    >
+                      <div className="text-6xl mb-4">✨</div>
+                      <GlitchText className="text-xl font-bold mb-2" trigger="mount">
+                        NO CRITICAL ISSUES DETECTED
+                      </GlitchText>
+                      <p className="text-sm opacity-70 font-mono">
+                        Your design follows good UX practices
+                      </p>
                     </motion.div>
                   )}
                 </div>
-              )}
-
-              {/* No Issues State */}
-              {analysis.criticalIssues.length === 0 && analysis.usabilityIssues.length === 0 && (
-                <motion.div
-                  className="text-center py-12 bg-green-50 border border-green-200 rounded-lg"
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                >
-                  <div className="text-6xl mb-4">✨</div>
-                  <GlitchText className="text-xl font-bold mb-2" trigger="mount">
-                    NO CRITICAL ISSUES DETECTED
-                  </GlitchText>
-                  <p className="text-sm opacity-70 font-mono">
-                    Your design follows good UX practices
-                  </p>
-                </motion.div>
-              )}
+              </div>
             </div>
           )}
 
@@ -380,62 +395,85 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                 animate={{ opacity: 1, y: 0 }}
                 className="mb-6"
               >
-                <GlitchText className="text-2xl font-bold mb-2" trigger="mount">
-                  OPPORTUNITIES
-                </GlitchText>
-                <div className="text-sm opacity-70 font-mono">
-                  Growth and improvement opportunities
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h2>
+                      <GlitchText className="text-2xl font-bold mb-2" trigger="mount">
+                        OPPORTUNITIES
+                      </GlitchText>
+                    </h2>
+                    <div className="text-sm opacity-70 font-mono">
+                      Growth and improvement opportunities
+                    </div>
+                  </div>
+                  
+                  {/* Side-by-side comparison toggle */}
+                  {isPro && imageUrl && (
+                    <motion.button
+                      className="bg-black text-white px-4 py-2 rounded font-mono text-sm"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setShowImageComparison(!showImageComparison)}
+                    >
+                      {showImageComparison ? 'Hide' : 'Show'} Image Reference
+                    </motion.button>
+                  )}
                 </div>
               </motion.div>
 
               {isPro ? (
-                <div className="space-y-4">
-                  {/* Visual Annotations Overlay for Opportunities - NEW */}
-                  {imageUrl && analysis.visualAnnotations && analysis.visualAnnotations.filter(a => a.type === 'opportunity').length > 0 && (
+                <div className={showImageComparison ? 'grid grid-cols-1 lg:grid-cols-2 gap-6' : 'space-y-4'}>
+                  {/* Image reference panel */}
+                  {showImageComparison && imageUrl && (
                     <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="mb-8"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="lg:sticky lg:top-4 h-fit"
                     >
-                      <div className="zombify-card p-6">
-                        <h3 className="text-lg font-bold mb-4">Opportunity Map</h3>
-                        <p className="text-sm opacity-70 mb-4">Green markers show areas with growth potential</p>
-                        <VisualAnnotationsOverlay
-                          imageUrl={imageUrl}
-                          annotations={analysis.visualAnnotations.filter(a => a.type === 'opportunity')}
-                          className="rounded-lg overflow-hidden border-2 border-black/20"
+                      <div className="zombify-card p-4">
+                        <h3 className="text-lg font-bold mb-3">Reference Image</h3>
+                        <img 
+                          src={imageUrl} 
+                          alt="Reference" 
+                          className="w-full rounded-lg border border-black/20"
                         />
+                        <p className="text-xs opacity-60 mt-2 font-mono">
+                          Refer to this image while reviewing opportunities
+                        </p>
                       </div>
                     </motion.div>
                   )}
                   
-                  {analysis.opportunities?.map((opp, index) => (
-                    <motion.div
-                      key={index}
-                      className="border-2 border-green-500 bg-green-500/5 p-6 rounded-lg backdrop-blur-sm"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                    >
-                      <div className="flex justify-between items-start mb-4">
-                        <h4 className="font-bold text-lg">{opp.opportunity}</h4>
-                        <span className="text-xs bg-green-600 text-white px-3 py-1 rounded-full font-bold">
-                          {opp.potentialImpact}
-                        </span>
-                      </div>
-                      <p className="text-sm opacity-80 mb-4">{opp.reasoning}</p>
-                      {opp.implementation && (
-                        <div className="bg-green-100 p-3 rounded text-sm">
-                          <strong>Implementation:</strong> {opp.implementation}
+                  {/* Opportunities list */}
+                  <div className="space-y-4">
+                    {analysis.opportunities?.map((opp, index) => (
+                      <motion.div
+                        key={index}
+                        className="border-2 border-green-500 bg-green-500/5 p-6 rounded-lg backdrop-blur-sm"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                      >
+                        <div className="flex justify-between items-start mb-4">
+                          <h4 className="font-bold text-lg">{opp.opportunity}</h4>
+                          <span className="text-xs bg-green-600 text-white px-3 py-1 rounded-full font-bold">
+                            {opp.potentialImpact}
+                          </span>
                         </div>
-                      )}
-                    </motion.div>
-                  )) || (
-                    <div className="text-center py-12 opacity-60">
-                      <div className="text-4xl mb-4">🎯</div>
-                      <div className="font-mono">No opportunities detected in this analysis</div>
-                    </div>
-                  )}
+                        <p className="text-sm opacity-80 mb-4">{opp.reasoning}</p>
+                        {opp.implementation && (
+                          <div className="bg-green-100 p-3 rounded text-sm">
+                            <strong>Implementation:</strong> {opp.implementation}
+                          </div>
+                        )}
+                      </motion.div>
+                    )) || (
+                      <div className="text-center py-12 opacity-60">
+                        <div className="text-4xl mb-4">🎯</div>
+                        <div className="font-mono">No opportunities detected in this analysis</div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <motion.div
@@ -464,9 +502,11 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                 animate={{ opacity: 1, y: 0 }}
                 className="mb-6"
               >
-                <GlitchText className="text-2xl font-bold mb-2" trigger="mount">
-                  BEHAVIORAL INSIGHTS
-                </GlitchText>
+                        <h3>
+          <GlitchText className="text-2xl font-bold mb-2" trigger="mount">
+            BEHAVIORAL INSIGHTS
+          </GlitchText>
+        </h3>
                 <div className="text-sm opacity-70 font-mono">
                   User behavior patterns and psychology
                 </div>
@@ -539,23 +579,11 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                 <>
                   {/* Accessibility Score Matrix */}
                   <motion.div 
-                    className="zombify-card p-6 scan-line relative overflow-hidden"
+                    className="zombify-card p-6 relative overflow-hidden"
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                   >
-                    {/* Scanning line effect */}
-                    <motion.div
-                      className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent pointer-events-none"
-                      animate={{
-                        x: ['-100%', '100%']
-                      }}
-                      transition={{
-                        repeat: Infinity,
-                        duration: 3,
-                        ease: "linear"
-                      }}
-                      style={{ width: '30%', height: '100%' }}
-                    />
+
                     
                     <div className="relative z-10">
                       <div className="text-center mb-6">
@@ -587,7 +615,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                       {analysis.accessibilityAudit.strengths && analysis.accessibilityAudit.strengths.length > 0 && (
                         <motion.div 
-                          className="zombify-card p-6 scan-line relative overflow-hidden"
+                          className="zombify-card p-6 relative overflow-hidden"
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
                         >
@@ -616,7 +644,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                       
                       {analysis.accessibilityAudit.weaknesses && analysis.accessibilityAudit.weaknesses.length > 0 && (
                         <motion.div 
-                          className="zombify-card p-6 scan-line relative overflow-hidden"
+                          className="zombify-card p-6 relative overflow-hidden"
                           initial={{ opacity: 0, x: 20 }}
                           animate={{ opacity: 1, x: 0 }}
                         >
@@ -662,7 +690,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                       {analysis.accessibilityAudit.criticalFailures.map((failure, i) => (
                         <motion.div 
                           key={i} 
-                          className="zombify-card p-6 scan-line relative overflow-hidden"
+                          className="zombify-card p-6 relative overflow-hidden"
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: i * 0.1 }}

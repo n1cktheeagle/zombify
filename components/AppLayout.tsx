@@ -26,6 +26,7 @@ interface FeedbackItem {
   user_id: string | null;
   is_guest: boolean;
   image_url: string;
+  original_filename: string | null;
   analysis?: any;
 }
 
@@ -67,7 +68,7 @@ export function AppLayout({ children, currentAnalysis, fullWidth = false }: AppL
           // Transform feedback data to match sidebar interface
           const transformedAnalyses = feedbackData.map((item: FeedbackItem) => ({
             id: item.id,
-            fileName: `Analysis #${item.id.slice(0, 8)}`,
+            fileName: item.original_filename || `Analysis #${item.id.slice(0, 8)}`,
             gripScore: item.score,
             context: item.user_id ? 'user_upload' : 'guest_upload',
             timestamp: item.created_at

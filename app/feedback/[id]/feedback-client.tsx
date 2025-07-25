@@ -28,6 +28,7 @@ interface FeedbackData {
   score: number;
   user_id: string | null;
   is_guest: boolean;
+  original_filename: string | null;
 }
 
 // Helper function to check if analysis is new format
@@ -160,9 +161,11 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
             >
               ⚠️
             </motion.div>
-            <GlitchText className="text-2xl mb-4" trigger="continuous">
-              ERROR LOADING ANALYSIS
-            </GlitchText>
+            <h2>
+              <GlitchText className="text-2xl mb-4" trigger="continuous">
+                ERROR LOADING ANALYSIS
+              </GlitchText>
+            </h2>
             <motion.p 
               className="mb-4 text-gray-600"
               initial={{ opacity: 0 }}
@@ -223,9 +226,11 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
             >
               ⏳
             </motion.div>
-            <GlitchText className="text-xl mb-2" trigger="continuous">
-              LOADING ANALYSIS...
-            </GlitchText>
+            <h2>
+              <GlitchText className="text-xl mb-2" trigger="continuous">
+                LOADING ANALYSIS...
+              </GlitchText>
+            </h2>
             <motion.div className="flex justify-center mb-4">
               {[0, 1, 2, 3, 4].map((i) => (
                 <motion.div
@@ -272,9 +277,11 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
             >
               👻
             </motion.div>
-            <GlitchText className="text-2xl mb-4" trigger="continuous">
-              ANALYSIS NOT FOUND
-            </GlitchText>
+            <h2>
+              <GlitchText className="text-2xl mb-4" trigger="continuous">
+                ANALYSIS NOT FOUND
+              </GlitchText>
+            </h2>
             <p className="mb-4">This analysis could not be found.</p>
             <p className="text-sm opacity-60 mb-4 font-mono">Analysis ID: {params.id}</p>
             <motion.button 
@@ -360,9 +367,11 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
         transition={{ delay: 0.2 }}
       >
         <div>
-          <GlitchText className="text-4xl font-bold mb-2" trigger="mount" intensity="high">
-            ANALYSIS #{data.id.slice(0, 8).toUpperCase()}
-          </GlitchText>
+          <h1>
+            <GlitchText className="text-4xl font-bold mb-2" trigger="mount" intensity="high">
+              {data.original_filename || `ANALYSIS #${data.id.slice(0, 8).toUpperCase()}`}
+            </GlitchText>
+          </h1>
           <motion.div 
             className="flex items-center gap-4 text-sm opacity-60 font-mono"
             initial={{ opacity: 0 }}
@@ -447,10 +456,12 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.3, duration: 0.6 }}
             >
-              <div className="zombify-card p-6 scan-line">
-                <GlitchText className="text-lg font-bold mb-4" trigger="hover">
-                  SOURCE MATERIAL
-                </GlitchText>
+                              <div className="zombify-card p-6">
+                <h3>
+                  <GlitchText className="text-lg font-bold mb-4" trigger="hover">
+                    SOURCE MATERIAL
+                  </GlitchText>
+                </h3>
                 <motion.div 
                   className="relative overflow-hidden rounded border-2 border-black/20"
                   whileHover={{ scale: 1.02 }}
@@ -466,20 +477,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
                       }
                     }}
                   />
-                  
-                  {/* Overlay scanning effect */}
-                  <motion.div
-                    className="absolute inset-0 bg-gradient-to-b from-transparent via-green-400/10 to-transparent h-full"
-                    animate={{
-                      y: ['-100%', '100%']
-                    }}
-                    transition={{
-                      repeat: Infinity,
-                      duration: 3,
-                      ease: "linear"
-                    }}
-                    style={{ width: '100%', height: '20px' }}
-                  />
+
                 </motion.div>
                 
                 <motion.p 
@@ -517,7 +515,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.5, duration: 0.6 }}
               >
-                <div className="zombify-card p-6 scan-line relative overflow-hidden">
+                <div className="zombify-card p-6 relative overflow-hidden">
                   {((isNewFormat && analysis.generationalAnalysis) || (!isNewFormat && analysis?.generationalScores)) ? (
                     <GenerationalRadarChart 
                       scores={isNewFormat ? analysis.generationalAnalysis.scores : analysis.generationalScores}
@@ -530,19 +528,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
                     </div>
                   )}
 
-                  {/* Scanning line effect */}
-                  <motion.div
-                    className="absolute inset-0 bg-gradient-to-b from-transparent via-purple-400/10 to-transparent pointer-events-none"
-                    animate={{
-                      y: ['-100%', '100%']
-                    }}
-                    transition={{
-                      repeat: Infinity,
-                      duration: 4,
-                      ease: "linear"
-                    }}
-                    style={{ height: '20px' }}
-                  />
+
                 </div>
               </motion.div>
             </div>
@@ -703,9 +689,11 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
               🧠
             </motion.div>
             
-            <GlitchText className="text-2xl font-bold mb-4" trigger="continuous">
-              UPGRADE TO PREMIUM
-            </GlitchText>
+            <h2>
+              <GlitchText className="text-2xl font-bold mb-4" trigger="continuous">
+                UPGRADE TO PREMIUM
+              </GlitchText>
+            </h2>
             
             <motion.p 
               className="text-sm opacity-70 mb-6 max-w-md mx-auto font-mono"

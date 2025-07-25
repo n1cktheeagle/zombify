@@ -14,23 +14,11 @@ interface VerdictCardProps {
 export default function VerdictCard({ verdict, className = '' }: VerdictCardProps) {
   return (
     <motion.div 
-      className={`zombify-card p-6 scan-line relative overflow-hidden ${className}`}
+      className={`zombify-card p-6 relative overflow-hidden ${className}`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
     >
-      {/* Scanning line effect */}
-      <motion.div
-        className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent pointer-events-none"
-        animate={{
-          x: ['-100%', '100%']
-        }}
-        transition={{
-          repeat: Infinity,
-          duration: 3,
-          ease: "linear"
-        }}
-        style={{ width: '30%', height: '100%' }}
-      />
+
       
       <div className="relative z-10">
         <div className="flex items-center gap-3 mb-6">

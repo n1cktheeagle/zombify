@@ -178,12 +178,7 @@ export default function UploadZone({
             }
           }}
         >
-          {/* Scanlines overlay - only visible on hover when enabled */}
-          {!isDisabled && (
-            <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-[0.15] transition-opacity duration-300">
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black to-transparent bg-[length:100%_4px] animate-pulse" />
-            </div>
-          )}
+
 
           <input 
             id="file-input" 

@@ -14,6 +14,7 @@ interface FeedbackItem {
   user_id: string | null;
   is_guest: boolean;
   image_url: string;
+  original_filename: string | null;
   analysis?: ZombifyAnalysis | any; // Support both new and old formats
 }
 
@@ -223,12 +224,12 @@ export default function Dashboard() {
     : 0;
 
   return (
-    <div className="p-6">
-      <div className="max-w-4xl mx-auto">
+    <div className="p-12">
+      <div>
         
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">DASHBOARD</h1>
+                      <h1 className="text-4xl font-bold mb-2 font-heading">DASHBOARD</h1>
           <p className="text-lg opacity-70">
             Welcome back, {user.email?.split('@')[0]}! Upload and manage your interface analyses.
           </p>
@@ -267,7 +268,7 @@ export default function Dashboard() {
 
         {/* Upload Section */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold mb-6">NEW ANALYSIS</h2>
+                      <h2 className="text-2xl font-bold mb-6 font-heading">NEW ANALYSIS</h2>
           
           {!isAtUploadLimit ? (
             <UploadZone 
@@ -291,7 +292,7 @@ export default function Dashboard() {
 
         {/* Recent Analyses */}
         <div>
-          <h2 className="text-2xl font-bold mb-6">RECENT ACTIVITY</h2>
+                      <h2 className="text-2xl font-bold mb-6 font-heading">RECENT ACTIVITY</h2>
           
           {feedback.length === 0 ? (
             <div className="bg-white border border-black/20 rounded p-12 text-center">
@@ -302,7 +303,7 @@ export default function Dashboard() {
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {feedback.map((item) => {
                 // Check if this is new format
                 const isNew = isNewAnalysisFormat(item.analysis);
@@ -316,72 +317,87 @@ export default function Dashboard() {
                 return (
                   <div 
                     key={item.id} 
-                    className={`bg-white border border-black/20 rounded p-4 hover:bg-gray-50 transition-colors cursor-pointer group ${
+                    className={`bg-white border border-black/20 rounded p-4 hover:bg-gray-50 transition-colors cursor-pointer group relative ${
                       navigating === item.id ? 'opacity-50 pointer-events-none' : ''
                     }`}
                     onClick={() => handleNavigate(item.id)}
                   >
-                    <div className="flex items-center gap-4">
+                    {/* Delete Button - positioned absolutely */}
+                    <button
+                      className="absolute top-2 right-2 px-2 py-1 text-xs text-red-600 border border-red-200 rounded hover:bg-red-50 transition-opacity opacity-0 group-hover:opacity-100 disabled:opacity-50 z-10"
+                      title="Delete upload"
+                      onClick={e => {
+                        e.stopPropagation();
+                        handleDelete(item.id);
+                      }}
+                      disabled={deletingId === item.id}
+                      aria-label="Delete upload"
+                    >
+                      {deletingId === item.id ? '⏳' : '✕'}
+                    </button>
+
+                    {/* Large Image Preview */}
+                    <div className="mb-4">
                       {navigating === item.id ? (
-                        <div className="w-16 h-16 bg-gray-100 rounded border border-black/20 flex items-center justify-center">
-                          <div className="text-xs">⏳</div>
+                        <div className="w-full h-32 bg-gray-100 rounded border border-black/20 flex items-center justify-center">
+                          <div className="text-lg">⏳</div>
                         </div>
                       ) : (
                         <img
                           src={item.image_url}
                           alt="Analysis"
-                          className="w-16 h-16 object-cover rounded border border-black/20"
+                          className="w-full h-32 object-cover rounded border border-black/20"
                           onError={(e: any) => {
-                            if (e.target.src !== 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yMSAyMUg0M1Y0M0gyMVYyMVoiIGZpbGw9IiNEMUQ1REIiLz4KPHA+PC9wPgo8L3N2Zz4K') {
-                              e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yMSAyMUg0M1Y0M0gyMVYyMVoiIGZpbGw9IiNEMUQ1REIiLz4KPHA+PC9wPgo8L3N2Zz4K';
+                            if (e.target.src !== 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjU2IiBoZWlnaHQ9IjEyOCIgdmlld0JveD0iMCAwIDI1NiAxMjgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyNTYiIGhlaWdodD0iMTI4IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04MCA0MEgxNzZWODhIODBWNDBaIiBmaWxsPSIjRDFENURCIi8+Cjwvc3ZnPgo=') {
+                              e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjU2IiBoZWlnaHQ9IjEyOCIgdmlld0JveD0iMCAwIDI1NiAxMjgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyNTYiIGhlaWdodD0iMTI4IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04MCA0MEgxNzZWODhIODBWNDBaIiBmaWxsPSIjRDFENURCIi8+Cjwvc3ZnPgo=';
                             }
                           }}
                         />
                       )}
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <h3 className="font-medium">
-                            Analysis #{item.id.slice(0, 8)}
-                            {context && (
-                              <span className="ml-2 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
-                                {context.replace('_', ' ')}
-                              </span>
-                            )}
-                            {industry && industry !== 'UNKNOWN' && (
-                              <span className="ml-1 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
-                                {industry}
-                              </span>
-                            )}
-                          </h3>
-                          <span className="text-lg font-bold">{score}</span>
-                        </div>
-                        {/* Verdict Summary */}
-                        {verdict?.summary && (
-                          <p className="text-sm text-gray-700 mb-1 line-clamp-1">
-                            {verdict.summary}
-                          </p>
-                        )}
-                        <div className="flex items-center justify-between text-xs opacity-60">
-                          <span>{item.user_id ? 'User' : 'Guest'}</span>
-                          <span>{new Date(item.created_at).toLocaleDateString()}</span>
-                        </div>
-                        {navigating === item.id && (
-                          <div className="text-xs text-blue-600 mt-1">Navigating...</div>
-                        )}
+                    </div>
+
+                    {/* Content */}
+                    <div className="space-y-3">
+                      {/* Header with Score */}
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-medium text-sm">
+                          {item.original_filename || `#${item.id.slice(0, 8)}`}
+                        </h3>
+                        <span className="text-xl font-bold">{score}</span>
                       </div>
-                      {/* Delete Button */}
-                      <button
-                        className="ml-4 px-3 py-1 text-xs text-red-600 border border-red-200 rounded hover:bg-red-50 transition-opacity opacity-0 group-hover:opacity-100 disabled:opacity-50"
-                        title="Delete upload"
-                        onClick={e => {
-                          e.stopPropagation();
-                          handleDelete(item.id);
-                        }}
-                        disabled={deletingId === item.id}
-                        aria-label="Delete upload"
-                      >
-                        {deletingId === item.id ? 'Deleting...' : 'Delete'}
-                      </button>
+
+                      {/* Tags */}
+                      {(context || (industry && industry !== 'UNKNOWN')) && (
+                        <div className="flex flex-wrap gap-1">
+                          {context && (
+                            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                              {context.replace('_', ' ')}
+                            </span>
+                          )}
+                          {industry && industry !== 'UNKNOWN' && (
+                            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                              {industry}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Verdict Summary */}
+                      {verdict?.summary && (
+                        <p className="text-sm text-gray-700 line-clamp-2">
+                          {verdict.summary}
+                        </p>
+                      )}
+
+                      {/* Footer */}
+                      <div className="flex items-center justify-between text-xs opacity-60 pt-2 border-t border-gray-100">
+                        <span>{item.user_id ? 'User' : 'Guest'}</span>
+                        <span>{new Date(item.created_at).toLocaleDateString()}</span>
+                      </div>
+
+                      {navigating === item.id && (
+                        <div className="text-xs text-blue-600 text-center">Navigating...</div>
+                      )}
                     </div>
                   </div>
                 );

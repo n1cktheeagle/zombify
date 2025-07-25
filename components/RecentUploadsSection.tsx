@@ -11,6 +11,7 @@ interface Upload {
   image_url: string;
   score: number;
   created_at: string;
+  original_filename: string | null;
   analysis?: {
     context?: string;
   };
@@ -95,7 +96,7 @@ export default function RecentUploadsSection() {
             {upload.image_url ? (
               <Image
                 src={upload.image_url}
-                alt={getImageFileName(upload.image_url)}
+                alt={upload.original_filename || getImageFileName(upload.image_url)}
                 fill
                 className="object-cover rounded border border-black/20"
                 sizes="48px"
@@ -119,7 +120,7 @@ export default function RecentUploadsSection() {
           {/* Upload Info */}
           <div className="flex-1 min-w-0">
             <p className="font-medium text-sm truncate">
-              {getImageFileName(upload.image_url || '')}
+              {upload.original_filename || getImageFileName(upload.image_url || '')}
             </p>
             <div className="flex items-center justify-between text-xs opacity-60">
               <span>{new Date(upload.created_at).toLocaleDateString()}</span>
@@ -146,10 +147,12 @@ export default function RecentUploadsSection() {
   );
 }
 
-// Helper function to extract filename from URL
+// Helper function to extract filename from URL (fallback when original_filename is not available)
 function getImageFileName(url: string): string {
-  if (!url) return 'Analysis';
+  if (!url) return 'Unnamed Analysis';
   const segments = url.split('/');
   const filename = segments[segments.length - 1];
-  return filename.replace('.png', '').replace('.jpg', '').replace('.jpeg', '') || 'Analysis';
+  // Remove common image extensions and return a more descriptive fallback
+  const nameWithoutExt = filename.replace(/\.(png|jpg|jpeg|gif|webp)$/i, '');
+  return nameWithoutExt || 'Unnamed Analysis';
 }

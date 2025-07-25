@@ -1,5 +1,5 @@
-// analyzeImage.ts - Clean version with Vision enhancements and Visual Annotations
-import { ZombifyAnalysis, VisionAnalysisResult, VisualAnnotation, Issue, Opportunity } from '@/types/analysis';
+// analyzeImage.ts - Clean version with Vision enhancements, NO visual annotations
+import { ZombifyAnalysis, VisionAnalysisResult } from '@/types/analysis';
 
 // Keep your existing extractAndParseJSON function exactly as is
 function extractAndParseJSON(content: string): any {
@@ -125,7 +125,7 @@ function extractAndParseJSON(content: string): any {
   throw new Error('Could not extract valid JSON from response');
 }
 
-// Google Vision API analysis function (keep as is)
+// Google Vision API analysis function - ENHANCED for better data extraction
 async function analyzeImageWithVision(imageUrl: string): Promise<VisionAnalysisResult | null> {
   try {
     console.log('[VISION_API] Starting Vision analysis for:', imageUrl);
@@ -251,108 +251,6 @@ async function analyzeImageWithVision(imageUrl: string): Promise<VisionAnalysisR
   }
 }
 
-// Helper function to find Vision element by text
-function findVisionElementByText(visionData: VisionAnalysisResult, searchText: string): any | null {
-  if (!visionData || !searchText) return null;
-  
-  // Clean search text
-  const cleanSearch = searchText.toLowerCase().trim();
-  
-  // Try exact match first
-  let found = visionData.textAnnotations.find(t => 
-    t.text.toLowerCase().trim() === cleanSearch
-  );
-  
-  // Try partial match
-  if (!found) {
-    found = visionData.textAnnotations.find(t => 
-      t.text.toLowerCase().includes(cleanSearch) || 
-      cleanSearch.includes(t.text.toLowerCase())
-    );
-  }
-  
-  // Try word match
-  if (!found) {
-    const searchWords = cleanSearch.split(' ');
-    found = visionData.textAnnotations.find(t => {
-      const elementWords = t.text.toLowerCase().split(' ');
-      return searchWords.some(word => elementWords.includes(word));
-    });
-  }
-  
-  return found;
-}
-
-// Create visual annotations from issues and opportunities
-function createVisualAnnotations(analysis: any, visionData: VisionAnalysisResult | null): VisualAnnotation[] {
-  if (!visionData) return [];
-  
-  const annotations: VisualAnnotation[] = [];
-  let annotationId = 1;
-  
-  // Process critical issues
-  analysis.criticalIssues?.forEach((issue: Issue, index: number) => {
-    if (issue.location?.element) {
-      const visionElement = findVisionElementByText(visionData, issue.location.element);
-      if (visionElement && visionElement.boundingBox) {
-        annotations.push({
-          id: `critical-${annotationId++}`,
-          type: 'critical',
-          boundingBox: visionElement.boundingBox,
-          elementText: visionElement.text,
-          title: issue.issue,
-          description: issue.impact,
-          fix: issue.fix,
-          category: issue.category,
-          severity: issue.severity
-        });
-      }
-    }
-  });
-  
-  // Process usability issues
-  analysis.usabilityIssues?.forEach((issue: Issue, index: number) => {
-    if (issue.location?.element) {
-      const visionElement = findVisionElementByText(visionData, issue.location.element);
-      if (visionElement && visionElement.boundingBox) {
-        annotations.push({
-          id: `warning-${annotationId++}`,
-          type: 'warning',
-          boundingBox: visionElement.boundingBox,
-          elementText: visionElement.text,
-          title: issue.issue,
-          description: issue.impact,
-          fix: issue.fix,
-          category: issue.category,
-          severity: issue.severity
-        });
-      }
-    }
-  });
-  
-  // Process opportunities
-  analysis.opportunities?.forEach((opp: Opportunity, index: number) => {
-    if (opp.location?.element) {
-      const visionElement = findVisionElementByText(visionData, opp.location.element);
-      if (visionElement && visionElement.boundingBox) {
-        annotations.push({
-          id: `opportunity-${annotationId++}`,
-          type: 'opportunity',
-          boundingBox: visionElement.boundingBox,
-          elementText: visionElement.text,
-          title: opp.opportunity,
-          description: opp.reasoning,
-          potentialImpact: opp.potentialImpact,
-          category: opp.category
-        });
-      }
-    }
-  });
-  
-  console.log('[ANNOTATIONS] Created', annotations.length, 'visual annotations');
-  return annotations;
-}
-
 // Enhanced analysis with Vision data for better insights
 function enhanceAnalysisWithVision(analysis: any, visionData: VisionAnalysisResult | null): any {
   if (!visionData) {
@@ -395,14 +293,9 @@ function enhanceAnalysisWithVision(analysis: any, visionData: VisionAnalysisResu
     );
   });
 
-  // Create visual annotations
-  const visualAnnotations = createVisualAnnotations(analysis, visionData);
-
   // Enhance the analysis with Vision insights
   const enhancedAnalysis = {
     ...analysis,
-    // Add visual annotations
-    visualAnnotations,
     // Add Vision-specific enhancements to existing analysis
     visualDesignAnalysis: {
       ...analysis.visualDesignAnalysis,
@@ -424,44 +317,9 @@ function enhanceAnalysisWithVision(analysis: any, visionData: VisionAnalysisResu
         } : null
       }
     },
-    // Enhance critical issues with specific Vision data and location
-    criticalIssues: [
-      ...analysis.criticalIssues.map((issue: any) => ({
-        ...issue,
-        // Add bounding box if we can find the element
-        location: issue.location ? {
-          ...issue.location,
-          boundingBox: findVisionElementByText(visionData, issue.location.element)?.boundingBox
-        } : issue.location
-      })),
-      // Add issues for detected problems
-      ...contrastIssues.filter(issue => issue.severity === 'HIGH').map(issue => ({
-        severity: 3,
-        category: 'ACCESSIBILITY',
-        issue: 'Low color contrast detected',
-        location: {
-          element: 'Color combination',
-          region: 'Multiple areas'
-        },
-        impact: `Contrast ratio of ${issue.ratio}:1 fails WCAG standards`,
-        evidence: 'Vision API detected these colors are used together',
-        fix: {
-          immediate: 'Darken text or lighten background',
-          better: 'Ensure all text has at least 4.5:1 contrast ratio',
-          implementation: 'Use a contrast checking tool to verify changes'
-        }
-      }))
-    ],
-    // Add opportunities based on Vision findings with location
+    // Add opportunities based on Vision findings
     opportunities: [
-      ...analysis.opportunities.map((opp: any) => ({
-        ...opp,
-        // Add bounding box if we can find the element
-        location: opp.location ? {
-          ...opp.location,
-          boundingBox: findVisionElementByText(visionData, opp.location.element)?.boundingBox
-        } : opp.location
-      })),
+      ...analysis.opportunities,
       // If we found CTAs, suggest making them more prominent
       ...(ctaElements.length > 0 && ctaElements.some(cta => cta.boundingBox.height < 40) ? [{
         category: 'CONVERSION',
@@ -471,8 +329,7 @@ function enhanceAnalysisWithVision(analysis: any, visionData: VisionAnalysisResu
         reasoning: 'Vision detected CTA buttons that may be too small for optimal interaction',
         location: {
           element: 'CTA buttons',
-          region: 'Various',
-          boundingBox: ctaElements[0]?.boundingBox
+          region: 'Various'
         }
       }] : [])
     ],
@@ -481,7 +338,8 @@ function enhanceAnalysisWithVision(analysis: any, visionData: VisionAnalysisResu
       textCount: visionData.textAnnotations.length,
       hasLogos: visionData.logoAnnotations.length > 0,
       dominantColors: dominantColors.slice(0, 5),
-      hasCTAs: ctaElements.length > 0
+      hasCTAs: ctaElements.length > 0,
+      detectedText: visionData.textAnnotations.slice(0, 20).map(t => t.text) // First 20 text elements
     }
   };
 
@@ -530,9 +388,9 @@ Based on Vision API analysis:
 - Dominant colors: ${visionData.imageProperties.dominantColors.slice(0, 3).map(c => 
   `rgb(${c.color.red},${c.color.green},${c.color.blue})`
 ).join(', ')}
-- Text elements include: ${visionData.textAnnotations.slice(0, 10).map(t => t.text).join(', ')}...
+- Text elements include: ${visionData.textAnnotations.slice(0, 15).map(t => t.text).join(', ')}${visionData.textAnnotations.length > 15 ? '...' : ''}
 
-IMPORTANT: When identifying issues or opportunities, mention specific text elements you can see in the interface so we can map them to exact locations.
+IMPORTANT: When identifying issues or opportunities, mention specific text elements you can see in the interface for better context and specificity.
 `;
     }
     
@@ -568,12 +426,16 @@ ANALYSIS APPROACH:
 4. Focus on perceived hierarchy, clarity, and user flow
 
 IMPORTANT FOR LOCATION DATA:
-When identifying issues or opportunities, always specify the exact text or element you're referring to. For example:
-- Instead of "the button", say "the 'Sign Up' button"
-- Instead of "the heading", say "the 'Welcome to Our Service' heading"
-- Instead of "navigation", say "the 'Home About Contact' navigation"
+When identifying issues or opportunities, be specific about elements you see:
+- For buttons: mention the exact button text you can see
+- For headings: reference the actual heading text
+- For sections: describe what content/elements are in that area
+- Be descriptive but don't make up text you can't clearly see
 
-This helps us map your feedback to exact locations on the interface.
+For example:
+- GOOD: location: { element: "Sign up button", region: "header area" }
+- GOOD: location: { element: "Main hero heading", region: "top section" }
+- AVOID: Making up exact text if you're not 100% sure
 
 IMPORTANT FOR ATTENTION FLOW:
 Describe what users will look at and why, in order of importance. Focus on:
@@ -631,7 +493,7 @@ Return this JSON structure:
           "foreground": "describe color",
           "background": "describe color",
           "ratio": 0,
-          "location": "specific text element like 'Contact Us' button",
+          "location": "specific text element",
           "fix": {
             "suggestion": "Make text darker/lighter or change background",
             "css": ""
@@ -649,8 +511,8 @@ Return this JSON structure:
     "issues": [
       {
         "severity": "HIGH",
-        "current": "Exact text you see",
-        "location": "specific element like 'hero heading' or 'Sign Up button'",
+        "current": "Text you can see",
+        "location": "where you see it",
         "issue": "Why this copy doesn't work",
         "suggested": ["Better alternative", "Another option"],
         "impact": "How this affects users",
@@ -665,9 +527,8 @@ Return this JSON structure:
       "category": "HIERARCHY",
       "issue": "Clear issue title",
       "location": {
-        "element": "Specific text or element name like 'Get Started' button",
-        "region": "Where in the interface",
-        "visualContext": "What's around it"
+        "element": "Specific element you can see",
+        "region": "Where in the interface"
       },
       "impact": "How this affects users",
       "evidence": "What you specifically see",
@@ -687,7 +548,7 @@ Return this JSON structure:
       "implementation": "How to do it",
       "reasoning": "Why this matters",
       "location": {
-        "element": "Specific element name",
+        "element": "Specific element",
         "region": "Where it is"
       }
     }
@@ -751,7 +612,8 @@ Return this JSON structure:
       gptSuccess: !!gptAnalysis,
       visionSuccess: !!visionData,
       enhancedWithVision: !!enhancedAnalysis.visionData,
-      annotationsCreated: enhancedAnalysis.visualAnnotations?.length || 0
+      textElementsFound: visionData?.textAnnotations.length || 0,
+      colorsDetected: visionData?.imageProperties.dominantColors.length || 0
     });
 
     return finalAnalysis;

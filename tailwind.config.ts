@@ -10,6 +10,11 @@ const config: Config = {
   ],
   theme: {
   	extend: {
+  		fontFamily: {
+  			'heading': ['Space Grotesk', 'sans-serif'],
+  			'mono': ['IBM Plex Mono', 'monospace'],
+  			'serif': ['Crimson Text', 'serif'],
+  		},
   		colors: {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',

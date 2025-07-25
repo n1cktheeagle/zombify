@@ -25,12 +25,14 @@ export function SharedSidebar({ currentAnalysis, recentAnalyses = [], className 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const router = useRouter();
 
-  // Extract filename from image URL
+  // Extract filename from image URL (fallback when original_filename is not available)
   const getImageFileName = (url: string) => {
-    if (!url) return 'Analysis';
+    if (!url) return 'Unnamed Analysis';
     const segments = url.split('/');
     const filename = segments[segments.length - 1];
-    return filename.replace('.png', '').replace('.jpg', '').replace('.jpeg', '') || 'Analysis';
+    // Remove common image extensions and return a more descriptive fallback
+    const nameWithoutExt = filename.replace(/\.(png|jpg|jpeg|gif|webp)$/i, '');
+    return nameWithoutExt || 'Unnamed Analysis';
   };
 
   return (

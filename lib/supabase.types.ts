@@ -19,6 +19,11 @@ export interface Database {
           issues: string[];
           project_name: string;
           score: number;
+          analysis: Json; // Full ZombifyAnalysis stored as JSONB
+          user_id: string | null;
+          is_guest: boolean;
+          chain_id: string;
+          original_filename: string | null; // New field for original uploaded filename
         };
         Insert: {
           id?: string;
@@ -27,6 +32,11 @@ export interface Database {
           issues?: string[];
           project_name?: string;
           score?: number;
+          analysis?: Json;
+          user_id?: string | null;
+          is_guest?: boolean;
+          chain_id?: string;
+          original_filename?: string | null;
         };
         Update: {
           id?: string;
@@ -35,6 +45,11 @@ export interface Database {
           issues?: string[];
           project_name?: string;
           score?: number;
+          analysis?: Json;
+          user_id?: string | null;
+          is_guest?: boolean;
+          chain_id?: string;
+          original_filename?: string | null;
         };
       };
     };

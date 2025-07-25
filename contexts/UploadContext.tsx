@@ -9,6 +9,7 @@ interface Upload {
   image_url: string;
   score: number;
   created_at: string;
+  original_filename: string | null;
   analysis?: {
     context?: string;
   };
@@ -49,7 +50,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase
         .from('feedback')
-        .select('id, image_url, score, created_at, analysis')
+        .select('id, image_url, score, created_at, original_filename, analysis')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
 

@@ -131,7 +131,7 @@ export default function AccountSettings() {
               Back to Dashboard
             </button>
           </div>
-          <h1 className="text-4xl font-bold mb-2">ACCOUNT SETTINGS</h1>
+                      <h1 className="text-4xl font-bold mb-2 font-heading">ACCOUNT SETTINGS</h1>
           <p className="text-lg opacity-70">Manage your account and preferences</p>
         </div>
 
@@ -142,7 +142,7 @@ export default function AccountSettings() {
           
           {/* Account Info */}
           <div className="bg-white border border-black/20 rounded p-6">
-            <h2 className="text-2xl font-bold mb-6">ACCOUNT INFO</h2>
+            <h2 className="text-2xl font-bold mb-6 font-heading">ACCOUNT INFO</h2>
             
             <div className="space-y-4">
               <div>
@@ -169,7 +169,7 @@ export default function AccountSettings() {
 
           {/* Authentication Methods */}
           <div className="bg-white border border-black/20 rounded p-6">
-            <h2 className="text-2xl font-bold mb-6">AUTHENTICATION</h2>
+            <h2 className="text-2xl font-bold mb-6 font-heading">AUTHENTICATION</h2>
             
             <div className="space-y-4">
               <div>
@@ -260,7 +260,7 @@ export default function AccountSettings() {
 
         {/* Account Actions */}
         <div className="mt-8 bg-white border border-black/20 rounded p-6">
-          <h2 className="text-2xl font-bold mb-6">ACCOUNT ACTIONS</h2>
+                      <h2 className="text-2xl font-bold mb-6 font-heading">ACCOUNT ACTIONS</h2>
           
           <div className="space-y-4">
             <div className="flex items-center gap-4">

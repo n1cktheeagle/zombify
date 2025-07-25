@@ -78,7 +78,6 @@ export default function GlitchText({
       animate={isGlitching ? 'glitch' : 'normal'}
       onHoverStart={handleHover}
       style={{ 
-        fontFamily: 'monospace',
         fontWeight: 'bold',
         position: 'relative'
       }}

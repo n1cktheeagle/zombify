@@ -1,7 +1,7 @@
-// types/analysis.ts - Updated without heatmap, with visual annotations
+// types/analysis.ts - Clean version with Vision API support, NO visual annotations
 // Place this file in your project root: /types/analysis.ts
 
-// === VISION API TYPES ===
+// === VISION API TYPES - KEEP FOR DATA ENHANCEMENT ===
 export interface VisionTextAnnotation {
   text: string;
   confidence: number;
@@ -49,43 +49,13 @@ export interface VisionAnalysisResult {
   };
 }
 
-// === VISUAL ANNOTATION TYPES (For Issues & Opportunities) ===
-export interface VisualAnnotation {
-  id: string;
-  type: 'critical' | 'warning' | 'opportunity' | 'info';
-  // Exact coordinates from Vision API
-  boundingBox: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  };
-  // What element this refers to
-  elementText?: string;
-  elementType?: string;
-  // The issue/opportunity details
-  title: string;
-  description: string;
-  impact?: string;
-  fix?: Fix;
-  category: string;
-  severity?: number; // For issues
-  potentialImpact?: string; // For opportunities
-}
+// === ANALYSIS TYPES ===
 
-// === EXISTING TYPES (keeping everything you had) ===
-
-// Enhanced Location interface with real coordinates
+// Location interface - simplified without visual coordinates
 export interface Location {
   element: string;     // Plain language description
   region: string;      // General area description
   visualContext?: string;  // What's around it
-  boundingBox?: {      // Real coordinates from Vision API
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  };
 }
 
 // Fix information with implementation details
@@ -100,7 +70,7 @@ export interface Fix {
   suggestion?: string;
 }
 
-// Issue structure - ENHANCED with visual annotation support
+// Issue structure - clean without visual annotation references
 export interface Issue {
   severity: number; // 0-4
   category: string;
@@ -112,8 +82,6 @@ export interface Issue {
   assumption?: string;
   context?: string;
   finding?: string;
-  // NEW: Link to visual annotation
-  visualAnnotationId?: string;
 }
 
 // Enhanced Grip Score Breakdown with reasoning
@@ -137,7 +105,7 @@ export interface GripScore {
   breakdown: GripScoreBreakdown;
 }
 
-// Simplified Verdict interface - NO MORE HEATMAP
+// Clean Verdict interface
 export interface Verdict {
   summary: string;
   attentionSpan: string;
@@ -155,7 +123,7 @@ export interface GenerationalScore {
   improvements: string;
 }
 
-// Growth opportunity - Enhanced with visual annotation support
+// Growth opportunity - clean without visual annotation references
 export interface Opportunity {
   category: string;
   opportunity: string;
@@ -163,8 +131,6 @@ export interface Opportunity {
   implementation: string;
   reasoning: string;
   location?: Location;
-  // NEW: Link to visual annotation
-  visualAnnotationId?: string;
 }
 
 // Behavioral insight
@@ -201,6 +167,11 @@ export interface TypographyAnalysis {
     avgLineLength: number;
     recommendation: string;
   };
+  // ENHANCED: Add Vision API small text detection
+  smallTextWarnings?: {
+    count: number;
+    message: string;
+  } | null;
 }
 
 export interface ContrastFailure {
@@ -222,6 +193,17 @@ export interface ColorAnalysis {
     brandColors: string[];
     accentSuggestion: string;
   };
+  // ENHANCED: Add Vision API color data
+  measuredContrasts?: Array<{
+    severity: string;
+    colors: Array<{ red: number; green: number; blue: number }>;
+    ratio: string;
+    recommendation: string;
+  }>;
+  dominantColorPalette?: Array<{
+    hex: string;
+    percentage: string;
+  }>;
 }
 
 export interface SpacingIssue {
@@ -289,22 +271,20 @@ export interface UXCopyAnalysis {
   };
 }
 
-// ENHANCED: Accessibility failure with visual coordinates
+// Clean accessibility failure without visual coordinates
 export interface AccessibilityFailure {
   criterion: string;
   issue: string;
   location: {
     element: string;
     selector: string;
-    boundingBox?: { x: number; y: number; width: number; height: number };
   };
   currentValue: string;
   requiredValue: string;
   fix: string;
-  visualContext?: "AREA_HIGHLIGHT";
 }
 
-// ENHANCED: Accessibility audit with strengths and weaknesses
+// Clean accessibility audit
 export interface AccessibilityAudit {
   score: number;
   wcagLevel: 'A' | 'AA' | 'AAA';
@@ -321,7 +301,7 @@ export interface AccessibilityAudit {
   }>;
 }
 
-// ENHANCED: Generational analysis with specific issues
+// Clean generational analysis
 export interface GenerationalAnalysis {
   scores: {
     genAlpha?: GenerationalScore;
@@ -334,13 +314,13 @@ export interface GenerationalAnalysis {
   recommendations: string[];
 }
 
-// MAIN ANALYSIS INTERFACE - Enhanced with Vision API and Visual Annotations
+// MAIN ANALYSIS INTERFACE - Clean with Vision API enhancement data only
 export interface ZombifyAnalysis {
   context: 'COMPONENT' | 'FULL_INTERFACE' | 'WIREFRAME' | 'DATA_VIZ' | 'MARKETING' | 'MOBILE' | 'ERROR';
   industry: 'SAAS' | 'ECOMMERCE' | 'FINTECH' | 'HEALTHCARE' | 'EDUCATION' | 'SOCIAL' | 'ENTERPRISE' | 'UNKNOWN';
   industryConfidence: number;
   gripScore: GripScore;
-  verdict: Verdict; // Simplified - no more heatmap
+  verdict: Verdict;
   visualDesignAnalysis: VisualDesignAnalysis;
   uxCopyAnalysis: UXCopyAnalysis;
   criticalIssues: Issue[];
@@ -349,9 +329,14 @@ export interface ZombifyAnalysis {
   behavioralInsights: BehavioralInsight[];
   accessibilityAudit: AccessibilityAudit | null;
   generationalAnalysis: GenerationalAnalysis;
-  visionData?: VisionAnalysisResult; // Raw Vision API results
-  // NEW: Visual annotations for showing issues/opportunities on the image
-  visualAnnotations?: VisualAnnotation[];
+  // KEEP: Vision API data for enhanced analysis
+  visionData?: {
+    textCount: number;
+    hasLogos: boolean;
+    dominantColors: VisionColorInfo[];
+    hasCTAs: boolean;
+    detectedText: string[];
+  };
   timestamp: string;
   error?: boolean;
 }

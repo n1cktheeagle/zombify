@@ -86,6 +86,12 @@
   .font-mono {
     font-family: "IBM Plex Mono", monospace;
   }
+  .font-heading {
+    font-family: "Space Grotesk", sans-serif;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: "Space Grotesk", sans-serif;
+  }
 }
 
 /* Zombify Design System Components */
@@ -364,26 +370,7 @@
   color: rgba(0, 0, 0, 0.5);
 }
 
-/* Scanline effect for upload areas */
-@keyframes scanlines {
-  0% {
-    transform: translateY(-100%);
-  }
-  100% {
-    transform: translateY(100%);
-  }
-}
 
-.scanlines::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.3), transparent);
-  animation: scanlines 2s linear infinite;
-}
 
 /* Subtle RGB separation effect */
 @keyframes rgb-separation {
@@ -568,24 +555,4 @@
   opacity: 0.7;
 }
 
-.upload-scanlines {
-  position: relative;
-  overflow: hidden;
-}
 
-.upload-scanlines::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.3), transparent);
-  animation: scanlines 2s linear infinite;
-  opacity: 0;
-  transition: opacity 0.3s ease-out;
-}
-
-.upload-scanlines:hover::before {
-  opacity: 1;
-}

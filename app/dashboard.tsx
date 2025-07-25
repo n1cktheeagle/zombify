@@ -226,8 +226,7 @@ export default function ZombifyDashboard() {
   if (currentView === "processing") {
     return (
       <div className="min-h-screen bg-[#f5f1e8] text-black font-mono flex items-center justify-center">
-        {/* Subtle scanlines overlay */}
-        <div className="fixed inset-0 pointer-events-none opacity-[0.02] bg-gradient-to-b from-transparent via-black to-transparent bg-[length:100%_4px]" />
+
 
         <div className="text-center space-y-8 max-w-md">
           <div className="space-y-4">
@@ -257,9 +256,7 @@ export default function ZombifyDashboard() {
   if (currentView === "report" && selectedReport) {
     return (
       <div className="min-h-screen bg-[#f5f1e8] text-black font-mono">
-        {/* Subtle scanlines overlay */}
-        <div className="fixed inset-0 pointer-events-none opacity-[0.02] bg-gradient-to-b from-transparent via-black to-transparent bg-[length:100%_4px]" />
-
+        
         {/* Header */}
         <header className="border-b border-black/10 bg-[#f5f1e8]/90 backdrop-blur-sm sticky top-0 z-50">
           <div className="px-6 py-4 flex items-center justify-between">
@@ -595,9 +592,7 @@ export default function ZombifyDashboard() {
 
   return (
     <div className="min-h-screen bg-[#f5f1e8] text-black font-mono">
-      {/* Subtle scanlines overlay */}
-      <div className="fixed inset-0 pointer-events-none opacity-[0.02] bg-gradient-to-b from-transparent via-black to-transparent bg-[length:100%_4px]" />
-
+      
       {/* Header */}
       <header className="border-b border-black/10 bg-[#f5f1e8]/90 backdrop-blur-sm sticky top-0 z-50">
         <div className="px-6 py-4 flex items-center justify-between">
@@ -802,10 +797,7 @@ export default function ZombifyDashboard() {
                 onDrop={handleDrop}
                 onClick={() => document.getElementById("file-input")?.click()}
               >
-                {/* Scanlines overlay - only visible on hover */}
-                <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-[0.15] transition-opacity duration-300">
-                  <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black to-transparent bg-[length:100%_4px] animate-pulse" />
-                </div>
+
 
                 <input id="file-input" type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
 

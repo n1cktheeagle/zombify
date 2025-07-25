@@ -17,7 +17,7 @@ export default function GripScoreCard({ gripScore, score, showBreakdown = false 
   if (!gripScore && score !== undefined) {
     return (
       <motion.div 
-        className="zombify-card p-6 scan-line relative overflow-hidden"
+        className="zombify-card p-6 relative overflow-hidden"
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
@@ -65,19 +65,7 @@ export default function GripScoreCard({ gripScore, score, showBreakdown = false 
           </span>
         </div>
 
-        {/* Scanning line effect */}
-        <motion.div
-          className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-400/10 to-transparent pointer-events-none"
-          animate={{
-            y: ['-100%', '100%']
-          }}
-          transition={{
-            repeat: Infinity,
-            duration: 4,
-            ease: "linear"
-          }}
-          style={{ height: '20px' }}
-        />
+
       </motion.div>
     );
   }
@@ -109,7 +97,7 @@ export default function GripScoreCard({ gripScore, score, showBreakdown = false 
 
   return (
     <motion.div 
-      className="zombify-card p-6 scan-line relative overflow-hidden"
+      className="zombify-card p-6 relative overflow-hidden"
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
@@ -244,19 +232,7 @@ export default function GripScoreCard({ gripScore, score, showBreakdown = false 
         </motion.div>
       )}
 
-      {/* Scanning line effect */}
-      <motion.div
-        className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-400/10 to-transparent pointer-events-none"
-        animate={{
-          y: ['-100%', '100%']
-        }}
-        transition={{
-          repeat: Infinity,
-          duration: 4,
-          ease: "linear"
-        }}
-        style={{ height: '20px' }}
-      />
+
     </motion.div>
   );
 }
