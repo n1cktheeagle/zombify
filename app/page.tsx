@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { canUserUpload, incrementFeedbackCount } from '@/lib/auth';
-import UploadZone from '@/components/UploadZone';
+  import { useUpload } from '@/contexts/UploadContext';
+  import UploadZone from '@/components/UploadZone';
 import { MainHeader } from '@/components/MainHeader';
+import { Badge } from '@/components/ui/badge';
 import { Suspense } from 'react'
 import AuthNotifications from '@/components/AuthNotifications'
 
@@ -20,6 +21,7 @@ export default function HomePage() {
   const [showContent, setShowContent] = useState(false);
   const { user, profile, loading, initialized } = useAuth();
   const router = useRouter();
+  const { setLastUploadId } = useUpload();
 
   // Debug logging function
   const addDebugLog = (message: string) => {
@@ -221,6 +223,8 @@ export default function HomePage() {
       
       if (result.success && result.feedbackId) {
         setAppState('complete');
+        // Refresh sidebar to include the new upload
+        setLastUploadId(result.feedbackId);
         setTimeout(() => {
           router.push(`/feedback/${result.feedbackId}`);
         }, 800);

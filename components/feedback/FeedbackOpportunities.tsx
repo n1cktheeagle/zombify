@@ -40,11 +40,9 @@ export default function FeedbackOpportunities({
       >
         <div className="flex justify-between items-start">
           <div>
-            <h2>
-              <GlitchText className="text-3xl font-bold mb-3" trigger="mount">
-                GROWTH OPPORTUNITIES
-              </GlitchText>
-            </h2>
+            <div className="text-3xl font-bold mb-3 font-mono tracking-wider">
+              GROWTH OPPORTUNITIES
+            </div>
             <div className="text-lg opacity-70 font-mono mb-2">
               Revenue-boosting insights and conversion optimization opportunities
             </div>
@@ -80,9 +78,9 @@ export default function FeedbackOpportunities({
               animate={{ opacity: 1, x: 0 }}
               className="lg:sticky lg:top-4 h-fit"
             >
-              <div className="zombify-card p-6">
-                <h3 className="text-lg font-bold mb-4">
-                  <GlitchText trigger="hover">REFERENCE IMAGE</GlitchText>
+              <div className="border-2 border-black bg-[#f5f1e6] p-4">
+                <h3 className="text-lg font-bold mb-4 font-mono tracking-wider">
+                  REFERENCE IMAGE
                 </h3>
                 <img 
                   src={imageUrl} 
@@ -102,7 +100,7 @@ export default function FeedbackOpportunities({
               opportunities.map((opp, index) => (
                 <motion.div
                   key={index}
-                  className="zombify-card relative overflow-hidden hover:shadow-lg transition-shadow duration-300"
+                  className="border-2 border-black bg-[#f5f1e6] relative overflow-hidden hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,0.5)] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-300"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 + index * 0.1 }}
@@ -144,7 +142,7 @@ export default function FeedbackOpportunities({
                         transition={{ delay: 0.4 + index * 0.1 }}
                       >
                         <div 
-                          className="bg-green-50 border border-green-200 rounded-lg p-4 cursor-pointer hover:bg-green-100 transition-colors"
+                          className="bg-white border-2 border-black p-4 cursor-pointer hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,0.5)] transition-all duration-200"
                           onClick={() => setExpandedOpportunity(expandedOpportunity === index ? null : index)}
                         >
                           <div className="flex justify-between items-center">
@@ -169,8 +167,8 @@ export default function FeedbackOpportunities({
                                 transition={{ duration: 0.3 }}
                                 className="overflow-hidden"
                               >
-                                <div className="mt-3 pt-3 border-t border-green-300">
-                                  <div className="text-sm text-green-700 leading-relaxed">
+                                <div className="mt-3 pt-3 border-t border-black/20">
+                                  <div className="text-sm text-black leading-relaxed font-mono">
                                     {opp.implementation}
                                   </div>
                                 </div>
@@ -184,43 +182,43 @@ export default function FeedbackOpportunities({
                 </motion.div>
               ))
             ) : (
-              <motion.div
-                className="text-center py-16 zombify-card relative overflow-hidden"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.3 }}
-              >
-                <motion.div 
-                  className="text-8xl mb-6"
-                  animate={{ 
-                    rotate: [0, 10, -10, 0],
-                    scale: [1, 1.1, 1]
-                  }}
-                  transition={{ 
-                    repeat: Infinity, 
-                    duration: 4,
-                    ease: "easeInOut"
-                  }}
+                              <motion.div
+                  className="text-center py-16 border-2 border-black bg-[#f5f1e6] relative overflow-hidden"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.3 }}
                 >
-                  🎯
+                  <motion.div 
+                    className="text-8xl mb-6"
+                    animate={{ 
+                      rotate: [0, 10, -10, 0],
+                      scale: [1, 1.1, 1]
+                    }}
+                    transition={{ 
+                      repeat: Infinity, 
+                      duration: 4,
+                      ease: "easeInOut"
+                    }}
+                  >
+                    🎯
+                  </motion.div>
+                  <div className="text-3xl font-bold mb-4 font-mono tracking-wider">
+                    NO OPPORTUNITIES DETECTED
+                  </div>
+                  <p className="text-lg opacity-70 font-mono mb-4">
+                    Your interface is already well-optimized for conversions
+                  </p>
+                  <div className="text-sm opacity-60 font-mono bg-white border-2 border-black p-4 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)] inline-block">
+                    This indicates excellent UX practices are already in place
+                  </div>
                 </motion.div>
-                <GlitchText className="text-3xl font-bold mb-4" trigger="mount">
-                  NO OPPORTUNITIES DETECTED
-                </GlitchText>
-                <p className="text-lg opacity-70 font-mono mb-4">
-                  Your interface is already well-optimized for conversions
-                </p>
-                <div className="text-sm opacity-60 font-mono bg-green-50 p-4 rounded-lg inline-block">
-                  This indicates excellent UX practices are already in place
-                </div>
-              </motion.div>
             )}
           </div>
         </div>
       ) : (
         /* Pro Upgrade CTA */
         <motion.div
-          className="text-center py-16 zombify-card relative overflow-hidden"
+          className="text-center py-16 border-2 border-black bg-[#f5f1e6] relative overflow-hidden"
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.2 }}
@@ -254,9 +252,9 @@ export default function FeedbackOpportunities({
               🚀
             </motion.div>
             
-            <GlitchText className="text-3xl font-bold mb-4" trigger="continuous">
+            <div className="text-3xl font-bold mb-4 font-mono tracking-wider">
               UNLOCK GROWTH INTELLIGENCE
-            </GlitchText>
+            </div>
             
             <p className="text-lg mb-6 max-w-2xl mx-auto opacity-70 leading-relaxed">
               Discover revenue-boosting opportunities, conversion optimizations, and strategic growth insights 
@@ -272,7 +270,7 @@ export default function FeedbackOpportunities({
               ].map((benefit, index) => (
                 <motion.div
                   key={index}
-                  className="bg-white/50 border border-purple-200 p-4 rounded-lg"
+                  className="bg-white border-2 border-black p-4 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 + index * 0.1 }}

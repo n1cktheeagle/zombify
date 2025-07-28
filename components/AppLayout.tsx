@@ -5,37 +5,30 @@ import { usePathname } from 'next/navigation';
 import { MainHeader } from '@/components/MainHeader';
 import DashboardSidebar from '@/components/DashboardSidebar';
 import { useAuth } from '@/hooks/useAuth';
+import { useUpload } from '@/contexts/UploadContext';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-
-interface AppLayoutProps {
-  children: ReactNode;
-  currentAnalysis?: {
-    id: string;
-    fileName: string;
-    gripScore: number;
-    context: string;
-    timestamp: string;
-  };
-  fullWidth?: boolean;
-}
 
 interface FeedbackItem {
   id: string;
+  image_url: string;
   score: number;
   created_at: string;
-  user_id: string | null;
-  is_guest: boolean;
-  image_url: string;
   original_filename: string | null;
-  analysis?: any;
+  user_id: string | null;
 }
 
-export function AppLayout({ children, currentAnalysis, fullWidth = false }: AppLayoutProps) {
+interface AppLayoutProps {
+  children: ReactNode;
+  fullWidth?: boolean;
+}
+
+export function AppLayout({ children, fullWidth = false }: AppLayoutProps) {
   const { user, profile, loading } = useAuth();
+  const { currentAnalysis, lastUploadId } = useUpload();
   const [recentAnalyses, setRecentAnalyses] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [sidebarLoading, setSidebarLoading] = useState(true);
-  const [sidebarDataLoaded, setSidebarDataLoaded] = useState(false);
+  const [lastProcessedUploadId, setLastProcessedUploadId] = useState<string | null>(null);
   const pathname = usePathname();
   const dataLoadedRef = useRef(false);
   
@@ -44,17 +37,28 @@ export function AppLayout({ children, currentAnalysis, fullWidth = false }: AppL
   // Auto-detect full width for certain pages
   const shouldBeFullWidth = fullWidth || pathname?.startsWith('/feedback/');
 
-  // Load sidebar data only once and persist it
+  // Load sidebar data initially and when there's a new upload
   useEffect(() => {
-    // Only load if user exists and data hasn't been loaded yet
-    if (!user || dataLoadedRef.current) {
+    if (!user) {
       setSidebarLoading(false);
+      dataLoadedRef.current = false;
+      return;
+    }
+
+    // Only reload if:
+    // 1. Data hasn't been loaded yet, OR
+    // 2. There's a new upload that we haven't processed yet
+    const shouldLoad = !dataLoadedRef.current || 
+                      (lastUploadId && lastUploadId !== lastProcessedUploadId);
+
+    if (!shouldLoad) {
       return;
     }
 
     const loadSidebarData = async () => {
       try {
-        console.log('🔄 Loading sidebar data (one time only)...');
+        console.log('🔄 Loading sidebar data...');
+        setSidebarLoading(true);
         
         // Load recent analyses for sidebar
         const { data: feedbackData, error: feedbackError } = await supabase
@@ -81,9 +85,11 @@ export function AppLayout({ children, currentAnalysis, fullWidth = false }: AppL
         // For now, projects will be empty since you're not using them yet
         setProjects([]);
         
-        // Mark data as loaded
+        // Mark data as loaded and update last processed upload ID
         dataLoadedRef.current = true;
-        setSidebarDataLoaded(true);
+        if (lastUploadId) {
+          setLastProcessedUploadId(lastUploadId);
+        }
         
       } catch (error) {
         console.error('Error loading sidebar data:', error);
@@ -93,14 +99,12 @@ export function AppLayout({ children, currentAnalysis, fullWidth = false }: AppL
     };
 
     loadSidebarData();
-  }, [user, supabase]);
+  }, [user, supabase, lastUploadId, lastProcessedUploadId]);
 
   // Function to get current analysis for the current page
   const getCurrentAnalysisForPage = () => {
-    if (!currentAnalysis) return undefined;
-    
     // Only show current analysis indicator on feedback pages
-    if (pathname?.startsWith('/feedback/')) {
+    if (pathname?.startsWith('/feedback/') && currentAnalysis) {
       return currentAnalysis;
     }
     

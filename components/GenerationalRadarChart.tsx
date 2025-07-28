@@ -22,16 +22,17 @@ export default function GenerationalRadarChart({ scores, primaryTarget }: Props)
   // Add safety check for scores
   if (!scores) {
     return (
-      <div className="w-full max-w-md mx-auto text-center p-8">
-        <div className="text-lg font-bold mb-2">GENERATIONAL APPEAL</div>
-        <p className="text-sm opacity-70">Generational data unavailable</p>
+      <div className="w-full max-w-sm mx-auto text-center p-4">
+        <div className="text-sm font-bold mb-1 font-mono">GENERATIONAL APPEAL</div>
+        <p className="text-xs opacity-70 font-mono">Generational data unavailable</p>
       </div>
     );
   }
-  // Chart dimensions
-  const size = 300;
+  
+  // Chart dimensions - made smaller and more compact
+  const size = 180;
   const center = size / 2;
-  const radius = 100;
+  const radius = 60;
   
   // Generation data with positions
   const generations = [
@@ -64,149 +65,148 @@ export default function GenerationalRadarChart({ scores, primaryTarget }: Props)
   }));
 
   return (
-    <div className="w-full max-w-md mx-auto">
-      {/* Chart Title */}
-      <div className="text-center mb-6">
-        <h3 className="text-xl font-bold mb-2">GENERATIONAL APPEAL</h3>
-        <p className="text-sm opacity-70">
-          Primary Target: <span className="font-bold">{
-            generations.find(g => g.key === primaryTarget)?.label || 'Unknown'
-          }</span>
-        </p>
-      </div>
+    <div className="w-full">
+      {/* Compact layout with chart and scores side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        
+        {/* Left: Chart */}
+        <div className="flex flex-col items-center">
+          <div className="text-center mb-3">
+            <h3 className="text-sm font-bold mb-1 font-mono tracking-wider">GENERATIONAL APPEAL</h3>
+            <p className="text-xs opacity-70 font-mono">
+              Target: <span className="font-bold">{
+                generations.find(g => g.key === primaryTarget)?.label || 'Unknown'
+              }</span>
+            </p>
+          </div>
 
-      {/* SVG Chart */}
-      <div className="relative">
-        <svg width={size} height={size} className="mx-auto">
-          {/* Grid circles */}
-          {gridCircles.map((circle, index) => (
-            <circle
-              key={index}
-              cx={center}
-              cy={center}
-              r={circle.radius}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1"
-              opacity={circle.opacity}
-            />
-          ))}
+          <div className="relative">
+            <svg width={size} height={size} className="mx-auto">
+              {/* Grid circles */}
+              {gridCircles.map((circle, index) => (
+                <circle
+                  key={index}
+                  cx={center}
+                  cy={center}
+                  r={circle.radius}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1"
+                  opacity={circle.opacity}
+                />
+              ))}
 
-          {/* Axis lines */}
-          {generations.map((gen, index) => {
-            const x2 = center + radius * Math.cos(gen.angle - Math.PI / 2);
-            const y2 = center + radius * Math.sin(gen.angle - Math.PI / 2);
-            return (
-              <line
-                key={index}
-                x1={center}
-                y1={center}
-                x2={x2}
-                y2={y2}
-                stroke="currentColor"
-                strokeWidth="1"
-                opacity="0.2"
-              />
-            );
-          })}
-
-          {/* Score polygon */}
-          <path
-            d={pathData}
-            fill={generations.find(g => g.key === primaryTarget)?.color || '#8B5CF6'}
-            fillOpacity="0.2"
-            stroke={generations.find(g => g.key === primaryTarget)?.color || '#8B5CF6'}
-            strokeWidth="2"
-          />
-
-          {/* Score points */}
-          {scorePoints.map((point, index) => (
-            <circle
-              key={index}
-              cx={point.x}
-              cy={point.y}
-              r="4"
-              fill={generations[index].color}
-              stroke="white"
-              strokeWidth="2"
-            />
-          ))}
-
-          {/* Generation labels */}
-          {generations.map((gen, index) => {
-            const labelDistance = radius + 30;
-            const x = center + labelDistance * Math.cos(gen.angle - Math.PI / 2);
-            const y = center + labelDistance * Math.sin(gen.angle - Math.PI / 2);
-            const generationData = scores?.[gen.key as keyof GenerationalScores];
-            const score = generationData?.score || 0;
-            
-            return (
-              <g key={index}>
-                <text
-                  x={x}
-                  y={y - 5}
-                  textAnchor="middle"
-                  className="text-xs font-bold fill-current"
-                  style={{ color: gen.color }}
-                >
-                  {gen.label}
-                </text>
-                <text
-                  x={x}
-                  y={y + 8}
-                  textAnchor="middle"
-                  className="text-xs opacity-70 fill-current"
-                >
-                  {gen.ageRange}
-                </text>
-                <text
-                  x={x}
-                  y={y + 20}
-                  textAnchor="middle"
-                  className="text-sm font-bold fill-current"
-                  style={{ color: gen.color }}
-                >
-                  {score}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
-      </div>
-
-      {/* Legend with reasoning */}
-      <div className="mt-6 space-y-3">
-        {generations.map((gen) => {
-          const generationScore = scores?.[gen.key as keyof GenerationalScores];
-          if (!generationScore) return null;
-          
-          const isPrimary = gen.key === primaryTarget;
-          
-          return (
-            <div 
-              key={gen.key} 
-              className={`p-3 rounded border ${isPrimary ? 'border-current bg-black/5' : 'border-black/10'}`}
-              style={{ borderColor: isPrimary ? gen.color : undefined }}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center space-x-2">
-                  <div 
-                    className="w-3 h-3 rounded-full" 
-                    style={{ backgroundColor: gen.color }}
+              {/* Axis lines */}
+              {generations.map((gen, index) => {
+                const x2 = center + radius * Math.cos(gen.angle - Math.PI / 2);
+                const y2 = center + radius * Math.sin(gen.angle - Math.PI / 2);
+                return (
+                  <line
+                    key={index}
+                    x1={center}
+                    y1={center}
+                    x2={x2}
+                    y2={y2}
+                    stroke="currentColor"
+                    strokeWidth="1"
+                    opacity="0.2"
                   />
-                  <span className="font-medium text-sm">{gen.label}</span>
-                  <span className="text-xs opacity-60">({gen.ageRange})</span>
+                );
+              })}
+
+              {/* Score polygon */}
+              <path
+                d={pathData}
+                fill={generations.find(g => g.key === primaryTarget)?.color || '#8B5CF6'}
+                fillOpacity="0.2"
+                stroke={generations.find(g => g.key === primaryTarget)?.color || '#8B5CF6'}
+                strokeWidth="2"
+              />
+
+              {/* Score points */}
+              {scorePoints.map((point, index) => (
+                <circle
+                  key={index}
+                  cx={point.x}
+                  cy={point.y}
+                  r="3"
+                  fill={generations[index].color}
+                  stroke="white"
+                  strokeWidth="2"
+                />
+              ))}
+
+              {/* Generation labels */}
+              {generations.map((gen, index) => {
+                const labelDistance = radius + 15;
+                const x = center + labelDistance * Math.cos(gen.angle - Math.PI / 2);
+                const y = center + labelDistance * Math.sin(gen.angle - Math.PI / 2);
+                const generationData = scores?.[gen.key as keyof GenerationalScores];
+                const score = generationData?.score || 0;
+                
+                return (
+                  <g key={index}>
+                    <text
+                      x={x}
+                      y={y - 2}
+                      textAnchor="middle"
+                      className="text-xs font-bold fill-current"
+                      style={{ color: gen.color }}
+                    >
+                      {gen.label.replace(' ', '')}
+                    </text>
+                    <text
+                      x={x}
+                      y={y + 10}
+                      textAnchor="middle"
+                      className="text-xs font-bold fill-current"
+                      style={{ color: gen.color }}
+                    >
+                      {score}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+        </div>
+
+        {/* Right: Compact scores grid */}
+        <div className="lg:col-span-1">
+          <div className="grid grid-cols-1 gap-2">
+            {generations.map((gen) => {
+              const generationScore = scores?.[gen.key as keyof GenerationalScores];
+              if (!generationScore) return null;
+              
+              const isPrimary = gen.key === primaryTarget;
+              
+              return (
+                <div 
+                  key={gen.key} 
+                  className={`bg-white border-2 border-black p-2 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)] ${isPrimary ? 'ring-2 ring-offset-1' : ''}`}
+                  style={isPrimary ? { '--tw-ring-color': gen.color } as React.CSSProperties : undefined}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center space-x-2">
+                      <div 
+                        className="w-2 h-2 rounded-full" 
+                        style={{ backgroundColor: gen.color }}
+                      />
+                      <span className="font-medium text-xs font-mono">{gen.label}</span>
+                      <span className="text-xs opacity-60 font-mono">({gen.ageRange})</span>
+                    </div>
+                    <span className="font-bold text-xs font-mono" style={{ color: gen.color }}>
+                      {generationScore.score}/100
+                    </span>
+                  </div>
+                  <p className="text-xs opacity-70 ml-4 font-mono leading-tight">
+                    {generationScore.reasoning}
+                  </p>
                 </div>
-                <span className="font-bold text-sm" style={{ color: gen.color }}>
-                  {generationScore.score}/100
-                </span>
-              </div>
-              <p className="text-xs opacity-70 ml-5">
-                {generationScore.reasoning}
-              </p>
-            </div>
-          );
-        })}
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );

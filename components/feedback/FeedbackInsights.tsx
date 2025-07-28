@@ -35,11 +35,9 @@ export default function FeedbackInsights({
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
       >
-        <h2>
-          <GlitchText className="text-3xl font-bold mb-3" trigger="mount">
-            BEHAVIORAL INSIGHTS
-          </GlitchText>
-        </h2>
+        <div className="text-3xl font-bold mb-3 font-mono tracking-wider">
+          BEHAVIORAL INSIGHTS
+        </div>
         <div className="text-lg opacity-70 font-mono mb-2">
           User behavior patterns, psychological triggers, and decision-making insights
         </div>
@@ -58,7 +56,7 @@ export default function FeedbackInsights({
             insights.map((insight, index) => (
               <motion.div
                 key={index}
-                className="zombify-card relative overflow-hidden hover:shadow-lg transition-shadow duration-300"
+                className="border-2 border-black bg-[#f5f1e6] relative overflow-hidden hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,0.5)] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-300"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 + index * 0.1 }}
@@ -70,8 +68,8 @@ export default function FeedbackInsights({
                       {index + 1}
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-bold text-xl text-black mb-2">
-                        <GlitchText trigger="hover">{insight.pattern}</GlitchText>
+                      <h4 className="font-bold text-xl text-black mb-2 font-mono tracking-wider">
+                        {insight.pattern}
                       </h4>
                       <p className="text-base opacity-80 leading-relaxed mb-4">{insight.observation}</p>
                     </div>
@@ -84,7 +82,7 @@ export default function FeedbackInsights({
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 + index * 0.1 }}
                   >
-                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                    <div className="bg-white border-2 border-black p-4 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]">
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-lg">🧠</span>
                         <div className="text-sm font-semibold text-purple-800 font-mono">
@@ -105,7 +103,7 @@ export default function FeedbackInsights({
                     transition={{ delay: 0.4 + index * 0.1 }}
                   >
                     <div 
-                      className="bg-blue-50 border border-blue-200 rounded-lg p-4 cursor-pointer hover:bg-blue-100 transition-colors"
+                      className="bg-white border-2 border-black p-4 cursor-pointer hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,0.5)] transition-all duration-200"
                       onClick={() => setExpandedInsight(expandedInsight === index ? null : index)}
                     >
                       <div className="flex justify-between items-center">
@@ -133,8 +131,8 @@ export default function FeedbackInsights({
                             transition={{ duration: 0.3 }}
                             className="overflow-hidden"
                           >
-                            <div className="mt-3 pt-3 border-t border-blue-300">
-                              <div className="text-sm text-blue-700 leading-relaxed">
+                            <div className="mt-3 pt-3 border-t border-black/20">
+                              <div className="text-sm text-black leading-relaxed font-mono">
                                 {insight.recommendation}
                               </div>
                             </div>
@@ -148,7 +146,7 @@ export default function FeedbackInsights({
             ))
           ) : (
             <motion.div
-              className="text-center py-16 zombify-card relative overflow-hidden"
+              className="text-center py-16 border-2 border-black bg-[#f5f1e6] relative overflow-hidden"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.3 }}
@@ -167,13 +165,13 @@ export default function FeedbackInsights({
               >
                 🧠
               </motion.div>
-              <GlitchText className="text-3xl font-bold mb-4" trigger="mount">
+              <div className="text-3xl font-bold mb-4 font-mono tracking-wider">
                 NO BEHAVIORAL PATTERNS DETECTED
-              </GlitchText>
+              </div>
               <p className="text-lg opacity-70 font-mono mb-4">
                 No significant behavioral insights identified in this analysis
               </p>
-              <div className="text-sm opacity-60 font-mono bg-gray-50 p-4 rounded-lg inline-block">
+              <div className="text-sm opacity-60 font-mono bg-white border-2 border-black p-4 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)] inline-block">
                 This may indicate straightforward user flows or insufficient complexity for pattern detection
               </div>
             </motion.div>
@@ -182,7 +180,7 @@ export default function FeedbackInsights({
       ) : (
         /* Pro Upgrade CTA */
         <motion.div
-          className="text-center py-16 zombify-card relative overflow-hidden"
+          className="text-center py-16 border-2 border-black bg-[#f5f1e6] relative overflow-hidden"
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.2 }}
@@ -216,9 +214,9 @@ export default function FeedbackInsights({
               🧠
             </motion.div>
             
-            <GlitchText className="text-3xl font-bold mb-4" trigger="continuous">
+            <div className="text-3xl font-bold mb-4 font-mono tracking-wider">
               DECODE USER PSYCHOLOGY
-            </GlitchText>
+            </div>
             
             <p className="text-lg mb-6 max-w-2xl mx-auto opacity-70 leading-relaxed">
               Understand the psychological triggers, cognitive biases, and behavioral patterns 
@@ -234,7 +232,7 @@ export default function FeedbackInsights({
               ].map((benefit, index) => (
                 <motion.div
                   key={index}
-                  className="bg-white/50 border border-purple-200 p-4 rounded-lg"
+                  className="bg-white border-2 border-black p-4 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 + index * 0.1 }}

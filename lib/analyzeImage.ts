@@ -415,7 +415,7 @@ IMPORTANT: When identifying issues or opportunities, mention specific text eleme
           content: [
             {
               type: 'text',
-              text: `You are an expert UX designer providing strategic design critique. Focus on what matters for user experience.
+              text: `You are an expert UX & UI designer providing strategic design critique. Focus on what matters for user experience.
 
 ${visionContext}
 

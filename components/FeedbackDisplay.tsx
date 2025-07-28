@@ -123,20 +123,14 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                 imageUrl={imageUrl}
               />
 
-              {/* Generational Analysis - Keep this separate for now */}
+              {/* Compact Generational Analysis */}
               {analysis.generationalAnalysis && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}
-                  className="zombify-card p-6 relative overflow-hidden"
+                  className="border-2 border-black bg-[#f5f1e6] p-4 relative overflow-hidden"
                 >
-                  <div className="text-center mb-4">
-                    <GlitchText className="text-xl font-bold mb-2" trigger="hover">
-                      GENERATIONAL APPEAL
-                    </GlitchText>
-                    <div className="text-sm opacity-60 font-mono">Target audience alignment</div>
-                  </div>
                   <GenerationalRadarChart
                     scores={{
                       genAlpha: analysis.generationalAnalysis.scores.genAlpha || { score: 0, reasoning: 'No data' },
@@ -192,9 +186,6 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                         ISSUES & FIXES
                       </GlitchText>
                     </h2>
-                    <div className="text-sm opacity-70 font-mono">
-                      Issues requiring immediate attention and areas for improvement
-                    </div>
                   </div>
                   
                   {/* Side-by-side comparison toggle */}
@@ -234,60 +225,44 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                   </motion.div>
                 )}
                 
-                {/* Issues list */}
-                <div className="space-y-4">
-                  {/* Critical Issues Section */}
-                  {analysis.criticalIssues.length > 0 && (
-                    <div className="space-y-4">
-                      <div className="border-l-4 border-red-500 pl-4">
-                        <h3 className="text-xl font-bold text-red-700 mb-2">Critical Issues</h3>
-                        <p className="text-sm text-red-600 mb-4">These issues need immediate attention</p>
-                      </div>
-                      {analysis.criticalIssues.map((issue, index) => (
-                        <IssueCard
-                          key={`critical-${index}`}
-                          issue={issue}
-                          index={index}
-                          type="critical"
-                          isPro={isPro}
-                        />
-                      ))}
-                    </div>
-                  )}
+                        {/* Issues list */}
+        <div className="space-y-4">
+          {/* Critical Issues */}
+          {analysis.criticalIssues.map((issue, index) => (
+            <IssueCard
+              key={`critical-${index}`}
+              issue={issue}
+              index={index}
+              type="critical"
+              isPro={isPro}
+            />
+          ))}
 
-                  {/* Usability Issues Section */}
-                  {analysis.usabilityIssues.length > 0 && (
-                    <div className="space-y-4">
-                      <div className="border-l-4 border-orange-500 pl-4">
-                        <h3 className="text-xl font-bold text-orange-700 mb-2">Usability Issues</h3>
-                        <p className="text-sm text-orange-600 mb-4">Areas for improvement to enhance user experience</p>
-                      </div>
-                      {analysis.usabilityIssues.slice(0, isLoggedIn ? undefined : 2).map((issue, index) => (
-                        <IssueCard
-                          key={`usability-${index}`}
-                          issue={issue}
-                          index={index + analysis.criticalIssues.length}
-                          type="usability"
-                          isPro={isPro}
-                        />
-                      ))}
-                      
-                      {!isLoggedIn && analysis.usabilityIssues.length > 2 && (
-                        <motion.div
-                          className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                        >
-                          <div className="font-mono text-sm opacity-70 mb-2">
-                            + {analysis.usabilityIssues.length - 2} more issues detected
-                          </div>
-                          <button className="zombify-primary-button px-6 py-2 text-sm">
-                            SIGN UP TO VIEW ALL
-                          </button>
-                        </motion.div>
-                      )}
-                    </div>
-                  )}
+          {/* Usability Issues */}
+          {analysis.usabilityIssues.slice(0, isLoggedIn ? undefined : 2).map((issue, index) => (
+            <IssueCard
+              key={`usability-${index}`}
+              issue={issue}
+              index={index + analysis.criticalIssues.length}
+              type="usability"
+              isPro={isPro}
+            />
+          ))}
+          
+          {!isLoggedIn && analysis.usabilityIssues.length > 2 && (
+            <motion.div
+              className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              <div className="font-mono text-sm opacity-70 mb-2">
+                + {analysis.usabilityIssues.length - 2} more issues detected
+              </div>
+              <button className="zombify-primary-button px-6 py-2 text-sm">
+                SIGN UP TO VIEW ALL
+              </button>
+            </motion.div>
+          )}
 
                   {/* No Issues State */}
                   {analysis.criticalIssues.length === 0 && analysis.usabilityIssues.length === 0 && (

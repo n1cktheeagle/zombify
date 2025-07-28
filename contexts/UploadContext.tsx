@@ -1,98 +1,55 @@
 // contexts/UploadContext.tsx
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
 
-interface Upload {
+interface CurrentAnalysis {
   id: string;
-  image_url: string;
-  score: number;
-  created_at: string;
-  original_filename: string | null;
-  analysis?: {
-    context?: string;
-  };
+  fileName: string;
+  gripScore: number;
+  context: string;
+  timestamp: string;
 }
 
 interface UploadContextType {
-  uploads: Upload[];
-  loading: boolean;
-  refreshUploads: () => void;
-  addUpload: (upload: Upload) => void;
-  deleteUpload: (id: string) => void;
+  isUploading: boolean;
+  setIsUploading: (uploading: boolean) => void;
+  uploadProgress: number;
+  setUploadProgress: (progress: number) => void;
+  currentAnalysis: CurrentAnalysis | null;
+  setCurrentAnalysis: (analysis: CurrentAnalysis | null) => void;
+  lastUploadId: string | null;
+  setLastUploadId: (id: string | null) => void;
 }
 
 const UploadContext = createContext<UploadContextType | undefined>(undefined);
 
 export function UploadProvider({ children }: { children: ReactNode }) {
-  const [uploads, setUploads] = useState<Upload[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
-  const supabase = createClientComponentClient();
-
-  useEffect(() => {
-    const initializeUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      
-      if (user) {
-        await fetchUploads(user.id);
-      } else {
-        setLoading(false);
-      }
-    };
-
-    initializeUser();
-  }, []);
-
-  const fetchUploads = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('feedback')
-        .select('id, image_url, score, created_at, original_filename, analysis')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        console.error('Error fetching uploads:', error);
-        setUploads([]);
-      } else {
-        setUploads(data || []);
-      }
-    } catch (error) {
-      console.error('Error fetching uploads:', error);
-      setUploads([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const refreshUploads = () => {
-    if (user) {
-      fetchUploads(user.id);
-    }
-  };
-
-  const addUpload = (upload: Upload) => {
-    setUploads(prev => [upload, ...prev.slice(0, 9)]);
-  };
-
-  const deleteUpload = (id: string) => {
-    setUploads(prev => prev.filter(u => u.id !== id));
-  };
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [currentAnalysis, setCurrentAnalysis] = useState<CurrentAnalysis | null>(null);
+  const [lastUploadId, setLastUploadId] = useState<string | null>(null);
 
   return (
-    <UploadContext.Provider value={{ uploads, loading, refreshUploads, addUpload, deleteUpload }}>
+    <UploadContext.Provider value={{
+      isUploading,
+      setIsUploading,
+      uploadProgress,
+      setUploadProgress,
+      currentAnalysis,
+      setCurrentAnalysis,
+      lastUploadId,
+      setLastUploadId
+    }}>
       {children}
     </UploadContext.Provider>
   );
 }
 
-export const useUploads = () => {
+export function useUpload() {
   const context = useContext(UploadContext);
   if (context === undefined) {
-    throw new Error('useUploads must be used within an UploadProvider');
+    throw new Error('useUpload must be used within an UploadProvider');
   }
   return context;
-};
+}

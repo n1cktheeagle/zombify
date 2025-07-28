@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ZombifyAnalysis } from '@/types/analysis';
+import { useUpload } from '@/contexts/UploadContext';
 import GlitchText from '@/components/GlitchText';
 import FeedbackSummary from '@/components/feedback/FeedbackSummary';
 import FeedbackCriticalIssues from '@/components/feedback/FeedbackCriticalIssues';
@@ -12,7 +13,7 @@ import FeedbackDetailedAnalysis from '@/components/feedback/FeedbackDetailedAnal
 import FeedbackOpportunities from '@/components/feedback/FeedbackOpportunities';
 import FeedbackInsights from '@/components/feedback/FeedbackInsights';
 import FeedbackAccessibility from '@/components/feedback/FeedbackAccessibility';
-import FeedbackNavigation, { useFeedbackNavigation } from '@/components/feedback/FeedbackNavigation';
+import FeedbackTabs, { FeedbackSectionId } from '@/components/FeedbackTabs';
 
 // TypeScript interfaces
 interface FeedbackData {
@@ -40,6 +41,7 @@ function isNewAnalysisFormat(analysis: any): analysis is ZombifyAnalysis {
 
 export default function FeedbackPage({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const { setCurrentAnalysis, setLastUploadId } = useUpload();
   const [data, setData] = useState<FeedbackData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,23 +55,8 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
   const isNewFormat = data ? isNewAnalysisFormat(analysis) : false;
   const score = isNewFormat ? analysis.gripScore?.overall || 0 : (data?.score || 0);
 
-  // Navigation sections for the flowing layout - memoized to prevent hook re-ordering
-  const navigationSections = useMemo(() => [
-    { id: 'summary', title: 'Executive Summary', icon: '📊', completed: true },
-    { id: 'issues', title: 'Issues & Fixes', icon: '🚨', count: (analysis.criticalIssues?.length || 0) + (analysis.usabilityIssues?.length || 0) },
-    { id: 'detailed-analysis', title: 'Detailed Analysis', icon: '🔍' },
-    { id: 'opportunities', title: 'Growth Opportunities', icon: '🚀', count: analysis.opportunities?.length || 0 },
-    { id: 'insights', title: 'Behavioral Insights', icon: '🧠', count: analysis.behavioralInsights?.length || 0 },
-    { id: 'accessibility', title: 'Accessibility', icon: '♿', count: analysis.accessibilityAudit?.criticalFailures?.length || 0 }
-  ], [
-    analysis.criticalIssues?.length,
-    analysis.usabilityIssues?.length,
-    analysis.opportunities?.length,
-    analysis.behavioralInsights?.length,
-    analysis.accessibilityAudit?.criticalFailures?.length
-  ]);
-
-  const { activeSection, setActiveSection } = useFeedbackNavigation(navigationSections);
+  // Active section state
+  const [activeSection, setActiveSection] = useState<FeedbackSectionId>('summary');
 
   const openSignIn = () => {
     // Your sign in logic here
@@ -123,6 +110,19 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
           setData(feedbackData);
           setError(null);
           setLoading(false);
+          
+          // Set current analysis in context for sidebar
+          const currentAnalysis = {
+            id: feedbackData.id,
+            fileName: feedbackData.original_filename || `Analysis #${feedbackData.id.slice(0, 8)}`,
+            gripScore: feedbackData.score,
+            context: feedbackData.user_id ? 'user_upload' : 'guest_upload',
+            timestamp: feedbackData.created_at
+          };
+          setCurrentAnalysis(currentAnalysis);
+          
+          // Mark this as the latest upload to ensure sidebar includes it
+          setLastUploadId(feedbackData.id);
         }
       } catch (err: any) {
         console.error('❌ Error initializing page:', err);
@@ -138,7 +138,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
     return () => {
       mounted = false;
     };
-  }, [params.id, supabase]);
+  }, [params.id, supabase, setCurrentAnalysis, setLastUploadId]);
 
   // Cooldown timer effect
   useEffect(() => {
@@ -155,6 +155,111 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
       return () => clearInterval(interval);
     }
   }, [cooldownTime]);
+
+  // Enhanced scroll listener to update active section
+  useEffect(() => {
+    if (!data) return; // Don't run until data is loaded
+
+    const handleScroll = () => {
+      const sections = ['summary', 'issues', 'detailed-analysis', 'opportunities', 'insights', 'accessibility'];
+      
+      // Find the specific feedback scroll container
+      const scrollContainer = document.getElementById('feedback-scroll-container') as HTMLElement;
+      
+      if (!scrollContainer) {
+        console.log('❌ Feedback scroll container not found');
+        return;
+      }
+      
+      const scrollTop = scrollContainer.scrollTop;
+      const headerOffset = 150; // Account for sticky tabs height
+      
+      console.log('📊 Scroll Debug:', {
+        scrollTop,
+        headerOffset,
+        containerHeight: scrollContainer.clientHeight
+      });
+      
+      // Get all section elements and their positions
+      const sectionElements = sections.map(id => {
+        const element = document.getElementById(id);
+        return {
+          id,
+          element,
+          position: element ? element.offsetTop : 0,
+          inView: false
+        };
+      }).filter(section => section.element);
+      
+      console.log('🎯 Section positions:', sectionElements.map(s => ({ 
+        id: s.id, 
+        position: s.position,
+        isActive: s.position <= scrollTop + headerOffset
+      })));
+      
+      // Find the current section based on scroll position
+      let currentSection = sections[0]; // Default to first section
+      
+      for (let i = sectionElements.length - 1; i >= 0; i--) {
+        const section = sectionElements[i];
+        if (section.position <= scrollTop + headerOffset) {
+          currentSection = section.id;
+          console.log('✅ Active section detected:', currentSection);
+          break;
+        }
+      }
+      
+      // Only update if the section has changed
+      setActiveSection(prevSection => {
+        if (prevSection !== currentSection) {
+          console.log('🔄 Section changed:', prevSection, '→', currentSection);
+          return currentSection as FeedbackSectionId;
+        }
+        return prevSection;
+      });
+    };
+
+    // Debounce the scroll handler for better performance
+    let scrollTimeout: NodeJS.Timeout;
+    const debouncedScrollHandler = () => {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(handleScroll, 50);
+    };
+
+    // Find the scrollable container and add listener
+    let cleanupFunction: (() => void) | null = null;
+    
+    const findAndAttachListener = () => {
+      // Wait for DOM to be fully ready
+      const timeoutId = setTimeout(() => {
+        const scrollContainer = document.getElementById('feedback-scroll-container') as HTMLElement;
+        
+        if (scrollContainer) {
+          console.log('✅ Feedback scroll container found:', scrollContainer);
+          scrollContainer.addEventListener('scroll', debouncedScrollHandler, { passive: true });
+          
+          // Initial call to set correct active section
+          setTimeout(handleScroll, 100);
+          
+          cleanupFunction = () => {
+            scrollContainer.removeEventListener('scroll', debouncedScrollHandler);
+            clearTimeout(scrollTimeout);
+          };
+        } else {
+          console.log('❌ Feedback scroll container not found');
+        }
+      }, 500); // Increased timeout to ensure DOM is ready
+      
+      return () => {
+        clearTimeout(timeoutId);
+        if (cleanupFunction) cleanupFunction();
+      };
+    };
+
+    const cleanup = findAndAttachListener();
+    
+    return cleanup;
+  }, [data]); // Re-run when data loads to ensure container exists
 
 
 
@@ -447,11 +552,27 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
         )}
       </motion.div>
 
-      {/* Navigation Component */}
-      <FeedbackNavigation 
-        sections={navigationSections}
+      {/* Feedback Tabs */}
+      <FeedbackTabs
+        analysis={isNewFormat ? analysis : {
+          context: 'LEGACY' as any,
+          industry: 'UNKNOWN' as any,
+          industryConfidence: 0,
+          gripScore: { overall: score, breakdown: {} as any },
+          verdict: { summary: "", attentionSpan: "", likelyAction: "", dropoffPoint: "", memorable: "", attentionFlow: [] },
+          visualDesignAnalysis: null as any,
+          uxCopyAnalysis: null as any,
+          criticalIssues: [],
+          usabilityIssues: [],
+          opportunities: [],
+          behavioralInsights: [],
+          generationalAnalysis: null as any,
+          accessibilityAudit: null,
+          timestamp: new Date().toISOString()
+        }}
         activeSection={activeSection}
-        onSectionChange={setActiveSection}
+        setActiveSection={setActiveSection}
+        isPro={isLoggedIn}
       />
 
       {/* Flowing Single-Page Layout */}
@@ -760,6 +881,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
       
       {/* Main content - positioned absolutely to fill remaining space */}
       <div 
+        id="feedback-scroll-container"
         className="absolute top-0 bottom-0 overflow-y-auto"
         style={{
           left: '256px',

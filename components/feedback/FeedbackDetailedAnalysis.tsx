@@ -34,11 +34,9 @@ export default function FeedbackDetailedAnalysis({
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
       >
-        <h2>
-          <GlitchText className="text-3xl font-bold mb-3" trigger="mount">
-            DETAILED ANALYSIS
-          </GlitchText>
-        </h2>
+        <div className="text-3xl font-bold mb-3 font-mono tracking-wider">
+          DETAILED ANALYSIS
+        </div>
         <div className="text-lg opacity-70 font-mono mb-2">
           Deep dive into visual design, copy effectiveness, and audience alignment
         </div>
@@ -80,70 +78,46 @@ export default function FeedbackDetailedAnalysis({
           </div>
         )}
 
-        {/* Generational Analysis - Full Width */}
+        {/* Generational Analysis - Compact */}
         {hasGenerationalAnalysis && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="zombify-card p-8 relative overflow-hidden"
+            className="border-2 border-black bg-[#f5f1e6] p-4 relative overflow-hidden"
           >
-            <div className="text-center mb-8">
-              <GlitchText className="text-2xl font-bold mb-3" trigger="hover">
-                GENERATIONAL APPEAL ANALYSIS
-              </GlitchText>
-              <div className="text-base opacity-70 font-mono mb-4">
-                How well your interface resonates with different age demographics
-              </div>
-              
-              {/* Primary Target Badge */}
-              {analysis.generationalAnalysis.primaryTarget && (
-                <motion.div
-                  className="inline-block bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-2 rounded-full font-mono text-sm font-bold tracking-wider shadow-lg"
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: 0.6, type: "spring", stiffness: 200 }}
-                >
-                  PRIMARY TARGET: {analysis.generationalAnalysis.primaryTarget.toUpperCase()}
-                </motion.div>
-              )}
-            </div>
+            <GenerationalRadarChart
+              scores={{
+                genAlpha: analysis.generationalAnalysis.scores.genAlpha || { score: 0, reasoning: 'No data available' },
+                genZ: analysis.generationalAnalysis.scores.genZ || { score: 0, reasoning: 'No data available' },
+                millennials: analysis.generationalAnalysis.scores.millennials || { score: 0, reasoning: 'No data available' },
+                genX: analysis.generationalAnalysis.scores.genX || { score: 0, reasoning: 'No data available' },
+                boomers: analysis.generationalAnalysis.scores.boomers || { score: 0, reasoning: 'No data available' }
+              }}
+              primaryTarget={analysis.generationalAnalysis.primaryTarget || 'millennials'}
+            />
 
-            {/* Radar Chart */}
-            <div className="flex justify-center mb-8">
-              <GenerationalRadarChart
-                scores={{
-                  genAlpha: analysis.generationalAnalysis.scores.genAlpha || { score: 0, reasoning: 'No data available' },
-                  genZ: analysis.generationalAnalysis.scores.genZ || { score: 0, reasoning: 'No data available' },
-                  millennials: analysis.generationalAnalysis.scores.millennials || { score: 0, reasoning: 'No data available' },
-                  genX: analysis.generationalAnalysis.scores.genX || { score: 0, reasoning: 'No data available' },
-                  boomers: analysis.generationalAnalysis.scores.boomers || { score: 0, reasoning: 'No data available' }
-                }}
-                primaryTarget={analysis.generationalAnalysis.primaryTarget || 'millennials'}
-              />
-            </div>
-
-            {/* Recommendations */}
+            {/* Compact Recommendations */}
             {analysis.generationalAnalysis.recommendations && analysis.generationalAnalysis.recommendations.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.8 }}
-                className="mt-8"
+                className="mt-4 pt-4 border-t border-black/20"
               >
-                <h4 className="text-lg font-bold mb-4 text-center">
-                  <GlitchText trigger="hover">GENERATIONAL OPTIMIZATION TIPS</GlitchText>
+                <h4 className="text-sm font-bold mb-2 font-mono tracking-wider">
+                  OPTIMIZATION TIPS
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {analysis.generationalAnalysis.recommendations.map((rec, index) => (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {analysis.generationalAnalysis.recommendations.slice(0, 4).map((rec, index) => (
                     <motion.div
                       key={index}
-                      className="bg-white/50 border border-black/10 p-4 rounded-lg"
+                      className="bg-white border-2 border-black p-2 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]"
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.9 + index * 0.1 }}
                     >
-                      <div className="text-sm font-mono opacity-80">{rec}</div>
+                      <div className="text-xs font-mono opacity-80 leading-tight">{rec}</div>
                     </motion.div>
                   ))}
                 </div>
@@ -155,7 +129,7 @@ export default function FeedbackDetailedAnalysis({
         {/* No Analysis Available State */}
         {!hasVisualAnalysis && !hasUXCopyAnalysis && !hasGenerationalAnalysis && (
           <motion.div
-            className="text-center py-16 zombify-card relative overflow-hidden"
+            className="text-center py-16 border-2 border-black bg-[#f5f1e6] relative overflow-hidden"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.3 }}
@@ -174,13 +148,13 @@ export default function FeedbackDetailedAnalysis({
             >
               📊
             </motion.div>
-            <GlitchText className="text-3xl font-bold mb-4" trigger="mount">
+            <div className="text-3xl font-bold mb-4 font-mono tracking-wider">
               DETAILED ANALYSIS UNAVAILABLE
-            </GlitchText>
+            </div>
             <p className="text-lg opacity-70 font-mono mb-4">
               No detailed analysis data available for this interface
             </p>
-            <div className="text-sm opacity-60 font-mono bg-gray-50 p-4 rounded-lg inline-block">
+            <div className="text-sm opacity-60 font-mono bg-white border-2 border-black p-4 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)] inline-block">
               This may be a legacy analysis or the detailed analysis wasn't completed
             </div>
           </motion.div>

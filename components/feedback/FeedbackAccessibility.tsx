@@ -32,18 +32,16 @@ export default function FeedbackAccessibility({
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h2>
-            <GlitchText className="text-3xl font-bold mb-3" trigger="mount">
-              ACCESSIBILITY ANALYSIS
-            </GlitchText>
-          </h2>
+          <div className="text-3xl font-bold mb-3 font-mono tracking-wider">
+            ACCESSIBILITY ANALYSIS
+          </div>
           <div className="text-lg opacity-70 font-mono">
             Visual accessibility analysis for inclusive design
           </div>
         </motion.div>
 
         <motion.div
-          className="text-center py-16 zombify-card relative overflow-hidden"
+          className="text-center py-16 border-2 border-black bg-[#f5f1e6] relative overflow-hidden"
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3 }}
@@ -62,13 +60,13 @@ export default function FeedbackAccessibility({
           >
             ♿
           </motion.div>
-          <GlitchText className="text-3xl font-bold mb-4" trigger="mount">
+          <div className="text-3xl font-bold mb-4 font-mono tracking-wider">
             ACCESSIBILITY DATA UNAVAILABLE
-          </GlitchText>
+          </div>
           <p className="text-lg opacity-70 font-mono mb-4">
             No accessibility analysis available for this interface
           </p>
-          <div className="text-sm opacity-60 font-mono bg-gray-50 p-4 rounded-lg inline-block">
+          <div className="text-sm opacity-60 font-mono bg-white border-2 border-black p-4 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)] inline-block">
             Accessibility analysis wasn't completed for this submission
           </div>
         </motion.div>
@@ -89,11 +87,9 @@ export default function FeedbackAccessibility({
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
       >
-        <h2>
-          <GlitchText className="text-3xl font-bold mb-3" trigger="mount">
-            ACCESSIBILITY ANALYSIS
-          </GlitchText>
-        </h2>
+        <div className="text-3xl font-bold mb-3 font-mono tracking-wider">
+          ACCESSIBILITY ANALYSIS
+        </div>
         <div className="text-lg opacity-70 font-mono mb-2">
           Visual accessibility assessment for inclusive design
         </div>
@@ -108,22 +104,22 @@ export default function FeedbackAccessibility({
 
       {/* Accessibility Score Matrix */}
       <motion.div 
-        className="zombify-card p-8 relative overflow-hidden"
+        className="border-2 border-black bg-[#f5f1e6] p-6 relative overflow-hidden"
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.2 }}
       >
-        <div className="text-center mb-8">
-          <GlitchText className="text-2xl font-bold mb-3" trigger="hover">
+        <div className="text-center mb-6">
+          <div className="text-2xl font-bold mb-3 font-mono tracking-wider">
             VISUAL ACCESSIBILITY OVERVIEW
-          </GlitchText>
+          </div>
           <div className="font-mono text-base opacity-70 mb-6">
             Analysis covers visual elements only - no alt text, keyboard navigation, or screen reader testing
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <motion.div 
-              className="text-center p-6 bg-white/50 rounded-lg border border-black/10"
+              className="text-center p-4 bg-white border-2 border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]"
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.4, type: "spring", stiffness: 200 }}
@@ -140,7 +136,7 @@ export default function FeedbackAccessibility({
             </motion.div>
             
             <motion.div 
-              className="text-center p-6 bg-white/50 rounded-lg border border-black/10"
+              className="text-center p-4 bg-white border-2 border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]"
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.5, type: "spring", stiffness: 200 }}
@@ -151,7 +147,7 @@ export default function FeedbackAccessibility({
             </motion.div>
             
             <motion.div 
-              className="text-center p-6 bg-white/50 rounded-lg border border-black/10"
+              className="text-center p-4 bg-white border-2 border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]"
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.6, type: "spring", stiffness: 200 }}
@@ -174,22 +170,22 @@ export default function FeedbackAccessibility({
           {/* Strengths */}
           {accessibilityAudit.strengths && accessibilityAudit.strengths.length > 0 && (
             <motion.div 
-              className="zombify-card p-6 relative overflow-hidden"
+              className="border-2 border-black bg-[#f5f1e6] p-4 relative overflow-hidden"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.4 }}
             >
-              <div className="flex items-center gap-3 mb-6">
+              <div className="flex items-center gap-3 mb-4">
                 <div className="text-3xl">✅</div>
-                <GlitchText className="text-xl font-bold text-black" trigger="hover">
+                <div className="text-xl font-bold text-black font-mono tracking-wider">
                   ACCESSIBILITY STRENGTHS
-                </GlitchText>
+                </div>
               </div>
               <div className="space-y-3">
                 {accessibilityAudit.strengths.map((strength, i) => (
                   <motion.div 
                     key={i} 
-                    className="flex items-start gap-3 p-4 bg-white/50 rounded-lg border border-black/10"
+                    className="flex items-start gap-3 p-3 bg-white border-2 border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.5 + i * 0.1 }}
@@ -205,22 +201,22 @@ export default function FeedbackAccessibility({
           {/* Weaknesses */}
           {accessibilityAudit.weaknesses && accessibilityAudit.weaknesses.length > 0 && (
             <motion.div 
-              className="zombify-card p-6 relative overflow-hidden"
+              className="border-2 border-black bg-[#f5f1e6] p-4 relative overflow-hidden"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.5 }}
             >
-              <div className="flex items-center gap-3 mb-6">
+              <div className="flex items-center gap-3 mb-4">
                 <div className="text-3xl">⚠️</div>
-                <GlitchText className="text-xl font-bold text-black" trigger="hover">
+                <div className="text-xl font-bold text-black font-mono tracking-wider">
                   AREAS FOR IMPROVEMENT
-                </GlitchText>
+                </div>
               </div>
               <div className="space-y-3">
                 {accessibilityAudit.weaknesses.map((weakness, i) => (
                   <motion.div 
                     key={i} 
-                    className="flex items-start gap-3 p-4 bg-white/50 rounded-lg border border-black/10"
+                    className="flex items-start gap-3 p-3 bg-white border-2 border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.6 + i * 0.1 }}
@@ -243,49 +239,49 @@ export default function FeedbackAccessibility({
           transition={{ delay: 0.6 }}
           className="space-y-6"
         >
-          <div className="flex items-center gap-3 mb-8">
+          <div className="flex items-center gap-3 mb-6">
             <div className="text-4xl">🎯</div>
-            <GlitchText className="text-2xl font-bold text-red-600" trigger="mount">
+            <div className="text-2xl font-bold text-red-600 font-mono tracking-wider">
               VISUAL ACCESSIBILITY ISSUES
-            </GlitchText>
+            </div>
           </div>
 
           <div className="space-y-6">
             {accessibilityAudit.criticalFailures.map((failure, i) => (
               <motion.div 
                 key={i} 
-                className="zombify-card p-6 relative overflow-hidden"
+                className="border-2 border-black bg-[#f5f1e6] p-4 relative overflow-hidden"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.7 + i * 0.1 }}
               >
                 <div className="relative z-10">
-                  <div className="flex justify-between items-start mb-6">
+                  <div className="flex justify-between items-start mb-4">
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-3">
+                      <div className="flex items-center gap-3 mb-2">
                         <div className="text-2xl">🚨</div>
-                        <div className="font-bold text-xl text-black">{failure.criterion}</div>
+                        <div className="font-bold text-lg text-black font-mono tracking-wider">{failure.criterion}</div>
                       </div>
-                      <div className="text-black mb-3 font-mono text-base opacity-80">{failure.issue}</div>
-                      <div className="text-sm font-mono opacity-60">
+                      <div className="text-black mb-2 font-mono text-sm opacity-80">{failure.issue}</div>
+                      <div className="text-xs font-mono opacity-60">
                         📍 {failure.location?.selector || failure.location?.element}
                       </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <div className="bg-red-50 border-2 border-red-200 p-4 rounded-lg">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="bg-white border-2 border-black p-3 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]">
                       <div className="text-xs text-red-600 font-bold mb-2 font-mono">CURRENT VALUE</div>
                       <div className="text-sm font-mono text-red-700 font-bold">{failure.currentValue}</div>
                     </div>
-                    <div className="bg-green-50 border-2 border-green-200 p-4 rounded-lg">
+                    <div className="bg-white border-2 border-black p-3 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]">
                       <div className="text-xs text-green-600 font-bold mb-2 font-mono">REQUIRED VALUE</div>
                       <div className="text-sm font-mono text-green-700 font-bold">{failure.requiredValue}</div>
                     </div>
                   </div>
 
-                  <div className="bg-blue-50 border-2 border-blue-200 p-4 rounded-lg">
-                    <div className="text-xs text-blue-600 font-bold mb-3 font-mono">🔧 REMEDIATION STEPS</div>
+                  <div className="bg-white border-2 border-black p-3 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]">
+                    <div className="text-xs text-blue-600 font-bold mb-2 font-mono">🔧 REMEDIATION STEPS</div>
                     <div className="text-sm font-mono text-blue-700 leading-relaxed">{failure.fix}</div>
                   </div>
                 </div>
@@ -303,11 +299,11 @@ export default function FeedbackAccessibility({
           transition={{ delay: 0.8 }}
           className="space-y-6"
         >
-          <div className="flex items-center gap-3 mb-8">
+          <div className="flex items-center gap-3 mb-6">
             <div className="text-4xl">🎛️</div>
-            <GlitchText className="text-2xl font-bold text-cyan-600" trigger="mount">
+            <div className="text-2xl font-bold text-cyan-600 font-mono tracking-wider">
               PRIORITY RECOMMENDATIONS
-            </GlitchText>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -326,13 +322,13 @@ export default function FeedbackAccessibility({
               return (
                 <motion.div
                   key={priority}
-                  className={`bg-gradient-to-br ${colors.bg} border-2 ${colors.border} rounded-lg p-6 relative overflow-hidden`}
+                  className={`border-2 border-black bg-[#f5f1e6] p-4 relative overflow-hidden`}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.9 + priorityIndex * 0.2 }}
                 >
-                  <div className={`text-center mb-6 ${colors.text}`}>
-                    <div className="text-xl font-bold font-mono">{priority} PRIORITY</div>
+                  <div className="text-center mb-4">
+                    <div className={`text-lg font-bold font-mono tracking-wider ${colors.text}`}>{priority} PRIORITY</div>
                     <div className="text-sm opacity-70">{priorityRecs.length} action{priorityRecs.length !== 1 ? 's' : ''}</div>
                   </div>
 
@@ -340,7 +336,7 @@ export default function FeedbackAccessibility({
                     {priorityRecs.map((rec, i) => (
                       <motion.div
                         key={i}
-                        className={`p-4 rounded-lg border-l-4 ${colors.border} bg-black/20 cursor-pointer hover:bg-black/30 transition-colors`}
+                        className="bg-white border-2 border-black p-3 cursor-pointer hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,0.5)] transition-all duration-200"
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 1 + i * 0.1 }}
@@ -349,21 +345,21 @@ export default function FeedbackAccessibility({
                         )}
                       >
                         <div className="flex justify-between items-start mb-2">
-                          <div className="text-sm font-medium text-white flex-1">{rec.action}</div>
+                          <div className="text-sm font-medium text-black flex-1 font-mono">{rec.action}</div>
                           <motion.div
                             animate={{ rotate: expandedRecommendation === `${priority}-${i}` ? 180 : 0 }}
                             transition={{ duration: 0.2 }}
-                            className="text-white/60 ml-2"
+                            className="text-black/60 ml-2"
                           >
                             ▼
                           </motion.div>
                         </div>
                         
                         <div className="flex justify-between items-center text-xs">
-                          <span className={`${colors.accent} text-white px-2 py-1 rounded font-mono`}>
+                          <span className={`${colors.accent} text-white px-2 py-1 font-mono`}>
                             {rec.effort} EFFORT
                           </span>
-                          <span className="text-white/60 font-mono">#{i + 1}</span>
+                          <span className="text-black/60 font-mono">#{i + 1}</span>
                         </div>
 
                         <AnimatePresence>
@@ -375,11 +371,11 @@ export default function FeedbackAccessibility({
                               transition={{ duration: 0.3 }}
                               className="overflow-hidden"
                             >
-                              <div className="mt-3 pt-3 border-t border-white/20">
-                                <div className="text-xs text-white/80 leading-relaxed">
-                                  Additional implementation details would be provided here for this recommendation.
-                                </div>
+                                                          <div className="mt-3 pt-3 border-t border-black/20">
+                              <div className="text-xs text-black/80 leading-relaxed font-mono">
+                                Additional implementation details would be provided here for this recommendation.
                               </div>
+                            </div>
                             </motion.div>
                           )}
                         </AnimatePresence>

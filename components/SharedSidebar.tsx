@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 interface SidebarProps {
   currentAnalysis?: {
     id: string;
+    fileName?: string;
     score: number;
     context: string;
     imageUrl: string;
@@ -13,6 +14,7 @@ interface SidebarProps {
   } | null;
   recentAnalyses?: Array<{
     id: string;
+    fileName?: string;
     score: number;
     context: string;
     imageUrl: string;
@@ -26,7 +28,10 @@ export function SharedSidebar({ currentAnalysis, recentAnalyses = [], className 
   const router = useRouter();
 
   // Extract filename from image URL (fallback when original_filename is not available)
-  const getImageFileName = (url: string) => {
+  const getImageFileName = (url: string, fileName?: string) => {
+    // Prefer fileName if available (this is the original_filename)
+    if (fileName) return fileName;
+    
     if (!url) return 'Unnamed Analysis';
     const segments = url.split('/');
     const filename = segments[segments.length - 1];
@@ -78,7 +83,7 @@ export function SharedSidebar({ currentAnalysis, recentAnalyses = [], className 
                     </div>
                   </div>
                   <div className="text-sm font-medium truncate mb-1">
-                    {getImageFileName(currentAnalysis.imageUrl)}
+                    {currentAnalysis.fileName || getImageFileName(currentAnalysis.imageUrl)}
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs opacity-60">Grip Score</span>
@@ -98,7 +103,7 @@ export function SharedSidebar({ currentAnalysis, recentAnalyses = [], className 
                     >
                       <div className="flex items-center justify-between mb-1">
                         <div className="text-xs font-medium truncate">
-                          {getImageFileName(analysis.imageUrl)}
+                          {analysis.fileName || getImageFileName(analysis.imageUrl)}
                         </div>
                         <span className="text-xs font-bold ml-2">{analysis.score}</span>
                       </div>
