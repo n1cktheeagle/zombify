@@ -1,4 +1,4 @@
-// analyzeImage.ts - Clean version with Vision enhancements, NO visual annotations
+// analyzeImage.ts - Enhanced version with all new features
 import { ZombifyAnalysis, VisionAnalysisResult } from '@/types/analysis';
 
 // Keep your existing extractAndParseJSON function exactly as is
@@ -371,7 +371,7 @@ function rgbToHex(color: any): string {
 }
 
 export async function analyzeImage(imageUrl: string): Promise<ZombifyAnalysis> {
-  console.log('[ANALYZE_IMAGE] Starting hybrid analysis for:', imageUrl);
+  console.log('[ANALYZE_IMAGE] Starting enhanced hybrid analysis for:', imageUrl);
   
   try {
     // Step 1: Run Vision API FIRST to get element data
@@ -382,19 +382,19 @@ export async function analyzeImage(imageUrl: string): Promise<ZombifyAnalysis> {
     let visionContext = '';
     if (visionData) {
       visionContext = `
-Based on Vision API analysis:
+VISION API DATA AVAILABLE:
 - Detected ${visionData.textAnnotations.length} text elements
-- Found ${visionData.logoAnnotations.length} logos
+- Found ${visionData.logoAnnotations.length} logos/brand elements
 - Dominant colors: ${visionData.imageProperties.dominantColors.slice(0, 3).map(c => 
   `rgb(${c.color.red},${c.color.green},${c.color.blue})`
 ).join(', ')}
-- Text elements include: ${visionData.textAnnotations.slice(0, 15).map(t => t.text).join(', ')}${visionData.textAnnotations.length > 15 ? '...' : ''}
+- Text elements: ${visionData.textAnnotations.slice(0, 15).map(t => t.text).join(', ')}${visionData.textAnnotations.length > 15 ? '...' : ''}
 
-IMPORTANT: When identifying issues or opportunities, mention specific text elements you can see in the interface for better context and specificity.
+Use this data to make your analysis more specific and accurate.
 `;
     }
     
-    // Step 3: Run GPT-4V analysis with Vision context
+    // Step 3: Run GPT-4V analysis with enhanced prompt
     const { OpenAI } = await import('openai');
     
     if (!process.env.OPENAI_API_KEY) {
@@ -403,174 +403,367 @@ IMPORTANT: When identifying issues or opportunities, mention specific text eleme
     }
     
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    console.log('[ANALYZE_IMAGE] Starting GPT-4V analysis...');
+    console.log('[ANALYZE_IMAGE] Starting enhanced GPT-4V analysis...');
 
     const response = await openai.chat.completions.create({
       model: 'gpt-4o',
       temperature: 0.3,
-      max_tokens: 4000,
+      max_tokens: 6000, // Increased for enhanced analysis
       messages: [
         {
           role: 'user',
           content: [
             {
               type: 'text',
-              text: `You are an expert UX & UI designer providing strategic design critique. Focus on what matters for user experience.
+              text: `You are a strategic UX expert providing comprehensive design intelligence. Your analysis should be deep, actionable, and psychologically informed.
 
 ${visionContext}
 
-ANALYSIS APPROACH:
-1. First understand what this interface is trying to achieve
-2. Identify design issues that impact user goals
-3. Provide actionable feedback based on design principles
-4. Focus on perceived hierarchy, clarity, and user flow
+=== ENHANCED ANALYSIS FRAMEWORK ===
 
-IMPORTANT FOR LOCATION DATA:
-When identifying issues or opportunities, be specific about elements you see:
-- For buttons: mention the exact button text you can see
-- For headings: reference the actual heading text
-- For sections: describe what content/elements are in that area
-- Be descriptive but don't make up text you can't clearly see
+STAGE 1 - OBSERVE: First, carefully examine the interface
+- What type of interface is this? (landing page, dashboard, form, etc.)
+- What industry/context does this serve?
+- What text elements, buttons, and visual hierarchy do you see?
+- What are the dominant colors, typography choices, and spacing patterns?
 
-For example:
-- GOOD: location: { element: "Sign up button", region: "header area" }
-- GOOD: location: { element: "Main hero heading", region: "top section" }
-- AVOID: Making up exact text if you're not 100% sure
+STAGE 2 - INTERPRET: Analyze strategic implications
+- What is this interface trying to achieve vs what users will perceive?
+- What psychological triggers and emotional responses does it create?
+- What behavioral patterns will this layout encourage or discourage?
+- How does the copy align with the target audience and brand voice?
 
-IMPORTANT FOR ATTENTION FLOW:
-Describe what users will look at and why, in order of importance. Focus on:
-- Primary actions (what can users do?)
-- Key information (what do users need to know?)
-- Navigation (how do users explore?)
-- Trust signals (what builds confidence?)
-- Supporting content (what provides context?)
+STAGE 3 - RECOMMEND: Provide prioritized improvements
+- What are the critical issues that will hurt user experience or conversions?
+- What dark patterns or manipulative design elements are present?
+- How can accessibility be improved using automated checks?
+- What opportunities exist to enhance engagement and trust?
 
-Example attention flow:
-"attentionFlow": [
-  "Primary CTA 'Start Free Trial' - users look for how to get started",
-  "Pricing information - users need to know the cost",
-  "Feature list - users evaluate if it meets their needs",
-  "Testimonials section - users seek social proof",
-  "Navigation menu - users explore other options"
-]
+=== ANALYSIS REQUIREMENTS ===
 
-Return this JSON structure:
+DARK PATTERN DETECTION (COMPREHENSIVE ETHICAL ANALYSIS REQUIRED):
+Systematically identify ALL manipulative design practices across these 6 categories:
+
+1. URGENCY_MANIPULATION: False scarcity, fake countdown timers, "limited time" without real limits, artificial pressure
+2. BAIT_AND_SWITCH: Misleading headlines, hidden requirements, features that don't work as advertised
+3. HIDDEN_COSTS: Undisclosed fees, surprise charges, unclear pricing, subscription traps
+4. FORCED_CONTINUITY: Hard to cancel, automatic renewals, requiring phone calls to quit
+5. ROACH_MOTEL: Easy sign-up but difficult account deletion, data export barriers
+6. CONFIRM_SHAMING: Guilt-inducing decline options, manipulative "No thanks" copy
+
+For EACH pattern found, provide:
+- ETHICAL ALTERNATIVE: Specific honest approach that serves users better
+- TRUST IMPACT: How this damages long-term customer relationships (1-10 damage score)
+- BUSINESS RISK: Legal/reputation consequences of this manipulation
+- PSYCHOLOGY EXPLOITATION: What cognitive bias is being manipulated unfairly
+
+UX COPY INTELLIGENCE:
+Analyze all text with strategic depth:
+- Audience alignment: Does copy match the visual tone and target demographic?
+- Brand voice consistency: Are there tone shifts across elements?
+- Microcopy optimization: Error messages, empty states, form labels, button text
+- Persuasion analysis: What psychological triggers are used effectively/poorly?
+- Accessibility: Is language clear and inclusive?
+
+ENHANCED BEHAVIORAL INSIGHTS (CRITICAL - MUST INCLUDE EMOTIONAL SCORING):
+For each behavioral pattern, you MUST provide comprehensive psychological analysis:
+- PRIMARY EMOTION: Select ONE primary emotion: trust, anxiety, excitement, confusion, frustration, delight, anticipation, skepticism
+- INTENSITY SCORING: Rate emotional response strength 1-10 (1=barely noticeable, 5=moderate, 10=overwhelming)
+- PSYCHOLOGICAL REASONING: Explain the cognitive/behavioral science principle at work (e.g., "Loss aversion makes users fear missing the discount")
+- DESIGN TRIGGERS: Identify specific visual elements causing this emotional response (colors, placement, copy, imagery)
+- CONVERSION IMPLICATIONS: Quantify how this helps/hurts business goals with specific behavioral predictions
+- USER MOTIVATION: What drives users to act/not act based on this emotional state?
+
+ACCESSIBILITY AUTOMATION:
+Using available visual data, check:
+- Text size issues (flag elements that appear under 14px)
+- Color contrast problems between text and backgrounds
+- Visual hierarchy clarity and logical tab order
+- Button/link visibility and touch target sizes
+
+STRATEGIC INTENT ANALYSIS:
+- What do users think this interface is for based on visual cues?
+- Does this match the likely business intention?
+- Where might users get confused about purpose or next steps?
+- How can intent be clarified through design changes?
+
+GENERATIONAL DESIGN ANALYSIS (EVIDENCE-BASED SCORING REQUIRED):
+Analyze how this interface appeals to different generations using specific design psychology principles:
+
+GENERATION SCORING CRITERIA (Rate each 0-100 based on design evidence):
+
+Gen Alpha (0-11): Born digital natives
+- VISUAL COMPLEXITY: Prefers dynamic, interactive, media-rich interfaces (vibrant colors, animations, multimedia)
+- ATTENTION PATTERNS: Short-form content, visual storytelling, gamification elements
+- TECHNOLOGY EXPECTATIONS: Touch-first, gesture-based, voice integration, AR/VR readiness
+- EVIDENCE TO ANALYZE: Interactive elements, animation presence, visual richness, gamification cues
+
+Gen Z (12-27): Mobile-first, authenticity-focused
+- AUTHENTICITY MARKERS: Real photos vs stock images, honest messaging, transparent processes
+- MOBILE OPTIMIZATION: Touch targets, thumb-friendly navigation, vertical scrolling design
+- SPEED EXPECTATIONS: Fast loading indicators, minimal friction, instant gratification elements
+- SOCIAL INTEGRATION: Sharing features, social proof, community elements
+- EVIDENCE TO ANALYZE: Mobile responsiveness, authentic visual style, social elements, transparency signals
+
+Millennials (28-43): Experience-driven, brand-conscious
+- EXPERIENCE FOCUS: Smooth user journeys, progressive disclosure, helpful onboarding
+- BRAND TRUST: Professional aesthetics, security indicators, testimonials, established brand signals
+- EFFICIENCY BALANCE: Feature-rich but not overwhelming, customization options
+- EVIDENCE TO ANALYZE: User experience flow, brand credibility signals, feature organization, personalization
+
+Gen X (44-59): Pragmatic, efficiency-focused
+- INFORMATION DENSITY: Comprehensive details available, clear hierarchy, scannable content
+- EFFICIENCY TOOLS: Search functionality, filters, shortcuts, power-user features
+- TRUST SIGNALS: Contact information, credentials, established business indicators
+- EVIDENCE TO ANALYZE: Information architecture, efficiency features, credibility markers
+
+Boomers (60-78): Clarity and accessibility-focused
+- READABILITY: Large text, high contrast, clear typography, minimal visual noise
+- SIMPLICITY: Straightforward navigation, familiar patterns, reduced cognitive load
+- SUPPORT ACCESS: Help options, contact methods, clear instructions
+- ACCESSIBILITY: Text size, color contrast, clickable area size, linear navigation
+- EVIDENCE TO ANALYZE: Text legibility, navigation simplicity, help systems, accessibility compliance
+
+FOR EACH GENERATION, PROVIDE:
+- SCORE (0-100): Based on how well the design matches their documented preferences
+- SPECIFIC EVIDENCE: Cite exact visual elements that support or hurt appeal (colors, layout, text size, features)
+- PSYCHOLOGICAL REASONING: Explain WHY these elements appeal/don't appeal based on generational research
+- IMPROVEMENT OPPORTUNITIES: Specific design changes that would boost this generation's experience
+- BEHAVIORAL PREDICTION: How this generation would likely interact with this interface
+
+PRIMARY TARGET IDENTIFICATION:
+- Analyze design choices to determine most likely intended audience
+- Consider: Industry context, visual sophistication, feature complexity, interaction patterns
+- Justify with specific design evidence
+
+ATTENTION FLOW ENHANCEMENT (DETAILED PRIORITY ANALYSIS REQUIRED):
+Map user attention sequence with scientific precision:
+
+PRIORITY RANKING: Number elements 1-7 in order of visual dominance (1 = first viewed)
+- Use eye-tracking principles: Size, contrast, placement, color psychology
+- Consider F-pattern, Z-pattern, or layer-cake scanning behaviors
+- Account for cultural reading patterns (left-to-right vs other)
+
+TIME ESTIMATES: Provide realistic engagement duration per element:
+- Header/logo: "0.5-1 second recognition scan"
+- Primary CTA: "2-3 seconds evaluation time"
+- Body text: "5-8 seconds if user reads"
+- Navigation: "1-2 seconds orientation"
+
+CONVERSION IMPACT: Rate each element's influence on user action (HIGH/MEDIUM/LOW):
+- HIGH: Elements that directly drive or prevent key actions
+- MEDIUM: Supporting elements that influence decision-making
+- LOW: Decorative or informational elements with minimal action impact
+
+PSYCHOLOGICAL REASONING: Explain WHY attention flows this way:
+- Visual weight principles (size, color, contrast)
+- Gestalt psychology (proximity, similarity, closure)
+- Cognitive load factors (complexity, familiarity)
+- Emotional triggers (urgency, trust signals, social proof)
+
+=== JSON STRUCTURE ===
+
+Return this exact JSON structure:
 
 {
-  "context": "What type of interface this is (FORM, DASHBOARD, LANDING_PAGE, ECOMMERCE, GAME_UI, etc)",
-  "industry": "Industry based on visual cues or UNKNOWN",
+  "context": "LANDING_PAGE|DASHBOARD|FORM|ECOMMERCE|GAME_UI|MOBILE_APP|etc",
+  "industry": "SAAS|ECOMMERCE|FINTECH|HEALTHCARE|EDUCATION|SOCIAL|ENTERPRISE|UNKNOWN",
   "industryConfidence": 0.85,
   "gripScore": {
     "overall": 75,
     "breakdown": {
-      "firstImpression": {"score": 80, "reasoning": "Does it immediately communicate purpose?", "evidence": ["What supports this score"]},
-      "usability": {"score": 70, "reasoning": "Can users easily understand what to do?", "evidence": ["Specific observations"]},
-      "trustworthiness": {"score": 75, "reasoning": "Does it look professional and reliable?", "evidence": ["Visual elements that build/hurt trust"]},
-      "conversion": {"score": 65, "reasoning": "Are key actions prominent and compelling?", "evidence": ["CTA visibility and appeal"]},
-      "accessibility": {"score": 60, "reasoning": "Can everyone use this effectively?", "evidence": ["Contrast, text size, clarity issues"]}
+      "firstImpression": {"score": 80, "reasoning": "Clear purpose communication assessment", "evidence": ["Specific visual elements supporting this score"]},
+      "usability": {"score": 70, "reasoning": "Task completion ease assessment", "evidence": ["Navigation clarity, form simplicity, etc."]},
+      "trustworthiness": {"score": 75, "reasoning": "Professional credibility assessment", "evidence": ["Visual polish, security indicators, etc."]},
+      "conversion": {"score": 65, "reasoning": "Action-driving effectiveness", "evidence": ["CTA prominence, friction points, etc."]},
+      "accessibility": {"score": 60, "reasoning": "Inclusive design assessment", "evidence": ["Contrast, text size, clarity issues"]}
     }
   },
   "verdict": {
-    "summary": "One-line assessment combining main strength and weakness",
-    "attentionSpan": "Realistic estimate of how long users will stay engaged",
-    "likelyAction": "What most users will probably do on this interface",
-    "dropoffPoint": "Where users are most likely to lose interest or leave",
-    "memorable": "What elements users will remember after leaving",
-    "attentionFlow": [LIST OF ATTENTION POINTS WITH EXPLANATIONS]
+    "summary": "One powerful sentence combining main strength and critical weakness",
+    "attentionSpan": "Realistic estimate (e.g., '2-3 minutes for focused users, 30 seconds for browsers')",
+    "likelyAction": "Most probable user behavior on this interface",
+    "dropoffPoint": "Where users are most likely to abandon the flow",
+    "memorable": "What users will remember after leaving",
+    "attentionFlow": [
+      {
+        "priority": 1,
+        "element": "Specific element name or description",
+        "reasoning": "Why this draws attention first",
+        "timeSpent": "Estimated engagement time",
+        "conversionImpact": "HIGH|MEDIUM|LOW"
+      }
+    ]
+  },
+  "darkPatterns": [
+    {
+      "type": "URGENCY_MANIPULATION|BAIT_AND_SWITCH|HIDDEN_COSTS|FORCED_CONTINUITY|ROACH_MOTEL|CONFIRM_SHAMING",
+      "severity": "HIGH|MEDIUM|LOW",
+      "element": "Specific text or button you can see",
+      "evidence": "What makes this manipulative",
+      "impact": "How this damages user trust or experience",
+      "ethicalAlternative": "Better approach that serves users"
+    }
+  ],
+  "intentAnalysis": {
+    "perceivedPurpose": "What users think this is for based on visual cues",
+    "actualPurpose": "Likely business intention",
+    "alignmentScore": 75,
+    "misalignments": ["Specific areas where purpose is unclear"],
+    "clarityImprovements": ["How to make intent clearer"]
   },
   "visualDesignAnalysis": {
     "score": 80,
     "typography": {
-      "score": 85, 
+      "score": 85,
       "issues": [],
-      "hierarchy": {"h1ToH2Ratio": 0, "consistencyScore": 90, "recommendation": "How to improve visual hierarchy"},
-      "readability": {"fleschScore": 0, "avgLineLength": 0, "recommendation": "General readability assessment"}
+      "hierarchy": {"h1ToH2Ratio": 1.5, "consistencyScore": 90, "recommendation": "How to improve visual hierarchy"},
+      "readability": {"fleschScore": 65, "avgLineLength": 12, "recommendation": "General readability assessment"}
     },
     "colorAndContrast": {
       "score": 85,
       "contrastFailures": [
         {
-          "foreground": "describe color",
-          "background": "describe color",
-          "ratio": 0,
-          "location": "specific text element",
+          "foreground": "Text color description",
+          "background": "Background color description", 
+          "ratio": 2.8,
+          "location": "Specific element location",
           "fix": {
-            "suggestion": "Make text darker/lighter or change background",
-            "css": ""
+            "suggestion": "Make text darker or background lighter",
+            "css": "color: #333; or background: #f9f9f9;"
           }
         }
       ],
-      "colorHarmony": {"scheme": "What you observe", "brandColors": ["main colors used"], "accentSuggestion": "How to improve"}
+      "colorHarmony": {"scheme": "Monochromatic|Complementary|Triadic|etc", "brandColors": ["#hex values"], "accentSuggestion": "How to improve color usage"}
     },
-    "spacing": {"score": 80, "gridSystem": "What you observe", "consistency": 85, "issues": []},
-    "modernPatterns": {"detected": ["What modern patterns you see"], "implementation": {}, "trendAlignment": {"2025Relevance": 70, "suggestions": ["How to modernize"]}},
-    "visualHierarchy": {"scanPattern": "How the eye moves", "focalPoints": ["What draws attention"], "improvements": ["How to improve flow"]}
+    "spacing": {"score": 80, "gridSystem": "CSS Grid|Flexbox|Custom|None detected", "consistency": 85, "issues": []},
+    "modernPatterns": {"detected": ["Card layouts", "Button styles", "etc"], "implementation": {}, "trendAlignment": {"2025Relevance": 70, "suggestions": ["How to modernize"]}},
+    "visualHierarchy": {"scanPattern": "F-pattern|Z-pattern|Layer cake|etc", "focalPoints": [{"element": "Main CTA", "weight": 9}], "improvements": [{"issue": "Problem", "fix": "Solution"}]}
   },
   "uxCopyAnalysis": {
     "score": 70,
+    "audienceAlignment": {
+      "detectedAudience": "Professional|Consumer|GenZ|Corporate|etc",
+      "copyStyle": "Formal|Casual|Technical|Friendly|etc",
+      "brandArchetype": "Hero|Expert|Caregiver|Rebel|etc",
+      "toneMismatch": 65
+    },
     "issues": [
       {
         "severity": "HIGH",
-        "current": "Text you can see",
-        "location": "where you see it",
+        "element": "Exact text you can see",
+        "location": "Where this appears",
         "issue": "Why this copy doesn't work",
-        "suggested": ["Better alternative", "Another option"],
-        "impact": "How this affects users",
-        "reasoning": "UX writing principle"
+        "psychologicalImpact": "How this affects user emotions/behavior",
+        "audienceSpecific": {
+          "genZ": "Alternative for Gen Z",
+          "millennial": "Alternative for Millennials", 
+          "corporate": "Alternative for business users"
+        },
+        "suggested": ["Better alternative 1", "Better alternative 2"],
+        "impact": "Expected improvement from change",
+        "reasoning": "UX writing principle applied"
       }
     ],
-    "writingTone": {"current": "Observed tone", "recommended": "Better tone", "example": "Specific rewrite"}
+    "microCopyOpportunities": [
+      {
+        "type": "ERROR_MESSAGING|EMPTY_STATES|FORM_LABELS|SUCCESS_MESSAGES",
+        "current": "Current text",
+        "location": "Where it appears",
+        "issue": "Why current copy is suboptimal",
+        "improved": "Better version",
+        "reasoning": "Psychological or usability principle"
+      }
+    ],
+    "writingTone": {"current": "Observed tone", "recommended": "Better tone for audience", "example": "Specific rewrite example"}
   },
   "criticalIssues": [
     {
       "severity": 3,
-      "category": "HIERARCHY",
-      "issue": "Clear issue title",
+      "category": "HIERARCHY|ACCESSIBILITY|CONVERSION|TRUST|USABILITY",
+      "issue": "Clear, specific issue title",
       "location": {
         "element": "Specific element you can see",
-        "region": "Where in the interface"
+        "region": "General area description"
       },
-      "impact": "How this affects users",
-      "evidence": "What you specifically see",
+      "impact": "How this affects user experience or business goals",
+      "evidence": "What you specifically observe that supports this",
       "fix": {
-        "immediate": "Quick improvement",
-        "better": "Optimal solution",
-        "implementation": "How to achieve it"
+        "immediate": "Quick improvement that can be made now",
+        "better": "Optimal solution with more effort",
+        "implementation": "How to achieve the better solution"
       }
     }
   ],
   "usabilityIssues": [],
   "opportunities": [
     {
-      "category": "ENGAGEMENT",
-      "opportunity": "Specific enhancement",
-      "potentialImpact": "Expected benefit",
-      "implementation": "How to do it",
-      "reasoning": "Why this matters",
+      "category": "ENGAGEMENT|CONVERSION|TRUST|ACCESSIBILITY|PERSONALIZATION",
+      "opportunity": "Specific enhancement opportunity",
+      "potentialImpact": "Expected business/user benefit",
+      "implementation": "How to implement this",
+      "reasoning": "Why this matters strategically",
       "location": {
-        "element": "Specific element",
-        "region": "Where it is"
+        "element": "Specific element to enhance",
+        "region": "Where it's located"
       }
     }
   ],
   "behavioralInsights": [
     {
-      "pattern": "User behavior pattern",
-      "observation": "What triggers this",
-      "psychology": "Why users do this",
-      "recommendation": "How to design for it"
+      "pattern": "Specific user behavior pattern",
+      "observation": "What in the design triggers this",
+      "psychology": "Psychological principle explaining why",
+      "emotionalImpact": {
+        "primaryEmotion": "trust|anxiety|excitement|confusion|frustration|delight",
+        "intensity": 7,
+        "reasoning": "Design elements causing this emotional response"
+      },
+      "recommendation": "How to design for better outcomes"
     }
   ],
-  "accessibilityAudit": null,
+  "frictionPoints": [
+    {
+      "stage": "AWARENESS|CONSIDERATION|DECISION|ACTION",
+      "friction": "Specific friction point",
+      "evidence": "What creates this friction",
+      "dropoffRisk": "HIGH|MEDIUM|LOW", 
+      "quickFix": "Immediate improvement",
+      "impact": "Expected improvement from fixing this"
+    }
+  ],
+  "accessibilityAudit": {
+    "automated": true,
+    "score": 65,
+    "colorContrast": {
+      "issues": [
+        {
+          "element": "Specific element with contrast issue",
+          "contrastRatio": 2.8,
+          "wcagLevel": "AA",
+          "passes": false,
+          "fix": "Specific improvement needed"
+        }
+      ]
+    },
+    "textSize": {
+      "smallTextCount": 3,
+      "minimumSize": "11px estimated",
+      "recommendation": "Increase small text for better readability"
+    },
+    "overallRecommendation": "Priority accessibility improvements"
+  },
   "generationalAnalysis": {
     "scores": {
-      "genZ": {"score": 70, "reasoning": "Visual appeal assessment", "improvements": "What would resonate more", "specificIssues": []},
-      "millennials": {"score": 80, "reasoning": "Design appropriateness", "improvements": "Minor adjustments", "specificIssues": []},
-      "genX": {"score": 85, "reasoning": "Clarity assessment", "improvements": "Suggestions", "specificIssues": []},
-      "boomers": {"score": 75, "reasoning": "Ease of use", "improvements": "Accessibility improvements", "specificIssues": []}
+      "genAlpha": {"score": 45, "reasoning": "Limited gamification and interactive elements. Static layout lacks dynamic engagement expected by digital natives. No multimedia content or animations visible.", "evidence": ["Static layout design", "No visible animations", "Traditional form-based interface"], "improvements": ["Add micro-animations", "Include interactive preview elements", "Implement gamification rewards"], "behavioralPrediction": "Likely to lose interest quickly due to static presentation"},
+      "genZ": {"score": 72, "reasoning": "Clean, modern aesthetic appeals to minimalist preferences. Mobile-responsive design visible. However, lacks social proof and authentic imagery that builds trust.", "evidence": ["Modern typography", "Clean visual hierarchy", "Mobile-first layout"], "improvements": ["Add user testimonials", "Include real customer photos", "Add sharing functionality"], "behavioralPrediction": "Will engage if social validation is added"},
+      "millennials": {"score": 85, "reasoning": "Professional brand presentation builds trust. Feature-rich but organized interface appeals to experience-focused mindset. Clear value proposition and user journey.", "evidence": ["Professional color scheme", "Organized feature layout", "Clear call-to-action"], "improvements": ["Add personalization options", "Include progress indicators", "Enhance onboarding flow"], "behavioralPrediction": "Most likely to convert - design matches expectations"},
+      "genX": {"score": 78, "reasoning": "Information-dense layout provides comprehensive details. Logical hierarchy supports efficiency. Clear contact and credibility signals build trust.", "evidence": ["Detailed feature descriptions", "Contact information prominent", "Logical navigation structure"], "improvements": ["Add search functionality", "Include comparison tables", "Provide downloadable resources"], "behavioralPrediction": "Will thoroughly research before deciding - needs more detailed information"},
+      "boomers": {"score": 65, "reasoning": "Text appears readable but could be larger. Navigation is straightforward but some elements may be too small for easy clicking. Good contrast but needs accessibility improvements.", "evidence": ["Clear typography", "Simple navigation", "Good color contrast"], "improvements": ["Increase text size", "Larger click targets", "Add help documentation", "Simplify form fields"], "behavioralPrediction": "May struggle with smaller interface elements - needs accessibility enhancements"}
     },
-    "primaryTarget": "Based on design style",
-    "recommendations": ["How to better serve target"]
+    "primaryTarget": "millennials",
+    "primaryTargetEvidence": ["Professional aesthetic suggests established business users", "Feature complexity indicates users comfortable with technology", "Brand-focused design appeals to experience-driven mindset"],
+    "recommendations": ["Enhance mobile social features for Gen Z appeal", "Add accessibility improvements for broader age range adoption", "Include more detailed information architecture for Gen X efficiency needs"]
   }
 }`
             },
@@ -583,7 +776,7 @@ Return this JSON structure:
       ]
     });
 
-    console.log('[ANALYZE_IMAGE] GPT-4V analysis completed');
+    console.log('[ANALYZE_IMAGE] Enhanced GPT-4V analysis completed');
     
     const content = response.choices[0]?.message?.content;
     if (!content) {
@@ -593,14 +786,14 @@ Return this JSON structure:
 
     // Parse GPT analysis
     const gptAnalysis = extractAndParseJSON(content);
-    console.log('[ANALYZE_IMAGE] GPT analysis parsed successfully');
+    console.log('[ANALYZE_IMAGE] Enhanced GPT analysis parsed successfully');
     
     // Step 4: Enhance analysis with Vision data
     const enhancedAnalysis = enhanceAnalysisWithVision(gptAnalysis, visionData);
 
     // Validate required fields
     if (!enhancedAnalysis.gripScore || !enhancedAnalysis.criticalIssues || !enhancedAnalysis.context) {
-      throw new Error('Invalid response format from analysis');
+      throw new Error('Invalid response format from enhanced analysis');
     }
 
     const finalAnalysis = {
@@ -608,18 +801,23 @@ Return this JSON structure:
       timestamp: new Date().toISOString()
     };
 
-    console.log('[✅ ANALYSIS COMPLETE]', {
+    console.log('[✅ ENHANCED ANALYSIS COMPLETE]', {
       gptSuccess: !!gptAnalysis,
       visionSuccess: !!visionData,
       enhancedWithVision: !!enhancedAnalysis.visionData,
-      textElementsFound: visionData?.textAnnotations.length || 0,
-      colorsDetected: visionData?.imageProperties.dominantColors.length || 0
+      newFeatures: {
+        darkPatterns: !!enhancedAnalysis.darkPatterns,
+        intentAnalysis: !!enhancedAnalysis.intentAnalysis,
+        enhancedCopy: !!enhancedAnalysis.uxCopyAnalysis?.audienceAlignment,
+        frictionPoints: !!enhancedAnalysis.frictionPoints,
+        automatedAccessibility: !!enhancedAnalysis.accessibilityAudit?.automated
+      }
     });
 
     return finalAnalysis;
 
   } catch (error) {
-    console.error('[ANALYZE_IMAGE] Analysis failed:', error);
+    console.error('[ANALYZE_IMAGE] Enhanced analysis failed:', error);
     
     // Keep your existing error handling exactly as is
     if (error instanceof Error) {
@@ -628,6 +826,15 @@ Return this JSON structure:
           context: 'ERROR',
           industry: 'UNKNOWN',
           industryConfidence: 0,
+          darkPatterns: [],
+          intentAnalysis: {
+            perceivedPurpose: 'Unknown',
+            actualPurpose: 'Unknown',
+            alignmentScore: 0,
+            misalignments: [],
+            clarityImprovements: []
+          },
+          frictionPoints: [],
           gripScore: {
             overall: 0,
             breakdown: {
@@ -678,7 +885,14 @@ Return this JSON structure:
           },
           uxCopyAnalysis: {
             score: 0,
+            audienceAlignment: {
+              detectedAudience: 'Unknown',
+              copyStyle: 'Unknown',
+              brandArchetype: 'Unknown',
+              toneMismatch: 0
+            },
             issues: [],
+            microCopyOpportunities: [],
             writingTone: {
               current: 'Unknown',
               recommended: 'Unknown',
@@ -722,6 +936,15 @@ Return this JSON structure:
       context: 'ERROR',
       industry: 'UNKNOWN',
       industryConfidence: 0,
+      darkPatterns: [],
+      intentAnalysis: {
+        perceivedPurpose: 'Unknown',
+        actualPurpose: 'Unknown',
+        alignmentScore: 0,
+        misalignments: [],
+        clarityImprovements: []
+      },
+      frictionPoints: [],
       gripScore: {
         overall: 0,
         breakdown: {
@@ -772,7 +995,14 @@ Return this JSON structure:
       },
       uxCopyAnalysis: {
         score: 0,
+        audienceAlignment: {
+          detectedAudience: 'Unknown',
+          copyStyle: 'Unknown',
+          brandArchetype: 'Unknown',
+          toneMismatch: 0
+        },
         issues: [],
+        microCopyOpportunities: [],
         writingTone: {
           current: 'Unknown',
           recommended: 'Unknown',

@@ -2,15 +2,16 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
-import { UXCopyAnalysis } from '@/types/analysis';
+import { EnhancedUXCopyAnalysis } from '@/types/analysis';
 import GlitchText from './GlitchText';
 
 interface UXCopyAnalysisCardProps {
-  uxCopy: UXCopyAnalysis;
+  uxCopy: EnhancedUXCopyAnalysis;
 }
 
 export default function UXCopyAnalysisCard({ uxCopy }: UXCopyAnalysisCardProps) {
-  const [expandedIssues, setExpandedIssues] = useState<boolean>(false);
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const [activeIssueFilter, setActiveIssueFilter] = useState<'ALL' | 'HIGH' | 'MEDIUM' | 'LOW'>('ALL');
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-green-600';
@@ -18,29 +19,36 @@ export default function UXCopyAnalysisCard({ uxCopy }: UXCopyAnalysisCardProps) 
     return 'text-red-600';
   };
 
-  const getScoreBg = (score: number) => {
-    if (score >= 80) return 'bg-green-50 border-green-200';
-    if (score >= 60) return 'bg-yellow-50 border-yellow-200';
-    return 'bg-red-50 border-red-200';
-  };
-
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'HIGH': return 'text-red-600';
-      case 'MEDIUM': return 'text-yellow-600';
-      case 'LOW': return 'text-blue-600';
-      default: return 'text-gray-600';
+      case 'HIGH': return 'text-red-600 bg-red-50 border-red-200';
+      case 'MEDIUM': return 'text-orange-600 bg-orange-50 border-orange-200';
+      case 'LOW': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+      default: return 'text-gray-600 bg-gray-50 border-gray-200';
     }
   };
 
-  const getSeverityBg = (severity: string) => {
-    switch (severity) {
-      case 'HIGH': return 'bg-red-50 border-red-200';
-      case 'MEDIUM': return 'bg-yellow-50 border-yellow-200';
-      case 'LOW': return 'bg-blue-50 border-blue-200';
-      default: return 'bg-gray-50 border-gray-200';
-    }
+  const getArchetypeIcon = (archetype: string) => {
+    const archetypes: { [key: string]: string } = {
+      'Hero': '🦸',
+      'Expert': '🎓',
+      'Caregiver': '🤗',
+      'Explorer': '🗺️',
+      'Rebel': '⚡',
+      'Lover': '💖',
+      'Creator': '🎨',
+      'Jester': '🎭',
+      'Sage': '🧙',
+      'Innocent': '🌟',
+      'Ruler': '👑',
+      'Magician': '✨'
+    };
+    return archetypes[archetype] || '📝';
   };
+
+  const filteredIssues = activeIssueFilter === 'ALL' 
+    ? uxCopy.issues 
+    : uxCopy.issues.filter(issue => issue.severity === activeIssueFilter);
 
   return (
     <motion.div 
@@ -52,7 +60,7 @@ export default function UXCopyAnalysisCard({ uxCopy }: UXCopyAnalysisCardProps) 
       {/* Header */}
       <div className="text-center mb-4">
         <div className="text-lg font-bold mb-2 font-mono tracking-wider">
-          UX COPY ANALYSIS
+          UX COPY INTELLIGENCE
         </div>
         <motion.div 
           className={`text-3xl font-bold mb-2 ${getScoreColor(uxCopy.score)} font-mono`}
@@ -63,142 +71,315 @@ export default function UXCopyAnalysisCard({ uxCopy }: UXCopyAnalysisCardProps) 
           {uxCopy.score}
           <span className="text-lg opacity-60">/100</span>
         </motion.div>
-        <div className="text-xs opacity-60 font-mono">Copy effectiveness & tone</div>
+        <div className="text-xs opacity-60 font-mono">Copy effectiveness & audience alignment</div>
       </div>
 
-      {/* Writing Tone Section */}
-      <motion.div 
-        className="bg-white border-2 border-black p-3 mb-3 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]"
+      {/* Audience Alignment Section */}
+      <motion.div
+        className="bg-white border-2 border-black overflow-hidden shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)] mb-4"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
+        <motion.div
+          className="p-3 cursor-pointer hover:bg-gray-50 transition-colors"
+          onClick={() => setExpandedSection(expandedSection === 'audience' ? null : 'audience')}
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.99 }}
+        >
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">{getArchetypeIcon(uxCopy.audienceAlignment.brandArchetype)}</span>
+              <div>
+                <div className="font-semibold text-xs font-mono tracking-wider">AUDIENCE ALIGNMENT</div>
+                <div className="text-xs opacity-70">
+                  {uxCopy.audienceAlignment.detectedAudience} • {uxCopy.audienceAlignment.brandArchetype}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className={`text-xs font-bold ${getScoreColor(uxCopy.audienceAlignment.toneMismatch)} font-mono`}>
+                {uxCopy.audienceAlignment.toneMismatch}%
+              </div>
+              <motion.div
+                animate={{ rotate: expandedSection === 'audience' ? 180 : 0 }}
+                transition={{ duration: 0.2 }}
+                className="text-gray-400"
+              >
+                ▼
+              </motion.div>
+            </div>
+          </div>
+        </motion.div>
+
+        <AnimatePresence>
+          {expandedSection === 'audience' && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="overflow-hidden"
+            >
+              <div className="px-3 pb-3 border-t border-black/20 bg-black/5">
+                <div className="mt-2 space-y-2">
+                  <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                    <div>
+                      <span className="font-semibold opacity-70">Target:</span> {uxCopy.audienceAlignment.detectedAudience}
+                    </div>
+                    <div>
+                      <span className="font-semibold opacity-70">Style:</span> {uxCopy.audienceAlignment.copyStyle}
+                    </div>
+                    <div>
+                      <span className="font-semibold opacity-70">Archetype:</span> {uxCopy.audienceAlignment.brandArchetype}
+                    </div>
+                    <div>
+                      <span className="font-semibold opacity-70">Alignment:</span> {uxCopy.audienceAlignment.toneMismatch}% match
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+
+      {/* Copy Issues Section */}
+      <motion.div
+        className="bg-white border-2 border-black overflow-hidden shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)] mb-4"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+      >
+        <motion.div
+          className="p-3 cursor-pointer hover:bg-gray-50 transition-colors"
+          onClick={() => setExpandedSection(expandedSection === 'issues' ? null : 'issues')}
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.99 }}
+        >
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">⚠️</span>
+              <div>
+                <div className="font-semibold text-xs font-mono tracking-wider">COPY ISSUES</div>
+                <div className="text-xs opacity-70">
+                  {uxCopy.issues.length} issues detected
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="text-xs font-bold text-red-600 font-mono">
+                {uxCopy.issues.filter(i => i.severity === 'HIGH').length} HIGH
+              </div>
+              <motion.div
+                animate={{ rotate: expandedSection === 'issues' ? 180 : 0 }}
+                transition={{ duration: 0.2 }}
+                className="text-gray-400"
+              >
+                ▼
+              </motion.div>
+            </div>
+          </div>
+        </motion.div>
+
+        <AnimatePresence>
+          {expandedSection === 'issues' && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="overflow-hidden"
+            >
+              <div className="px-3 pb-3 border-t border-black/20 bg-black/5">
+                <div className="mt-2 space-y-2">
+                  {/* Filter Buttons */}
+                  <div className="flex gap-1 mb-3">
+                    {['ALL', 'HIGH', 'MEDIUM', 'LOW'].map(filter => (
+                      <button
+                        key={filter}
+                        onClick={() => setActiveIssueFilter(filter as any)}
+                        className={`text-xs px-2 py-1 font-mono border ${
+                          activeIssueFilter === filter
+                            ? 'bg-black text-white border-black'
+                            : 'bg-white text-black border-black/20 hover:border-black'
+                        }`}
+                      >
+                        {filter}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Issues List */}
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {filteredIssues.slice(0, 5).map((issue, i) => (
+                      <div key={i} className="text-xs border border-black/20 p-2 bg-white rounded">
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="font-semibold">{issue.element}</span>
+                          <span className={`px-1 py-0.5 text-xs font-mono border ${getSeverityColor(issue.severity)}`}>
+                            {issue.severity}
+                          </span>
+                        </div>
+                        <div className="text-black/70 mb-1">{issue.issue}</div>
+                        <div className="text-green-700 text-xs">
+                          💡 {issue.suggested[0]}
+                        </div>
+                      </div>
+                    ))}
+                    {filteredIssues.length > 5 && (
+                      <div className="text-xs opacity-60 font-mono text-center">
+                        +{filteredIssues.length - 5} more issues
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+
+      {/* Microcopy Opportunities */}
+      <motion.div
+        className="bg-white border-2 border-black overflow-hidden shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)] mb-4"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
       >
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-sm">✍️</span>
-          <div className="font-semibold text-xs font-mono tracking-wider">Writing Tone</div>
-        </div>
-        
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs font-mono">
-            <span className="opacity-70">Current:</span>
-            <span className="font-medium">{uxCopy.writingTone.current}</span>
-          </div>
-          <div className="flex justify-between text-xs font-mono">
-            <span className="opacity-70">Recommended:</span>
-            <span className="font-medium text-green-600">{uxCopy.writingTone.recommended}</span>
-          </div>
-          <div className="text-xs opacity-70 mt-1 font-mono">
-            Example: "{uxCopy.writingTone.example}"
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Issues Section */}
-      {uxCopy.issues && uxCopy.issues.length > 0 && (
-        <motion.div 
-          className="space-y-2"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
+        <motion.div
+          className="p-3 cursor-pointer hover:bg-gray-50 transition-colors"
+          onClick={() => setExpandedSection(expandedSection === 'microcopy' ? null : 'microcopy')}
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.99 }}
         >
-          <div className="flex items-center justify-between">
+          <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <span className="text-sm">⚠️</span>
-              <div className="font-semibold text-xs font-mono tracking-wider">Copy Issues</div>
-            </div>
-            <motion.button
-              onClick={() => setExpandedIssues(!expandedIssues)}
-              className="text-xs opacity-70 hover:opacity-100 transition-opacity font-mono"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              {expandedIssues ? 'Show Less' : `Show All (${uxCopy.issues.length})`}
-            </motion.button>
-          </div>
-
-          <div className="space-y-2">
-            {uxCopy.issues.slice(0, expandedIssues ? uxCopy.issues.length : 3).map((issue, index) => (
-              <motion.div
-                key={index}
-                className="bg-white border-2 border-black p-3 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 * index }}
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs font-bold px-2 py-1 ${getSeverityColor(issue.severity)} bg-white border border-black font-mono`}>
-                      {issue.severity}
-                    </span>
-                    <span className="text-xs opacity-70 font-mono">{issue.location}</span>
-                  </div>
+              <span className="text-sm">✨</span>
+              <div>
+                <div className="font-semibold text-xs font-mono tracking-wider">MICROCOPY OPPORTUNITIES</div>
+                <div className="text-xs opacity-70">
+                  {uxCopy.microCopyOpportunities.length} optimization chances
                 </div>
-                
-                <div className="space-y-1">
-                  <div className="text-xs font-mono">
-                    <span className="font-medium">Issue:</span> {issue.issue}
-                  </div>
-                  
-                  <div className="text-xs font-mono">
-                    <span className="font-medium">Current:</span> "{issue.current}"
-                  </div>
-                  
-                  {issue.suggested && issue.suggested.length > 0 && (
-                    <div className="text-xs font-mono">
-                      <span className="font-medium text-green-600">Suggested:</span>
-                      <div className="mt-1 space-y-1">
-                        {issue.suggested.slice(0, 2).map((suggestion, i) => (
-                          <div key={i} className="flex items-start gap-2">
-                            <span className="text-green-600 mt-0.5">→</span>
-                            <span>"{suggestion}"</span>
-                          </div>
-                        ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="text-xs font-bold text-blue-600 font-mono">
+                {uxCopy.microCopyOpportunities.length}
+              </div>
+              <motion.div
+                animate={{ rotate: expandedSection === 'microcopy' ? 180 : 0 }}
+                transition={{ duration: 0.2 }}
+                className="text-gray-400"
+              >
+                ▼
+              </motion.div>
+            </div>
+          </div>
+        </motion.div>
+
+        <AnimatePresence>
+          {expandedSection === 'microcopy' && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="overflow-hidden"
+            >
+              <div className="px-3 pb-3 border-t border-black/20 bg-black/5">
+                <div className="mt-2 space-y-2">
+                  {uxCopy.microCopyOpportunities.slice(0, 3).map((opp, i) => (
+                    <div key={i} className="text-xs border border-black/20 p-2 bg-white rounded">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="px-1 py-0.5 bg-blue-100 text-blue-800 font-mono text-xs">
+                          {opp.type.replace(/_/g, ' ')}
+                        </span>
+                        <span className="text-black/60">{opp.location}</span>
+                      </div>
+                      <div className="grid grid-cols-1 gap-1">
+                        <div>
+                          <span className="text-red-600 font-semibold">Current:</span> &quot;{opp.current}&quot;
+                        </div>
+                        <div>
+                          <span className="text-green-600 font-semibold">Improved:</span> &quot;{opp.improved}&quot;
+                        </div>
+                      </div>
+                      <div className="text-black/60 mt-1 text-xs">
+                        {opp.reasoning}
                       </div>
                     </div>
-                  )}
-                  
-                  <div className="text-xs opacity-70 font-mono">
-                    <span className="font-medium">Impact:</span> {issue.impact}
-                  </div>
-                  
-                  <div className="text-xs opacity-70 font-mono">
-                    <span className="font-medium">Reasoning:</span> {issue.reasoning}
-                  </div>
+                  ))}
                 </div>
-              </motion.div>
-            ))}
-          </div>
-
-          {!expandedIssues && uxCopy.issues.length > 3 && (
-            <motion.div
-              className="text-center py-2"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6 }}
-            >
-              <div className="text-xs opacity-60 font-mono">
-                +{uxCopy.issues.length - 3} more issues
               </div>
             </motion.div>
           )}
-        </motion.div>
-      )}
+        </AnimatePresence>
+      </motion.div>
 
-      {/* No Issues State */}
-      {(!uxCopy.issues || uxCopy.issues.length === 0) && (
-        <motion.div 
-          className="text-center py-6 bg-white border-2 border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
+      {/* Writing Tone */}
+      <motion.div
+        className="bg-white border-2 border-black overflow-hidden shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+      >
+        <motion.div
+          className="p-3 cursor-pointer hover:bg-gray-50 transition-colors"
+          onClick={() => setExpandedSection(expandedSection === 'tone' ? null : 'tone')}
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.99 }}
         >
-          <div className="text-4xl mb-2">✅</div>
-          <div className="text-sm font-medium text-green-600 font-mono">No copy issues detected</div>
-          <div className="text-xs opacity-60 mt-1 font-mono">Your UX copy is performing well</div>
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">🎭</span>
+              <div>
+                <div className="font-semibold text-xs font-mono tracking-wider">WRITING TONE</div>
+                <div className="text-xs opacity-70">
+                  {uxCopy.writingTone.current} → {uxCopy.writingTone.recommended}
+                </div>
+              </div>
+            </div>
+            <motion.div
+              animate={{ rotate: expandedSection === 'tone' ? 180 : 0 }}
+              transition={{ duration: 0.2 }}
+              className="text-gray-400"
+            >
+              ▼
+            </motion.div>
+          </div>
         </motion.div>
-      )}
 
-
+        <AnimatePresence>
+          {expandedSection === 'tone' && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="overflow-hidden"
+            >
+              <div className="px-3 pb-3 border-t border-black/20 bg-black/5">
+                <div className="mt-2 space-y-2">
+                  <div className="grid grid-cols-1 gap-2 text-xs font-mono">
+                    <div className="bg-white border p-2 rounded">
+                      <div className="font-semibold text-gray-600 mb-1">Current Tone:</div>
+                      <div className="text-black">{uxCopy.writingTone.current}</div>
+                    </div>
+                    <div className="bg-white border p-2 rounded">
+                      <div className="font-semibold text-green-600 mb-1">Recommended:</div>
+                      <div className="text-black">{uxCopy.writingTone.recommended}</div>
+                    </div>
+                    <div className="bg-white border p-2 rounded">
+                      <div className="font-semibold text-blue-600 mb-1">Example:</div>
+                      <div className="text-black italic">&quot;{uxCopy.writingTone.example}&quot;</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
     </motion.div>
   );
-} 
+}

@@ -383,7 +383,7 @@ export default function HomePage() {
           <div className="zombify-card max-w-md mx-auto text-center">
             <p className="text-lg font-mono mb-4">Upload limit reached</p>
             <p className="text-sm opacity-70 mb-6">
-              You've used all {profile?.monthly_limit} uploads this month
+              You&apos;ve used all {profile?.monthly_limit} uploads this month
             </p>
             <button className="zombify-primary-button">
               Upgrade to Pro

@@ -75,6 +75,59 @@ export default function FeedbackInsights({
                     </div>
                   </div>
 
+                  {/* Emotional Impact Section */}
+                  {insight.emotionalImpact && (
+                    <motion.div
+                      className="mb-4"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.25 + index * 0.1 }}
+                    >
+                      <div className="bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-200 p-4 shadow-[1px_1px_0px_0px_rgba(249,115,22,0.4)]">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">
+                              {insight.emotionalImpact.primaryEmotion === 'trust' && '🤝'}
+                              {insight.emotionalImpact.primaryEmotion === 'anxiety' && '😰'}
+                              {insight.emotionalImpact.primaryEmotion === 'excitement' && '🚀'}
+                              {insight.emotionalImpact.primaryEmotion === 'confusion' && '🤔'}
+                              {insight.emotionalImpact.primaryEmotion === 'frustration' && '😤'}
+                              {insight.emotionalImpact.primaryEmotion === 'delight' && '😍'}
+                              {insight.emotionalImpact.primaryEmotion === 'anticipation' && '⏳'}
+                              {insight.emotionalImpact.primaryEmotion === 'skepticism' && '🤨'}
+                            </span>
+                            <div className="text-sm font-semibold text-orange-800 font-mono">
+                              EMOTIONAL IMPACT: {insight.emotionalImpact.primaryEmotion.toUpperCase()}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-lg font-bold text-orange-800 font-mono">
+                              {insight.emotionalImpact.intensity}/10
+                            </div>
+                            <div className="text-xs text-orange-600 font-mono">INTENSITY</div>
+                          </div>
+                        </div>
+                        
+                        {/* Intensity Bar */}
+                        <div className="mb-3">
+                          <div className="w-full bg-orange-200 rounded-full h-2 overflow-hidden">
+                            <motion.div 
+                              className="h-full bg-gradient-to-r from-orange-400 to-red-500 rounded-full"
+                              style={{ width: `${(insight.emotionalImpact.intensity / 10) * 100}%` }}
+                              initial={{ width: 0 }}
+                              animate={{ width: `${(insight.emotionalImpact.intensity / 10) * 100}%` }}
+                              transition={{ delay: 0.5 + index * 0.1, duration: 0.8 }}
+                            />
+                          </div>
+                        </div>
+
+                        <p className="text-sm text-orange-700 leading-relaxed">
+                          <strong>Reasoning:</strong> {insight.emotionalImpact.reasoning}
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+
                   {/* Psychology Section */}
                   <motion.div
                     className="mb-4"

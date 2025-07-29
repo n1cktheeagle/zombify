@@ -28,3 +28,6 @@ next-env.d.ts
 
 *.zip
 node_modules 2/
+
+# documentation
+/docs/enhancement_status.md

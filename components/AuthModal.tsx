@@ -220,13 +220,13 @@ export function AuthModal({ onClose, initialMode = 'signin' }: AuthModalProps) {
           <div className="verification-form text-center space-y-4">
             <div className="text-green-600 text-sm font-mono bg-green-50 p-4 border-2 border-green-200">
               <div className="mb-2">✅ Account Created Successfully!</div>
-              <div>We've sent a verification email to:</div>
+              <div>We&apos;ve sent a verification email to:</div>
               <div className="font-bold">{email}</div>
             </div>
             
             <div className="text-sm text-gray-600 font-mono space-y-2">
               <p>Click the verification link in your email to activate your account.</p>
-              <p><strong>Important:</strong> Check your spam folder if you don't see the email within a few minutes.</p>
+              <p><strong>Important:</strong> Check your spam folder if you don&apos;t see the email within a few minutes.</p>
             </div>
 
             {error && (
@@ -297,7 +297,7 @@ export function AuthModal({ onClose, initialMode = 'signin' }: AuthModalProps) {
             <>
               <form onSubmit={handleForgotPassword} className="space-y-6">
                 <div className="text-sm text-gray-600 font-mono mb-4">
-                  Enter your email address and we'll send you a link to reset your password.
+                  Enter your email address and we&apos;ll send you a link to reset your password.
                   <br /><br />
                   <strong>Note:</strong> This only works for accounts created with email/password. If you signed up with Google or Discord, please use those buttons on the main login screen.
                 </div>

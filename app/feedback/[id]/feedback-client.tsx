@@ -8,12 +8,16 @@ import { ZombifyAnalysis } from '@/types/analysis';
 import { useUpload } from '@/contexts/UploadContext';
 import GlitchText from '@/components/GlitchText';
 import FeedbackSummary from '@/components/feedback/FeedbackSummary';
+import FeedbackDarkPatterns from '@/components/feedback/FeedbackDarkPatterns';
 import FeedbackCriticalIssues from '@/components/feedback/FeedbackCriticalIssues';
 import FeedbackDetailedAnalysis from '@/components/feedback/FeedbackDetailedAnalysis';
+import FeedbackFrictionPoints from '@/components/feedback/FeedbackFrictionPoints';
 import FeedbackOpportunities from '@/components/feedback/FeedbackOpportunities';
 import FeedbackInsights from '@/components/feedback/FeedbackInsights';
+import FeedbackIntentAnalysis from '@/components/feedback/FeedbackIntentAnalysis';
 import FeedbackAccessibility from '@/components/feedback/FeedbackAccessibility';
 import FeedbackTabs, { FeedbackSectionId } from '@/components/FeedbackTabs';
+import UXCopyAnalysisCard from '@/components/UXCopyAnalysisCard';
 
 // TypeScript interfaces
 interface FeedbackData {
@@ -39,6 +43,103 @@ function isNewAnalysisFormat(analysis: any): analysis is ZombifyAnalysis {
     'context' in analysis;
 }
 
+// Create legacy analysis structure for backward compatibility
+function createLegacyAnalysis(score: number): ZombifyAnalysis {
+  return {
+    context: 'LEGACY' as any,
+    industry: 'UNKNOWN' as any,
+    industryConfidence: 0,
+    gripScore: { 
+      overall: score, 
+      breakdown: { 
+        firstImpression: { score: Math.round(score * 0.8), reasoning: "Legacy analysis - limited data", evidence: [] },
+        usability: { score: Math.round(score * 0.9), reasoning: "Legacy analysis - limited data", evidence: [] },
+        trustworthiness: { score: Math.round(score * 0.7), reasoning: "Legacy analysis - limited data", evidence: [] },
+        conversion: { score: Math.round(score * 0.6), reasoning: "Legacy analysis - limited data", evidence: [] },
+        accessibility: { score: Math.round(score * 0.5), reasoning: "Legacy analysis - limited data", evidence: [] }
+      } 
+    },
+    verdict: {
+      summary: "This is a legacy analysis. Upgrade your account to get detailed insights with our enhanced analysis engine.",
+      attentionSpan: "Limited data available",
+      likelyAction: "Data not available in legacy format", 
+      dropoffPoint: "Upgrade for detailed analysis",
+      memorable: "Legacy format",
+      attentionFlow: []
+    },
+    
+    // NEW ENHANCED SECTIONS - Empty for legacy
+    darkPatterns: [],
+    intentAnalysis: {
+      perceivedPurpose: "Unknown",
+      actualPurpose: "Unknown", 
+      alignmentScore: 0,
+      misalignments: [],
+      clarityImprovements: []
+    },
+    frictionPoints: [],
+    
+    // Existing sections with minimal data for legacy
+    visualDesignAnalysis: {
+      score: Math.round(score * 0.7),
+      typography: {
+        score: Math.round(score * 0.7),
+        issues: [],
+        hierarchy: { h1ToH2Ratio: 1, consistencyScore: 0, recommendation: "Upgrade for detailed typography analysis" },
+        readability: { fleschScore: 0, avgLineLength: 0, recommendation: "Upgrade for readability analysis" }
+      },
+      colorAndContrast: {
+        score: Math.round(score * 0.8),
+        contrastFailures: [],
+        colorHarmony: { scheme: "UNKNOWN", brandColors: [], accentSuggestion: "Upgrade for color analysis" }
+      },
+      spacing: {
+        score: Math.round(score * 0.6),
+        gridSystem: "UNKNOWN",
+        consistency: 0,
+        issues: []
+      },
+      modernPatterns: {
+        detected: [],
+        implementation: {},
+        trendAlignment: { "2025Relevance": 0, suggestions: ["Upgrade for modern pattern analysis"] }
+      },
+      visualHierarchy: {
+        scanPattern: "UNKNOWN",
+        focalPoints: [],
+        improvements: []
+      }
+    },
+    uxCopyAnalysis: {
+      score: Math.round(score * 0.6),
+      audienceAlignment: {
+        detectedAudience: "Unknown",
+        copyStyle: "Unknown",
+        brandArchetype: "Unknown",
+        toneMismatch: 0
+      },
+      issues: [],
+      microCopyOpportunities: [],
+      writingTone: {
+        current: "Unknown",
+        recommended: "Upgrade for copy analysis",
+        example: "Upgrade to see copy improvements"
+      }
+    },
+    criticalIssues: [],
+    usabilityIssues: [],
+    opportunities: [],
+    behavioralInsights: [],
+    generationalAnalysis: { 
+      scores: {}, 
+      primaryTarget: 'unknown', 
+      recommendations: ["Upgrade for generational analysis"] 
+    },
+    accessibilityAudit: null,
+    timestamp: new Date().toISOString()
+  };
+}
+
 export default function FeedbackPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const { setCurrentAnalysis, setLastUploadId } = useUpload();
@@ -54,8 +155,11 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
   const analysis = data?.analysis || {};
   const isNewFormat = data ? isNewAnalysisFormat(analysis) : false;
   const score = isNewFormat ? analysis.gripScore?.overall || 0 : (data?.score || 0);
+  
+  // Create proper analysis object for components
+  const processedAnalysis = isNewFormat ? analysis : createLegacyAnalysis(score);
 
-  // Active section state
+  // Active section state - start with summary
   const [activeSection, setActiveSection] = useState<FeedbackSectionId>('summary');
 
   const openSignIn = () => {
@@ -156,12 +260,12 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
     }
   }, [cooldownTime]);
 
-  // Enhanced scroll listener to update active section
+  // Enhanced scroll listener to update active section - UPDATED FOR 9 TABS
   useEffect(() => {
     if (!data) return; // Don't run until data is loaded
 
     const handleScroll = () => {
-      const sections = ['summary', 'issues', 'detailed-analysis', 'opportunities', 'insights', 'accessibility'];
+      const sections = ['summary', 'dark-patterns', 'issues', 'copy', 'design', 'friction', 'intent', 'growth', 'behavior', 'access'];
       
       // Find the specific feedback scroll container
       const scrollContainer = document.getElementById('feedback-scroll-container') as HTMLElement;
@@ -261,165 +365,163 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
     return cleanup;
   }, [data]); // Re-run when data loads to ensure container exists
 
-
-
   // Error state
   if (error) {
     return (
       <div className="min-h-screen bg-[#f5f1e6] text-black font-mono flex items-center justify-center">
+        <motion.div 
+          className="text-center max-w-md"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
           <motion.div 
-            className="text-center max-w-md"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            className="text-6xl mb-6"
+            animate={{ 
+              rotate: [0, -10, 10, 0],
+              scale: [1, 1.1, 1]
+            }}
+            transition={{ 
+              repeat: Infinity, 
+              duration: 2,
+              ease: "easeInOut"
+            }}
           >
-            <motion.div 
-              className="text-6xl mb-6"
-              animate={{ 
-                rotate: [0, -10, 10, 0],
-                scale: [1, 1.1, 1]
-              }}
-              transition={{ 
-                repeat: Infinity, 
-                duration: 2,
-                ease: "easeInOut"
-              }}
-            >
-              ⚠️
-            </motion.div>
-            <h2>
-              <GlitchText className="text-2xl mb-4" trigger="continuous">
-                ERROR LOADING ANALYSIS
-              </GlitchText>
-            </h2>
-            <motion.p 
-              className="mb-4 text-gray-600"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-            >
-              {error}
-            </motion.p>
-            <motion.p 
-              className="text-sm opacity-60 mb-6 font-mono"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.7 }}
-            >
-              TRACE ID: {params.id}
-            </motion.p>
-            <div className="space-x-4">
-              <motion.button 
-                onClick={() => window.location.reload()}
-                className="zombify-primary-button px-6 py-2"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                RETRY LOADING
-              </motion.button>
-              <motion.button 
-                onClick={() => router.push('/dashboard')}
-                className="px-6 py-2 border-2 border-black rounded hover:bg-gray-100 font-mono font-bold"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                RETURN TO DASHBOARD
-              </motion.button>
-            </div>
+            ⚠️
           </motion.div>
-        </div>
-      );
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#f5f1e6] text-black font-mono flex items-center justify-center">
-          <motion.div 
-            className="text-center"
+          <h2>
+            <GlitchText className="text-2xl mb-4" trigger="continuous">
+              ERROR LOADING ANALYSIS
+            </GlitchText>
+          </h2>
+          <motion.p 
+            className="mb-4 text-gray-600"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
           >
-            <motion.div 
-              className="text-4xl mb-4"
-              animate={{ 
-                rotate: 360,
-                scale: [1, 1.2, 1]
-              }}
-              transition={{ 
-                rotate: { repeat: Infinity, duration: 2, ease: "linear" },
-                scale: { repeat: Infinity, duration: 1, ease: "easeInOut" }
-              }}
-            >
-              ⏳
-            </motion.div>
-            <h2>
-              <GlitchText className="text-xl mb-2" trigger="continuous">
-                LOADING ANALYSIS...
-              </GlitchText>
-            </h2>
-            <motion.div className="flex justify-center mb-4">
-              {[0, 1, 2, 3, 4].map((i) => (
-                <motion.div
-                  key={i}
-                  className="w-2 h-8 bg-black mx-1 rounded"
-                  animate={{
-                    scaleY: [0.3, 1, 0.3],
-                    opacity: [0.3, 1, 0.3]
-                  }}
-                  transition={{
-                    repeat: Infinity,
-                    duration: 1,
-                    delay: i * 0.2,
-                    ease: "easeInOut"
-                  }}
-                />
-              ))}
-            </motion.div>
-            <p className="text-sm opacity-60 font-mono">Analysis ID: {params.id}</p>
-          </motion.div>
-        </div>
-      );
-  }
-
-  if (!data) {
-    return (
-      <div className="min-h-screen bg-[#f5f1e6] text-black font-mono flex items-center justify-center">
-          <motion.div 
-            className="text-center"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
+            {error}
+          </motion.p>
+          <motion.p 
+            className="text-sm opacity-60 mb-6 font-mono"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.7 }}
           >
-            <motion.div
-              className="text-6xl mb-4"
-              animate={{ 
-                opacity: [0.5, 1, 0.5],
-                rotate: [0, 5, -5, 0]
-              }}
-              transition={{ 
-                repeat: Infinity, 
-                duration: 3,
-                ease: "easeInOut"
-              }}
+            TRACE ID: {params.id}
+          </motion.p>
+          <div className="space-x-4">
+            <motion.button 
+              onClick={() => window.location.reload()}
+              className="zombify-primary-button px-6 py-2"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
-              👻
-            </motion.div>
-            <h2>
-              <GlitchText className="text-2xl mb-4" trigger="continuous">
-                ANALYSIS NOT FOUND
-              </GlitchText>
-            </h2>
-            <p className="mb-4">This analysis could not be found.</p>
-            <p className="text-sm opacity-60 mb-4 font-mono">Analysis ID: {params.id}</p>
+              RETRY LOADING
+            </motion.button>
             <motion.button 
               onClick={() => router.push('/dashboard')}
-              className="zombify-primary-button px-6 py-2"
+              className="px-6 py-2 border-2 border-black rounded hover:bg-gray-100 font-mono font-bold"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
               RETURN TO DASHBOARD
             </motion.button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#f5f1e6] text-black font-mono flex items-center justify-center">
+        <motion.div 
+          className="text-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
+          <motion.div 
+            className="text-4xl mb-4"
+            animate={{ 
+              rotate: 360,
+              scale: [1, 1.2, 1]
+            }}
+            transition={{ 
+              rotate: { repeat: Infinity, duration: 2, ease: "linear" },
+              scale: { repeat: Infinity, duration: 1, ease: "easeInOut" }
+            }}
+          >
+            ⏳
           </motion.div>
-        </div>
-      );
+          <h2>
+            <GlitchText className="text-xl mb-2" trigger="continuous">
+              LOADING ANALYSIS...
+            </GlitchText>
+          </h2>
+          <motion.div className="flex justify-center mb-4">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <motion.div
+                key={i}
+                className="w-2 h-8 bg-black mx-1 rounded"
+                animate={{
+                  scaleY: [0.3, 1, 0.3],
+                  opacity: [0.3, 1, 0.3]
+                }}
+                transition={{
+                  repeat: Infinity,
+                  duration: 1,
+                  delay: i * 0.2,
+                  ease: "easeInOut"
+                }}
+              />
+            ))}
+          </motion.div>
+          <p className="text-sm opacity-60 font-mono">Analysis ID: {params.id}</p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="min-h-screen bg-[#f5f1e6] text-black font-mono flex items-center justify-center">
+        <motion.div 
+          className="text-center"
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+        >
+          <motion.div
+            className="text-6xl mb-4"
+            animate={{ 
+              opacity: [0.5, 1, 0.5],
+              rotate: [0, 5, -5, 0]
+            }}
+            transition={{ 
+              repeat: Infinity, 
+              duration: 3,
+              ease: "easeInOut"
+            }}
+          >
+            👻
+          </motion.div>
+          <h2>
+            <GlitchText className="text-2xl mb-4" trigger="continuous">
+              ANALYSIS NOT FOUND
+            </GlitchText>
+          </h2>
+          <p className="mb-4">This analysis could not be found.</p>
+          <p className="text-sm opacity-60 mb-4 font-mono">Analysis ID: {params.id}</p>
+          <motion.button 
+            onClick={() => router.push('/dashboard')}
+            className="zombify-primary-button px-6 py-2"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            RETURN TO DASHBOARD
+          </motion.button>
+        </motion.div>
+      </div>
+    );
   }
 
   const isLoggedIn = !!user;
@@ -552,254 +654,142 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
         )}
       </motion.div>
 
-      {/* Feedback Tabs */}
+      {/* Feedback Tabs - UPDATED FOR 9 TABS */}
       <FeedbackTabs
-        analysis={isNewFormat ? analysis : {
-          context: 'LEGACY' as any,
-          industry: 'UNKNOWN' as any,
-          industryConfidence: 0,
-          gripScore: { overall: score, breakdown: {} as any },
-          verdict: { summary: "", attentionSpan: "", likelyAction: "", dropoffPoint: "", memorable: "", attentionFlow: [] },
-          visualDesignAnalysis: null as any,
-          uxCopyAnalysis: null as any,
-          criticalIssues: [],
-          usabilityIssues: [],
-          opportunities: [],
-          behavioralInsights: [],
-          generationalAnalysis: null as any,
-          accessibilityAudit: null,
-          timestamp: new Date().toISOString()
-        }}
+        analysis={processedAnalysis}
         activeSection={activeSection}
         setActiveSection={setActiveSection}
         isPro={isLoggedIn}
       />
 
-      {/* Flowing Single-Page Layout */}
+      {/* Flowing Single-Page Layout - UPDATED FOR 9 SECTIONS */}
       <div className="space-y-16">
-        {/* Executive Summary */}
+        {/* 1. Executive Summary */}
         <section id="summary">
           <FeedbackSummary 
-            analysis={isNewFormat ? analysis : {
-              context: 'LEGACY' as any,
-              industry: 'UNKNOWN' as any,
-              industryConfidence: 0.85,
-              gripScore: { 
-                overall: score, 
-                breakdown: { 
-                  firstImpression: { score: 0, reasoning: "Legacy analysis", evidence: [] },
-                  usability: { score: 0, reasoning: "Legacy analysis", evidence: [] },
-                  trustworthiness: { score: 0, reasoning: "Legacy analysis", evidence: [] },
-                  conversion: { score: 0, reasoning: "Legacy analysis", evidence: [] },
-                  accessibility: { score: 0, reasoning: "Legacy analysis", evidence: [] }
-                } 
-              },
-              verdict: {
-                summary: "Legacy analysis - upgrade for detailed insights",
-                attentionSpan: "N/A",
-                likelyAction: "N/A", 
-                dropoffPoint: "N/A",
-                memorable: "N/A",
-                attentionFlow: []
-              },
-              visualDesignAnalysis: null as any,
-              uxCopyAnalysis: null as any,
-              criticalIssues: [],
-              usabilityIssues: [],
-              opportunities: [],
-              behavioralInsights: [],
-              generationalAnalysis: null as any,
-              accessibilityAudit: null,
-              timestamp: new Date().toISOString()
-            }}
+            analysis={processedAnalysis}
             imageUrl={data?.image_url}
           />
         </section>
 
-        {/* Issues & Fixes */}
+        {/* 2. Dark Patterns - NEW SECTION */}
+        <section id="dark-patterns">
+          <FeedbackDarkPatterns 
+            analysis={processedAnalysis}
+            imageUrl={data?.image_url}
+          />
+        </section>
+
+        {/* 3. Issues & Fixes */}
         <section id="issues">
           <FeedbackCriticalIssues 
-            analysis={isNewFormat ? analysis : {
-              context: 'LEGACY' as any,
-              industry: 'UNKNOWN' as any,
-              industryConfidence: 0,
-              gripScore: { 
-                overall: score, 
-                breakdown: { 
-                  firstImpression: { score: 0, reasoning: "Legacy analysis", evidence: [] },
-                  usability: { score: 0, reasoning: "Legacy analysis", evidence: [] },
-                  trustworthiness: { score: 0, reasoning: "Legacy analysis", evidence: [] },
-                  conversion: { score: 0, reasoning: "Legacy analysis", evidence: [] },
-                  accessibility: { score: 0, reasoning: "Legacy analysis", evidence: [] }
-                } 
-              },
-              verdict: {
-                summary: "Legacy analysis format",
-                attentionSpan: "N/A",
-                likelyAction: "N/A",
-                dropoffPoint: "N/A",
-                memorable: "N/A",
-                attentionFlow: []
-              },
-              visualDesignAnalysis: null as any,
-              uxCopyAnalysis: null as any,
-              criticalIssues: [],
-              usabilityIssues: [],
-              opportunities: [],
-              behavioralInsights: [],
-              generationalAnalysis: null as any,
-              accessibilityAudit: null,
-              timestamp: new Date().toISOString()
-            }}
+            analysis={processedAnalysis}
             imageUrl={data?.image_url}
             isLoggedIn={isLoggedIn}
             isPro={true}
           />
         </section>
 
-        {/* Detailed Analysis */}
-        <section id="detailed-analysis">
+        {/* 4. Copy Analysis - ENHANCED */}
+        <section id="copy">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-8"
+            >
+              <div className="text-3xl font-bold mb-3 font-mono tracking-wider">
+                UX COPY INTELLIGENCE
+              </div>
+              <div className="text-lg opacity-70 font-mono mb-2">
+                Audience targeting, microcopy optimization, and strategic copy analysis
+              </div>
+              <div className="flex items-center gap-4 text-sm opacity-60 font-mono">
+                <span>{processedAnalysis.uxCopyAnalysis?.issues?.length || 0} Copy Issues</span>
+                <span>•</span>
+                <span className="text-blue-600 font-bold">Score: {processedAnalysis.uxCopyAnalysis?.score || 0}/100</span>
+              </div>
+            </motion.div>
+
+            {processedAnalysis.uxCopyAnalysis ? (
+              <div className="grid grid-cols-1 max-w-4xl mx-auto">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <UXCopyAnalysisCard uxCopy={processedAnalysis.uxCopyAnalysis} />
+                </motion.div>
+              </div>
+            ) : (
+              <motion.div
+                className="text-center py-16 border-2 border-black bg-[#f5f1e6] relative overflow-hidden"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.3 }}
+              >
+                <div className="text-8xl mb-6">📝</div>
+                <div className="text-3xl font-bold mb-4 font-mono tracking-wider">
+                  COPY ANALYSIS UNAVAILABLE
+                </div>
+                <p className="text-lg opacity-70 font-mono mb-4">
+                  No copy analysis available for this interface
+                </p>
+              </motion.div>
+            )}
+          </motion.div>
+        </section>
+
+        {/* 5. Design Analysis */}
+        <section id="design">
           <FeedbackDetailedAnalysis 
-            analysis={isNewFormat ? analysis : {
-              context: 'LEGACY' as any,
-              industry: 'UNKNOWN' as any,
-              industryConfidence: 0,
-              gripScore: { 
-                overall: score, 
-                breakdown: { 
-                  firstImpression: { score: 0, reasoning: "Legacy analysis", evidence: [] },
-                  usability: { score: 0, reasoning: "Legacy analysis", evidence: [] },
-                  trustworthiness: { score: 0, reasoning: "Legacy analysis", evidence: [] },
-                  conversion: { score: 0, reasoning: "Legacy analysis", evidence: [] },
-                  accessibility: { score: 0, reasoning: "Legacy analysis", evidence: [] }
-                } 
-              },
-              verdict: {
-                summary: "Legacy analysis format",
-                attentionSpan: "N/A",
-                likelyAction: "N/A",
-                dropoffPoint: "N/A",
-                memorable: "N/A",
-                attentionFlow: []
-              },
-              visualDesignAnalysis: {
-                score: 0,
-                typography: {
-                  score: 0,
-                  issues: [],
-                  hierarchy: { h1ToH2Ratio: 1, consistencyScore: 0, recommendation: "No analysis available" },
-                  readability: { fleschScore: 0, avgLineLength: 0, recommendation: "No analysis available" }
-                },
-                colorAndContrast: {
-                  score: 0,
-                  contrastFailures: [],
-                  colorHarmony: { scheme: "UNKNOWN", brandColors: [], accentSuggestion: "No analysis available" }
-                },
-                spacing: {
-                  score: 0,
-                  gridSystem: "UNKNOWN",
-                  consistency: 0,
-                  issues: []
-                },
-                modernPatterns: {
-                  detected: [],
-                  implementation: {},
-                  trendAlignment: { "2025Relevance": 0, suggestions: [] }
-                },
-                visualHierarchy: {
-                  scanPattern: "UNKNOWN",
-                  focalPoints: [],
-                  improvements: []
-                }
-              },
-              uxCopyAnalysis: {
-                score: 0,
-                issues: [],
-                writingTone: {
-                  current: "Unknown",
-                  recommended: "Unknown",
-                  example: "No analysis available"
-                }
-              },
-              criticalIssues: [],
-              usabilityIssues: [],
-              opportunities: [],
-              behavioralInsights: [],
-              generationalAnalysis: { scores: {}, primaryTarget: 'unknown', recommendations: [] },
-              timestamp: new Date().toISOString(),
-              accessibilityAudit: null
-            }}
+            analysis={processedAnalysis}
           />
         </section>
 
-        {/* Growth Opportunities - Pro Feature */}
-        <section id="opportunities">
+        {/* 6. Friction Points - CONVERSION BARRIERS */}
+        <section id="friction">
+          <FeedbackFrictionPoints 
+            analysis={processedAnalysis}
+            imageUrl={data?.image_url}
+          />
+        </section>
+
+        {/* 7. Intent Analysis - STRATEGIC PURPOSE ALIGNMENT */}
+        <section id="intent">
+          <FeedbackIntentAnalysis 
+            analysis={processedAnalysis}
+            imageUrl={data?.image_url}
+          />
+        </section>
+
+        {/* 8. Growth Opportunities - Pro Feature */}
+        <section id="growth">
           <FeedbackOpportunities 
-            analysis={isNewFormat ? analysis : {
-              context: 'LEGACY' as any,
-              industry: 'UNKNOWN' as any,
-              industryConfidence: 0,
-              gripScore: { overall: score, breakdown: {} as any },
-              verdict: { summary: "", attentionSpan: "", likelyAction: "", dropoffPoint: "", memorable: "", attentionFlow: [] },
-              visualDesignAnalysis: null as any,
-              uxCopyAnalysis: null as any,
-              criticalIssues: [],
-              usabilityIssues: [],
-              opportunities: [],
-              behavioralInsights: [],
-              generationalAnalysis: null as any,
-              accessibilityAudit: null,
-              timestamp: new Date().toISOString()
-            }}
+            analysis={processedAnalysis}
             imageUrl={data?.image_url}
             isPro={isLoggedIn}
             onUpgrade={() => {/* Handle upgrade logic */}}
           />
         </section>
 
-        {/* Behavioral Insights - Pro Feature */}
-        <section id="insights">
+        {/* 9. Behavioral Insights - Pro Feature */}
+        <section id="behavior">
           <FeedbackInsights 
-            analysis={isNewFormat ? analysis : {
-              context: 'LEGACY' as any,
-              industry: 'UNKNOWN' as any,
-              industryConfidence: 0,
-              gripScore: { overall: score, breakdown: {} as any },
-              verdict: { summary: "", attentionSpan: "", likelyAction: "", dropoffPoint: "", memorable: "", attentionFlow: [] },
-              visualDesignAnalysis: null as any,
-              uxCopyAnalysis: null as any,
-              criticalIssues: [],
-              usabilityIssues: [],
-              opportunities: [],
-              behavioralInsights: [],
-              generationalAnalysis: null as any,
-              accessibilityAudit: null,
-              timestamp: new Date().toISOString()
-            }}
+            analysis={processedAnalysis}
             isPro={isLoggedIn}
             onUpgrade={() => {/* Handle upgrade logic */}}
           />
         </section>
 
-        {/* Accessibility Analysis */}
-        <section id="accessibility">
+        {/* 10. Accessibility Analysis */}
+        <section id="access">
           <FeedbackAccessibility 
-            analysis={isNewFormat ? analysis : {
-              context: 'LEGACY' as any,
-              industry: 'UNKNOWN' as any,
-              industryConfidence: 0,
-              gripScore: { overall: score, breakdown: {} as any },
-              verdict: { summary: "", attentionSpan: "", likelyAction: "", dropoffPoint: "", memorable: "", attentionFlow: [] },
-              visualDesignAnalysis: null as any,
-              uxCopyAnalysis: null as any,
-              criticalIssues: [],
-              usabilityIssues: [],
-              opportunities: [],
-              behavioralInsights: [],
-              generationalAnalysis: null as any,
-              accessibilityAudit: null,
-              timestamp: new Date().toISOString()
-            }}
+            analysis={processedAnalysis}
           />
         </section>
       </div>

@@ -130,7 +130,7 @@ export default function DashboardSidebar({
               )}
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2 overflow-hidden">
               {projects.length === 0 ? (
                 <div className="text-center py-4">
                   <p className="text-xs opacity-60">No projects yet</p>
@@ -145,7 +145,7 @@ export default function DashboardSidebar({
                     className="p-2 rounded hover:bg-black/5 cursor-pointer transition-colors group"
                     onClick={() => handleProjectClick(project.id)}
                   >
-                    <div className="text-sm font-medium truncate group-hover:text-black">
+                    <div className="text-sm font-medium truncate group-hover:text-black pr-1">
                       {project.name}
                     </div>
                     <div className="text-xs opacity-60 flex items-center justify-between mt-1">
@@ -186,15 +186,15 @@ export default function DashboardSidebar({
                 return (
                   <div
                     key={analysis.id}
-                    className={`p-3 rounded cursor-pointer transition-all duration-200 group \
+                    className={`p-3 rounded cursor-pointer transition-all duration-200 group overflow-hidden \
                       ${isCurrent 
                         ? 'bg-black text-white font-bold font-mono' 
                         : 'bg-transparent hover:bg-black/10'}
                     `}
                     onClick={() => handleAnalysisClick(analysis.id)}
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
                         <div className={`text-xs font-medium truncate transition-colors \
                           ${isCurrent ? 'text-white font-bold' : 'group-hover:text-black'}`}
                         >
@@ -206,7 +206,7 @@ export default function DashboardSidebar({
                           {new Date(analysis.timestamp).toLocaleDateString()}
                         </div>
                       </div>
-                      <div className={`text-base font-bold ml-3 transition-colors \
+                      <div className={`text-base font-bold flex-shrink-0 transition-colors \
                         ${isCurrent ? 'text-white' : ''}`}
                       >
                         {analysis.gripScore}
@@ -230,7 +230,7 @@ export default function DashboardSidebar({
             <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
               {user.email?.charAt(0).toUpperCase() || 'U'}
             </div>
-            <div className="flex-1 text-left">
+            <div className="flex-1 text-left min-w-0">
               <div className="text-sm font-medium truncate">
                 {user.email?.split('@')[0] || 'User'}
               </div>

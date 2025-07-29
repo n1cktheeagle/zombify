@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ZombifyAnalysis } from '@/types/analysis';
 import GlitchText from '../GlitchText';
+import GenerationalRadarChart from '../GenerationalRadarChart';
 
 interface FeedbackSummaryProps {
   analysis: ZombifyAnalysis;
@@ -297,7 +298,7 @@ export default function FeedbackSummary({ analysis, imageUrl, className = '' }: 
             />
           </div>
 
-                    {/* Category Breakdown - Full Width */}
+          {/* Category Breakdown - Full Width */}
           {analysis.gripScore?.breakdown && (
             <motion.div 
               initial={{ opacity: 0, y: 15 }}
@@ -306,7 +307,7 @@ export default function FeedbackSummary({ analysis, imageUrl, className = '' }: 
             >
               <div className="text-sm font-bold mb-3 opacity-70 font-mono tracking-wider">CATEGORY BREAKDOWN</div>
               
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
+              <div className="grid grid-cols-5 gap-3">
                 {[
                   { key: 'firstImpression', label: 'First Impression', icon: '👁️' },
                   { key: 'usability', label: 'Usability', icon: '🔧' },
@@ -363,8 +364,8 @@ export default function FeedbackSummary({ analysis, imageUrl, className = '' }: 
                                 animate={{ opacity: 0.7, x: 0 }}
                                 transition={{ delay: 1.0 + index * 0.05 + i * 0.05 }}
                               >
-                                <span className="text-blue-600 mt-0.5 text-xs">•</span>
-                                <span className="leading-tight font-mono">{evidence}</span>
+                                <span className="text-orange-600 font-bold leading-none mt-0.5">•</span>
+                                <span className="leading-tight">{evidence}</span>
                               </motion.li>
                             ))}
                           </ul>
@@ -379,20 +380,22 @@ export default function FeedbackSummary({ analysis, imageUrl, className = '' }: 
         </div>
       </div>
 
-      {/* Attention Flow Section - Clean Timeline */}
-      {verdict?.attentionFlow && verdict.attentionFlow.length > 0 && (
-        <motion.div 
-          className="border-2 border-black bg-[#f5f1e6] relative overflow-hidden"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.9 }}
-        >
+      {/* Bottom Row: Attention Flow + Generational Analysis */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        {/* Attention Flow Section - Clean Timeline */}
+        {verdict?.attentionFlow && verdict.attentionFlow.length > 0 && (
+          <motion.div 
+            className="border-2 border-black bg-[#f5f1e6] relative overflow-hidden"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.9 }}
+          >
           <div className="p-4">
             <div className="text-center mb-6">
               <div className="text-lg font-bold mb-2 font-mono tracking-wider">
                 USER ATTENTION FLOW
               </div>
-              <div className="text-xs opacity-60 font-mono">The sequence users' eyes follow when scanning your interface</div>
+              <div className="text-xs opacity-60 font-mono">The sequence users&apos; eyes follow when scanning your interface</div>
             </div>
 
             {/* Timeline Flow */}
@@ -416,8 +419,78 @@ export default function FeedbackSummary({ analysis, imageUrl, className = '' }: 
                     
                     {/* Step Content */}
                     <div className="flex-1 mt-1">
-                      <div className="text-sm text-black leading-relaxed font-mono bg-white border-2 border-black p-3 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]">
-                        {step}
+                      <div className="bg-white border-2 border-black p-4 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="text-sm font-bold text-black font-mono flex-1">
+                            {typeof step === 'string' ? step : step.element}
+                          </div>
+                          {typeof step !== 'string' && step.conversionImpact && (
+                            <div className={`text-xs px-2 py-1 rounded font-mono font-bold ml-2 flex-shrink-0 ${
+                              step.conversionImpact === 'HIGH' ? 'text-green-600 bg-green-50 border border-green-200' :
+                              step.conversionImpact === 'MEDIUM' ? 'text-yellow-600 bg-yellow-50 border border-yellow-200' :
+                              'text-gray-600 bg-gray-50 border border-gray-200'
+                            }`}>
+                              {step.conversionImpact}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Enhanced Data */}
+                        {typeof step !== 'string' && (
+                          <div className="space-y-2 mt-3 pt-2 border-t border-black/10">
+                            {step.reasoning && (
+                              <div className="text-xs text-black/70 font-mono">
+                                <strong>Why:</strong> {step.reasoning}
+                              </div>
+                            )}
+                            {step.timeSpent && (
+                              <div className="text-xs font-mono">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-blue-600"><strong>Time:</strong> {step.timeSpent}</span>
+                                </div>
+                                {(() => {
+                                  // Extract seconds from timeSpent string (e.g., "2-3 seconds" -> 2.5)
+                                  const timeMatch = step.timeSpent.match(/(\d+)(?:-(\d+))?\s*second/i);
+                                  let seconds = 0;
+                                  if (timeMatch) {
+                                    const min = parseInt(timeMatch[1]);
+                                    const max = timeMatch[2] ? parseInt(timeMatch[2]) : min;
+                                    seconds = (min + max) / 2;
+                                  }
+                                  
+                                  // Color coding: 0-2s (green), 2-5s (yellow), 5-8s (orange), 8+ (red)
+                                  const getTimeColor = (sec: number) => {
+                                    if (sec <= 2) return 'bg-green-500';
+                                    if (sec <= 5) return 'bg-yellow-500';
+                                    if (sec <= 8) return 'bg-orange-500';
+                                    return 'bg-red-500';
+                                  };
+                                  
+                                  // Bar width: scale 0-10+ seconds to 0-100%
+                                  const barWidth = Math.min((seconds / 10) * 100, 100);
+                                  
+                                  return (
+                                    <div className="w-full">
+                                      <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                        <span>0s</span>
+                                        <span>5s</span>
+                                        <span>10s+</span>
+                                      </div>
+                                      <div className="w-full bg-gray-200 rounded-full h-2 border border-black/20">
+                                        <motion.div
+                                          className={`h-full rounded-full ${getTimeColor(seconds)}`}
+                                          initial={{ width: 0 }}
+                                          animate={{ width: `${barWidth}%` }}
+                                          transition={{ duration: 0.8, delay: 1.2 + index * 0.15 }}
+                                        />
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -443,8 +516,66 @@ export default function FeedbackSummary({ analysis, imageUrl, className = '' }: 
               </div>
             </div>
           </div>
-        </motion.div>
-      )}
+          </motion.div>
+        )}
+
+        {/* Generational Analysis Section */}
+        {analysis.generationalAnalysis && (
+          <motion.div 
+            className="border-2 border-black bg-[#f5f1e6] relative overflow-hidden"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.0 }}
+          >
+            <div className="p-4">
+              <div className="text-center mb-6">
+                <div className="text-lg font-bold mb-2 font-mono tracking-wider">
+                  GENERATIONAL APPEAL
+                </div>
+                <div className="text-xs opacity-60 font-mono">How different age groups respond to your interface design</div>
+              </div>
+
+              <GenerationalRadarChart
+                scores={{
+                  genAlpha: analysis.generationalAnalysis.scores.genAlpha || { score: 0, reasoning: 'No data available' },
+                  genZ: analysis.generationalAnalysis.scores.genZ || { score: 0, reasoning: 'No data available' },
+                  millennials: analysis.generationalAnalysis.scores.millennials || { score: 0, reasoning: 'No data available' },
+                  genX: analysis.generationalAnalysis.scores.genX || { score: 0, reasoning: 'No data available' },
+                  boomers: analysis.generationalAnalysis.scores.boomers || { score: 0, reasoning: 'No data available' }
+                }}
+                primaryTarget={analysis.generationalAnalysis.primaryTarget || 'millennials'}
+              />
+
+              {/* Compact Recommendations */}
+              {analysis.generationalAnalysis.recommendations && analysis.generationalAnalysis.recommendations.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 1.3 }}
+                  className="mt-4 pt-4 border-t border-black/20"
+                >
+                  <h4 className="text-sm font-bold mb-2 font-mono tracking-wider text-center">
+                    OPTIMIZATION TIPS
+                  </h4>
+                  <div className="grid grid-cols-1 gap-2">
+                    {analysis.generationalAnalysis.recommendations.slice(0, 2).map((rec, index) => (
+                      <motion.div
+                        key={index}
+                        className="bg-white border-2 border-black p-2 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 1.4 + index * 0.1 }}
+                      >
+                        <div className="text-xs font-mono opacity-80 leading-tight">{rec}</div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </div>
 
       {/* Image Modal using Portal */}
       {mounted && createPortal(

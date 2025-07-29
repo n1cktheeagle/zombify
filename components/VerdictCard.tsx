@@ -108,8 +108,8 @@ export default function VerdictCard({ verdict, className = '' }: VerdictCardProp
 
             <div className="space-y-2">
               {verdict.attentionFlow.slice(0, 5).map((step, index) => {
-                // attentionFlow is now a simple string array
-                const description = step;
+                // Handle both string[] and AttentionFlowItem[] formats
+                const description = typeof step === 'string' ? step : step.element;
                 
                 return (
                   <motion.div 

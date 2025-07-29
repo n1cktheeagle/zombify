@@ -1,4 +1,4 @@
-// types/analysis.ts - Clean version with Vision API support, NO visual annotations
+// types/analysis.ts - Enhanced version with all new features
 // Place this file in your project root: /types/analysis.ts
 
 // === VISION API TYPES - KEEP FOR DATA ENHANCEMENT ===
@@ -49,7 +49,110 @@ export interface VisionAnalysisResult {
   };
 }
 
-// === ANALYSIS TYPES ===
+// === NEW ENHANCED TYPES ===
+
+// Dark Pattern Detection
+export interface DarkPattern {
+  type: 'URGENCY_MANIPULATION' | 'BAIT_AND_SWITCH' | 'HIDDEN_COSTS' | 'FORCED_CONTINUITY' | 'ROACH_MOTEL' | 'CONFIRM_SHAMING';
+  severity: 'HIGH' | 'MEDIUM' | 'LOW';
+  element: string;
+  evidence: string;
+  impact: string;
+  ethicalAlternative: string;
+}
+
+// Strategic Intent Analysis
+export interface IntentAnalysis {
+  perceivedPurpose: string;
+  actualPurpose: string;
+  alignmentScore: number;
+  misalignments: string[];
+  clarityImprovements: string[];
+}
+
+// Enhanced Attention Flow
+export interface AttentionFlowItem {
+  priority: number;
+  element: string;
+  reasoning: string;
+  timeSpent: string;
+  conversionImpact: 'HIGH' | 'MEDIUM' | 'LOW';
+}
+
+// Friction Points Analysis
+export interface FrictionPoint {
+  stage: 'AWARENESS' | 'CONSIDERATION' | 'DECISION' | 'ACTION';
+  friction: string;
+  evidence: string;
+  dropoffRisk: 'HIGH' | 'MEDIUM' | 'LOW';
+  quickFix: string;
+  impact: string;
+}
+
+// Enhanced UX Copy Analysis
+export interface AudienceAlignment {
+  detectedAudience: string;
+  copyStyle: string;
+  brandArchetype: string;
+  toneMismatch: number;
+}
+
+export interface MicroCopyOpportunity {
+  type: 'ERROR_MESSAGING' | 'EMPTY_STATES' | 'FORM_LABELS' | 'SUCCESS_MESSAGES';
+  current: string;
+  location: string;
+  issue: string;
+  improved: string;
+  reasoning: string;
+}
+
+export interface EnhancedUXCopyIssue {
+  severity: 'HIGH' | 'MEDIUM' | 'LOW';
+  element: string;
+  location: string;
+  issue: string;
+  psychologicalImpact: string;
+  audienceSpecific: {
+    genZ?: string;
+    millennial?: string;
+    corporate?: string;
+  };
+  suggested: string[];
+  impact: string;
+  reasoning: string;
+}
+
+// Enhanced Behavioral Insights
+export interface EmotionalImpact {
+  primaryEmotion: 'trust' | 'anxiety' | 'excitement' | 'confusion' | 'frustration' | 'delight' | 'anticipation' | 'skepticism';
+  intensity: number;
+  reasoning: string;
+}
+
+export interface EnhancedBehavioralInsight {
+  pattern: string;
+  observation: string;
+  psychology: string;
+  emotionalImpact: EmotionalImpact;
+  recommendation: string;
+}
+
+// Unified Accessibility Audit - FIXED TYPE CONFLICTS
+export interface AccessibilityColorIssue {
+  element: string;
+  contrastRatio: number;
+  wcagLevel: 'A' | 'AA' | 'AAA';
+  passes: boolean;
+  fix: string;
+}
+
+export interface AccessibilityTextSize {
+  smallTextCount: number;
+  minimumSize: string;
+  recommendation: string;
+}
+
+// === EXISTING TYPES (KEPT FOR COMPATIBILITY) ===
 
 // Location interface - simplified without visual coordinates
 export interface Location {
@@ -105,14 +208,14 @@ export interface GripScore {
   breakdown: GripScoreBreakdown;
 }
 
-// Clean Verdict interface
+// Enhanced Verdict interface with new attention flow
 export interface Verdict {
   summary: string;
   attentionSpan: string;
   likelyAction: string;
   dropoffPoint: string;
   memorable: string;
-  attentionFlow: string[]; // Simple string array of what matters and why
+  attentionFlow: AttentionFlowItem[]; // Enhanced from string[] to structured data
 }
 
 // Enhanced Generational Score with specific issues
@@ -131,14 +234,6 @@ export interface Opportunity {
   implementation: string;
   reasoning: string;
   location?: Location;
-}
-
-// Behavioral insight
-export interface BehavioralInsight {
-  pattern: string;
-  observation: string;
-  psychology: string;
-  recommendation: string;
 }
 
 // Visual Design Analysis structures
@@ -250,20 +345,12 @@ export interface VisualDesignAnalysis {
   visualHierarchy: VisualHierarchyAnalysis;
 }
 
-// UX Copy Analysis
-export interface UXCopyIssue {
-  severity: "HIGH" | "MEDIUM" | "LOW";
-  current: string;
-  location: string;
-  issue: string;
-  suggested: string[];
-  impact: string;
-  reasoning: string;
-}
-
-export interface UXCopyAnalysis {
+// ENHANCED UX Copy Analysis with new features
+export interface EnhancedUXCopyAnalysis {
   score: number;
-  issues: UXCopyIssue[];
+  audienceAlignment: AudienceAlignment;
+  issues: EnhancedUXCopyIssue[];
+  microCopyOpportunities: MicroCopyOpportunity[];
   writingTone: {
     current: string;
     recommended: string;
@@ -284,17 +371,27 @@ export interface AccessibilityFailure {
   fix: string;
 }
 
-// Clean accessibility audit
+// UNIFIED ACCESSIBILITY AUDIT - FIXED TO HANDLE BOTH AUTOMATED AND MANUAL
 export interface AccessibilityAudit {
+  automated?: boolean; // Flag to indicate if it's automated
   score: number;
-  wcagLevel: 'A' | 'AA' | 'AAA';
-  strengths: string[];
-  weaknesses: string[];
-  criticalFailures: AccessibilityFailure[];
-  keyboardNav: string;
-  screenReaderCompat: string;
-  mobileAccessibility: string;
-  recommendations: Array<{
+  wcagLevel?: 'A' | 'AA' | 'AAA';
+  
+  // Automated analysis properties
+  colorContrast?: {
+    issues: AccessibilityColorIssue[];
+  };
+  textSize?: AccessibilityTextSize;
+  overallRecommendation?: string;
+  
+  // Manual analysis properties  
+  strengths?: string[];
+  weaknesses?: string[];
+  criticalFailures?: AccessibilityFailure[];
+  keyboardNav?: string;
+  screenReaderCompat?: string;
+  mobileAccessibility?: string;
+  recommendations?: Array<{
     priority: "HIGH" | "MEDIUM" | "LOW";
     action: string;
     effort: "LOW" | "MEDIUM" | "HIGH";
@@ -314,21 +411,28 @@ export interface GenerationalAnalysis {
   recommendations: string[];
 }
 
-// MAIN ANALYSIS INTERFACE - Clean with Vision API enhancement data only
+// MAIN ENHANCED ANALYSIS INTERFACE
 export interface ZombifyAnalysis {
   context: 'COMPONENT' | 'FULL_INTERFACE' | 'WIREFRAME' | 'DATA_VIZ' | 'MARKETING' | 'MOBILE' | 'ERROR';
   industry: 'SAAS' | 'ECOMMERCE' | 'FINTECH' | 'HEALTHCARE' | 'EDUCATION' | 'SOCIAL' | 'ENTERPRISE' | 'UNKNOWN';
   industryConfidence: number;
   gripScore: GripScore;
   verdict: Verdict;
+  
+  // NEW ENHANCED SECTIONS
+  darkPatterns: DarkPattern[];
+  intentAnalysis: IntentAnalysis;
+  frictionPoints: FrictionPoint[];
+  
   visualDesignAnalysis: VisualDesignAnalysis;
-  uxCopyAnalysis: UXCopyAnalysis;
+  uxCopyAnalysis: EnhancedUXCopyAnalysis; // Enhanced version
   criticalIssues: Issue[];
   usabilityIssues: Issue[];
   opportunities: Opportunity[];
-  behavioralInsights: BehavioralInsight[];
-  accessibilityAudit: AccessibilityAudit | null;
+  behavioralInsights: EnhancedBehavioralInsight[]; // Enhanced version
+  accessibilityAudit: AccessibilityAudit | null; // UNIFIED TYPE - FIXED
   generationalAnalysis: GenerationalAnalysis;
+  
   // KEEP: Vision API data for enhanced analysis
   visionData?: {
     textCount: number;
@@ -367,4 +471,10 @@ export interface FeedbackData {
   score: number; // Deprecated - kept for backward compatibility
   user_id: string | null;
   is_guest: boolean;
+
+  // BACKWARDS COMPATIBILITY NOTES:
+  // - Old BehavioralInsight[] will still work, just won't have emotionalImpact
+  // - Old UXCopyAnalysis will still work, just won't have audienceAlignment etc.
+  // - Old Verdict with string[] attentionFlow will still work
+  // - All existing components should continue working
 }

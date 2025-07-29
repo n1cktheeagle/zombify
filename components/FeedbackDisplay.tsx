@@ -44,7 +44,12 @@ export const feedbackTabs = [
   { id: 'issues', label: 'ISSUES & FIXES', getCount: (a: ZombifyAnalysis) => a.criticalIssues.length + a.usabilityIssues.length },
   { id: 'opportunities', label: 'OPPORTUNITIES', getCount: (a: ZombifyAnalysis) => a.opportunities?.length || 0, pro: true },
   { id: 'insights', label: 'BEHAVIORAL INSIGHTS', getCount: (a: ZombifyAnalysis) => a.behavioralInsights?.length || 0, pro: true },
-  { id: 'accessibility', label: 'ACCESSIBILITY', getCount: (a: ZombifyAnalysis) => a.accessibilityAudit?.criticalFailures?.length || 0 }
+  { id: 'accessibility', label: 'ACCESSIBILITY', getCount: (a: ZombifyAnalysis) => {
+    const audit = a.accessibilityAudit;
+    if (!audit) return 0;
+    if ('automated' in audit) return 0; // AutomatedAccessibilityAudit doesn't have criticalFailures
+    return (audit as import('@/types/analysis').AccessibilityAudit).criticalFailures?.length || 0;
+  }}
 ];
 
 export default function FeedbackDisplay(props: FeedbackDisplayProps) {
@@ -72,6 +77,11 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
     );
   }
   const { analysis, isLoggedIn = false, isPro = false, activeTab, setActiveTab, imageUrl } = props;
+  
+  // Type guard to check if it's a manual AccessibilityAudit
+  const isManualAudit = (audit: any): audit is import('@/types/analysis').AccessibilityAudit => {
+    return audit && !('automated' in audit);
+  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -501,7 +511,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                           <div className="text-xs font-mono opacity-70">ANALYSIS TYPE</div>
                         </div>
                         <div className="text-center p-4 bg-white/50 rounded border border-black/10">
-                          <div className="text-3xl font-bold text-black mb-1">{analysis.accessibilityAudit.criticalFailures?.length || 0}</div>
+                          <div className="text-3xl font-bold text-black mb-1">{isManualAudit(analysis.accessibilityAudit) ? (analysis.accessibilityAudit.criticalFailures?.length || 0) : 0}</div>
                           <div className="text-xs font-mono opacity-70">VISUAL ISSUES</div>
                         </div>
                       </div>
@@ -509,9 +519,9 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                   </motion.div>
 
                   {/* Strengths and Weaknesses */}
-                  {(analysis.accessibilityAudit.strengths || analysis.accessibilityAudit.weaknesses) && (
+                  {isManualAudit(analysis.accessibilityAudit) && (analysis.accessibilityAudit.strengths || analysis.accessibilityAudit.weaknesses) && (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {analysis.accessibilityAudit.strengths && analysis.accessibilityAudit.strengths.length > 0 && (
+                      {isManualAudit(analysis.accessibilityAudit) && analysis.accessibilityAudit.strengths && analysis.accessibilityAudit.strengths.length > 0 && (
                         <motion.div 
                           className="zombify-card p-6 relative overflow-hidden"
                           initial={{ opacity: 0, x: -20 }}
@@ -524,7 +534,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                             </GlitchText>
                           </div>
                           <div className="space-y-2">
-                            {analysis.accessibilityAudit.strengths.map((strength, i) => (
+                            {analysis.accessibilityAudit.strengths!.map((strength: string, i: number) => (
                               <motion.div 
                                 key={i} 
                                 className="flex items-start gap-3 p-3 bg-white/50 rounded border border-black/10"
@@ -540,7 +550,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                         </motion.div>
                       )}
                       
-                      {analysis.accessibilityAudit.weaknesses && analysis.accessibilityAudit.weaknesses.length > 0 && (
+                      {isManualAudit(analysis.accessibilityAudit) && analysis.accessibilityAudit.weaknesses && analysis.accessibilityAudit.weaknesses.length > 0 && (
                         <motion.div 
                           className="zombify-card p-6 relative overflow-hidden"
                           initial={{ opacity: 0, x: 20 }}
@@ -553,7 +563,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                             </GlitchText>
                           </div>
                           <div className="space-y-2">
-                            {analysis.accessibilityAudit.weaknesses.map((weakness, i) => (
+                            {analysis.accessibilityAudit.weaknesses!.map((weakness: string, i: number) => (
                               <motion.div 
                                 key={i} 
                                 className="flex items-start gap-3 p-3 bg-white/50 rounded border border-black/10"
@@ -572,7 +582,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                   )}
 
                   {/* Critical Failures - VISUAL ONLY */}
-                  {analysis.accessibilityAudit.criticalFailures?.length > 0 && (
+                  {isManualAudit(analysis.accessibilityAudit) && analysis.accessibilityAudit.criticalFailures && analysis.accessibilityAudit.criticalFailures.length > 0 && (
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -585,7 +595,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                         </GlitchText>
                       </div>
 
-                      {analysis.accessibilityAudit.criticalFailures.map((failure, i) => (
+                      {analysis.accessibilityAudit.criticalFailures!.map((failure: import('@/types/analysis').AccessibilityFailure, i: number) => (
                         <motion.div 
                           key={i} 
                           className="zombify-card p-6 relative overflow-hidden"
@@ -629,7 +639,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                   )}
 
                   {/* Priority Recommendations */}
-                  {analysis.accessibilityAudit.recommendations?.length > 0 && (
+                  {isManualAudit(analysis.accessibilityAudit) && analysis.accessibilityAudit.recommendations && analysis.accessibilityAudit.recommendations.length > 0 && (
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -644,7 +654,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
 
                       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                         {['HIGH', 'MEDIUM', 'LOW'].map(priority => {
-                          const priorityRecs = analysis.accessibilityAudit!.recommendations!.filter(rec => rec.priority === priority);
+                          const priorityRecs = isManualAudit(analysis.accessibilityAudit) ? analysis.accessibilityAudit.recommendations!.filter((rec: any) => rec.priority === priority) : [];
                           if (priorityRecs.length === 0) return null;
 
                           const priorityColors = {
@@ -665,11 +675,11 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                             >
                               <div className={`text-center mb-4 ${colors.text}`}>
                                 <div className="text-lg font-bold font-mono">{priority} PRIORITY</div>
-                                <div className="text-sm opacity-70">{priorityRecs.length} action{priorityRecs.length !== 1 ? 's' : ''}</div>
+                                <div className="text-sm opacity-70">{priorityRecs.length} action{priorityRecs.length !== 1 ? '&apos;s' : ''}</div>
                               </div>
 
                               <div className="space-y-3">
-                                {priorityRecs.map((rec, i) => (
+                                {priorityRecs.map((rec: any, i: number) => (
                                   <motion.div
                                     key={i}
                                     className={`p-3 rounded border-l-4 ${colors.border} bg-black/20`}

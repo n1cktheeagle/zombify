@@ -281,7 +281,7 @@ export default function Dashboard() {
               <div className="text-4xl opacity-30 mb-4">🚫</div>
               <p className="text-lg font-bold mb-2">Monthly limit reached</p>
               <p className="text-sm opacity-70 mb-6">
-                You've used all {profile?.monthly_limit} uploads this month
+                You&apos;ve used all {profile?.monthly_limit} uploads this month
               </p>
               <button className="px-6 py-2 bg-purple-600 text-white font-bold rounded hover:bg-purple-700">
                 UPGRADE TO PRO

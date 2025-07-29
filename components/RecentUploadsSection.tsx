@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useUploads } from '@/contexts/UploadContext'
+import { useUpload } from '@/contexts/UploadContext'
 import Image from 'next/image'
 import { useState } from 'react';
 
@@ -19,7 +19,9 @@ interface Upload {
 
 export default function RecentUploadsSection() {
   const router = useRouter();
-  const { uploads, refreshUploads } = useUploads();
+  // TODO: Implement proper uploads fetching
+  const uploads: Upload[] = [];
+  const refreshUploads = () => {};
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Debug: Log uploads to verify data
@@ -74,7 +76,7 @@ export default function RecentUploadsSection() {
 
   return (
     <div className="space-y-2">
-      {uploads.map((upload) => (
+      {uploads.map((upload: Upload) => (
         <div
           key={upload.id}
           className="flex items-center space-x-3 p-2 hover:bg-black/5 rounded cursor-pointer transition-colors relative z-10 group"

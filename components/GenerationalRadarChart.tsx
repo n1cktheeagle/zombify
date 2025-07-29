@@ -34,13 +34,13 @@ export default function GenerationalRadarChart({ scores, primaryTarget }: Props)
   const center = size / 2;
   const radius = 60;
   
-  // Generation data with positions
+  // Generation data with positions - High contrast colors for better differentiation
   const generations = [
-    { key: 'genAlpha', label: 'Gen Alpha', ageRange: '0-11', color: '#EC4899', angle: 0 },
-    { key: 'genZ', label: 'Gen Z', ageRange: '12-27', color: '#8B5CF6', angle: Math.PI / 2.5 },
-    { key: 'millennials', label: 'Millennials', ageRange: '28-43', color: '#06B6D4', angle: 2 * Math.PI / 2.5 },
-    { key: 'genX', label: 'Gen X', ageRange: '44-59', color: '#10B981', angle: 3 * Math.PI / 2.5 },
-    { key: 'boomers', label: 'Boomers', ageRange: '60-78', color: '#F59E0B', angle: 4 * Math.PI / 2.5 }
+    { key: 'genAlpha', label: 'Gen Alpha', ageRange: '0-11', color: '#DC2626', angle: 0 }, // Red
+    { key: 'genZ', label: 'Gen Z', ageRange: '12-27', color: '#7C3AED', angle: Math.PI / 2.5 }, // Purple
+    { key: 'millennials', label: 'Millennials', ageRange: '28-43', color: '#000000', angle: 2 * Math.PI / 2.5 }, // Black
+    { key: 'genX', label: 'Gen X', ageRange: '44-59', color: '#059669', angle: 3 * Math.PI / 2.5 }, // Green
+    { key: 'boomers', label: 'Boomers', ageRange: '60-78', color: '#EA580C', angle: 4 * Math.PI / 2.5 } // Orange
   ];
 
   // Calculate points for the score polygon
@@ -80,7 +80,8 @@ export default function GenerationalRadarChart({ scores, primaryTarget }: Props)
             </p>
           </div>
 
-          <div className="relative">
+          {/* Zombify-styled chart container */}
+          <div className="border-2 border-black bg-white p-4 shadow-[2px_2px_0px_0px_rgba(0,0,0,0.4)] relative">
             <svg width={size} height={size} className="mx-auto">
               {/* Grid circles */}
               {gridCircles.map((circle, index) => (
@@ -117,10 +118,10 @@ export default function GenerationalRadarChart({ scores, primaryTarget }: Props)
               {/* Score polygon */}
               <path
                 d={pathData}
-                fill={generations.find(g => g.key === primaryTarget)?.color || '#8B5CF6'}
-                fillOpacity="0.2"
-                stroke={generations.find(g => g.key === primaryTarget)?.color || '#8B5CF6'}
-                strokeWidth="2"
+                fill={generations.find(g => g.key === primaryTarget)?.color || '#000000'}
+                fillOpacity="0.3"
+                stroke={generations.find(g => g.key === primaryTarget)?.color || '#000000'}
+                strokeWidth="3"
               />
 
               {/* Score points */}
@@ -129,9 +130,9 @@ export default function GenerationalRadarChart({ scores, primaryTarget }: Props)
                   key={index}
                   cx={point.x}
                   cy={point.y}
-                  r="3"
+                  r="4"
                   fill={generations[index].color}
-                  stroke="white"
+                  stroke="#000000"
                   strokeWidth="2"
                 />
               ))}
@@ -168,6 +169,9 @@ export default function GenerationalRadarChart({ scores, primaryTarget }: Props)
                 );
               })}
             </svg>
+            
+            {/* Zombify status indicator */}
+            <div className="absolute top-2 right-2 w-2 h-2 bg-green-500 border border-black"></div>
           </div>
         </div>
 
@@ -183,7 +187,7 @@ export default function GenerationalRadarChart({ scores, primaryTarget }: Props)
               return (
                 <div 
                   key={gen.key} 
-                  className={`bg-white border-2 border-black p-2 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)] ${isPrimary ? 'ring-2 ring-offset-1' : ''}`}
+                  className={`bg-white border-2 border-black p-2 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)] relative hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,0.5)] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-200 ${isPrimary ? 'ring-2 ring-offset-1' : ''}`}
                   style={isPrimary ? { '--tw-ring-color': gen.color } as React.CSSProperties : undefined}
                 >
                   <div className="flex items-center justify-between mb-1">
@@ -202,6 +206,13 @@ export default function GenerationalRadarChart({ scores, primaryTarget }: Props)
                   <p className="text-xs opacity-70 ml-4 font-mono leading-tight">
                     {generationScore.reasoning}
                   </p>
+                  
+                  {/* Generation status indicator */}
+                  <div className={`absolute top-1 right-1 w-1.5 h-1.5 border border-black ${
+                    generationScore.score >= 80 ? 'bg-green-500' : 
+                    generationScore.score >= 60 ? 'bg-yellow-500' : 
+                    'bg-red-500'
+                  }`}></div>
                 </div>
               );
             })}

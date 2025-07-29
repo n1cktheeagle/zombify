@@ -82,12 +82,12 @@ export function SharedSidebar({ currentAnalysis, recentAnalyses = [], className 
                       {currentAnalysis.context?.replace('_', ' ') || 'UNKNOWN'}
                     </div>
                   </div>
-                  <div className="text-sm font-medium truncate mb-1">
+                  <div className="text-sm font-medium truncate mb-1 pr-1">
                     {currentAnalysis.fileName || getImageFileName(currentAnalysis.imageUrl)}
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs opacity-60">Grip Score</span>
-                    <span className="text-sm font-bold">{currentAnalysis.score}</span>
+                    <span className="text-xs opacity-60 flex-shrink-0">Grip Score</span>
+                    <span className="text-sm font-bold flex-shrink-0 ml-2">{currentAnalysis.score}</span>
                   </div>
                 </div>
               )}
@@ -99,13 +99,13 @@ export function SharedSidebar({ currentAnalysis, recentAnalyses = [], className 
                     <button
                       key={analysis.id}
                       onClick={() => router.push(`/feedback/${analysis.id}`)}
-                      className="w-full p-2 rounded border border-black/10 hover:bg-black/5 transition-colors text-left"
+                      className="w-full p-2 rounded border border-black/10 hover:bg-black/5 transition-colors text-left overflow-hidden"
                     >
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="text-xs font-medium truncate">
+                      <div className="flex items-center justify-between mb-1 gap-2">
+                        <div className="text-xs font-medium truncate flex-1 min-w-0">
                           {analysis.fileName || getImageFileName(analysis.imageUrl)}
                         </div>
-                        <span className="text-xs font-bold ml-2">{analysis.score}</span>
+                        <span className="text-xs font-bold flex-shrink-0">{analysis.score}</span>
                       </div>
                       <div className="text-xs opacity-60">
                         {new Date(analysis.createdAt).toLocaleDateString()}

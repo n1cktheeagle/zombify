@@ -495,7 +495,7 @@ export default function ZombifyDashboard() {
                           <div className="space-y-2">
                             <h2 className="text-lg font-medium opacity-70">Grip Score</h2>
                             <div className="text-6xl font-bold glitch-text">{selectedReport.gripScore}</div>
-                            <p className="text-sm opacity-60">Your UI's hold on user attention</p>
+                            <p className="text-sm opacity-60">Your UI&apos;s hold on user attention</p>
                           </div>
 
                           {/* Progress Bar */}

@@ -17,6 +17,11 @@ export default function FeedbackAccessibility({
   const [expandedRecommendation, setExpandedRecommendation] = useState<string | null>(null);
 
   const accessibilityAudit = analysis.accessibilityAudit;
+  
+  // Type guard to check if it's a manual AccessibilityAudit
+  const isManualAudit = (audit: any): audit is import('@/types/analysis').AccessibilityAudit => {
+    return audit && !('automated' in audit);
+  };
 
   if (!accessibilityAudit) {
     return (
@@ -67,12 +72,15 @@ export default function FeedbackAccessibility({
             No accessibility analysis available for this interface
           </p>
           <div className="text-sm opacity-60 font-mono bg-white border-2 border-black p-4 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)] inline-block">
-            Accessibility analysis wasn't completed for this submission
+            Accessibility analysis wasn&apos;t completed for this submission
           </div>
         </motion.div>
       </motion.div>
     );
   }
+
+  // Check if this is automated or manual accessibility audit
+  const isAutomated = accessibilityAudit && 'automated' in accessibilityAudit && (accessibilityAudit as any).automated;
 
   return (
     <motion.div 
@@ -91,12 +99,12 @@ export default function FeedbackAccessibility({
           ACCESSIBILITY ANALYSIS
         </div>
         <div className="text-lg opacity-70 font-mono mb-2">
-          Visual accessibility assessment for inclusive design
+          {isAutomated ? 'Automated visual accessibility assessment' : 'Visual accessibility assessment for inclusive design'}
         </div>
         <div className="flex items-center gap-4 text-sm opacity-60 font-mono">
-          <span>Visual Elements Only</span>
+          <span>{isAutomated ? 'Automated Analysis' : 'Visual Elements Only'}</span>
           <span>•</span>
-          <span>{accessibilityAudit.criticalFailures?.length || 0} Issues Found</span>
+          <span>{isManualAudit(accessibilityAudit) ? (accessibilityAudit.criticalFailures?.length || 0) : 0} Issues Found</span>
           <span>•</span>
           <span className="text-blue-600 font-bold">Score: {accessibilityAudit.score}/100</span>
         </div>
@@ -111,10 +119,13 @@ export default function FeedbackAccessibility({
       >
         <div className="text-center mb-6">
           <div className="text-2xl font-bold mb-3 font-mono tracking-wider">
-            VISUAL ACCESSIBILITY OVERVIEW
+            {isAutomated ? 'AUTOMATED ACCESSIBILITY OVERVIEW' : 'VISUAL ACCESSIBILITY OVERVIEW'}
           </div>
           <div className="font-mono text-base opacity-70 mb-6">
-            Analysis covers visual elements only - no alt text, keyboard navigation, or screen reader testing
+            {isAutomated 
+              ? 'Analysis uses Vision API data for color contrast and text size assessment'
+              : 'Analysis covers visual elements only - no alt text, keyboard navigation, or screen reader testing'
+            }
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -141,9 +152,11 @@ export default function FeedbackAccessibility({
               animate={{ scale: 1 }}
               transition={{ delay: 0.5, type: "spring", stiffness: 200 }}
             >
-              <div className="text-5xl font-bold text-black mb-2">VISUAL</div>
+              <div className="text-5xl font-bold text-black mb-2">{isAutomated ? 'AUTO' : 'VISUAL'}</div>
               <div className="text-xs font-mono opacity-70 mb-1">ANALYSIS TYPE</div>
-              <div className="text-sm font-bold text-blue-600">STATIC ASSESSMENT</div>
+              <div className="text-sm font-bold text-blue-600">
+                {isAutomated ? 'VISION API' : 'STATIC ASSESSMENT'}
+              </div>
             </motion.div>
             
             <motion.div 
@@ -152,23 +165,93 @@ export default function FeedbackAccessibility({
               animate={{ scale: 1 }}
               transition={{ delay: 0.6, type: "spring", stiffness: 200 }}
             >
-              <div className="text-5xl font-bold text-black mb-2">{accessibilityAudit.criticalFailures?.length || 0}</div>
-              <div className="text-xs font-mono opacity-70 mb-1">VISUAL ISSUES</div>
+              <div className="text-5xl font-bold text-black mb-2">{isManualAudit(accessibilityAudit) ? (accessibilityAudit.criticalFailures?.length || 0) : 0}</div>
+              <div className="text-xs font-mono opacity-70 mb-1">DETECTED ISSUES</div>
               <div className={`text-sm font-bold ${
-                (accessibilityAudit.criticalFailures?.length || 0) === 0 ? 'text-green-600' : 'text-red-600'
+                (isManualAudit(accessibilityAudit) ? (accessibilityAudit.criticalFailures?.length || 0) : 0) === 0 ? 'text-green-600' : 'text-red-600'
               }`}>
-                {(accessibilityAudit.criticalFailures?.length || 0) === 0 ? 'NONE FOUND' : 'DETECTED'}
+                {(isManualAudit(accessibilityAudit) ? (accessibilityAudit.criticalFailures?.length || 0) : 0) === 0 ? 'NONE FOUND' : 'DETECTED'}
               </div>
             </motion.div>
           </div>
         </div>
+
+        {/* Automated Accessibility Features */}
+        {isAutomated && (accessibilityAudit as any).colorContrast && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
+            className="mt-6 pt-6 border-t border-black/20"
+          >
+            <div className="text-lg font-bold mb-4 font-mono tracking-wider">
+              AUTOMATED CHECKS PERFORMED
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Color Contrast Issues */}
+              <div className="bg-white border-2 border-black p-4 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-2xl">🎨</span>
+                  <div className="font-bold text-sm font-mono">COLOR CONTRAST</div>
+                </div>
+                {(accessibilityAudit as any).colorContrast.issues.length > 0 ? (
+                  <div className="space-y-2">
+                    {(accessibilityAudit as any).colorContrast.issues.slice(0, 3).map((issue: any, i: number) => (
+                      <div key={i} className="text-xs bg-red-50 border border-red-200 p-2 rounded">
+                        <div className="font-bold text-red-600">
+                          {issue.element}: {issue.contrastRatio}:1
+                        </div>
+                        <div className="text-red-700 mt-1">{issue.fix}</div>
+                      </div>
+                    ))}
+                    {(accessibilityAudit as any).colorContrast.issues.length > 3 && (
+                      <div className="text-xs opacity-60 font-mono">
+                        +{(accessibilityAudit as any).colorContrast.issues.length - 3} more issues
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-xs text-green-600 font-mono">✓ All contrasts meet WCAG standards</div>
+                )}
+              </div>
+
+              {/* Text Size Issues */}
+              <div className="bg-white border-2 border-black p-4 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-2xl">📏</span>
+                  <div className="font-bold text-sm font-mono">TEXT SIZE</div>
+                </div>
+                {accessibilityAudit.textSize ? (
+                  <div className="space-y-2">
+                    <div className="text-xs bg-blue-50 border border-blue-200 p-2 rounded">
+                      <div className="font-bold text-blue-600">
+                        Small Text Count: {accessibilityAudit.textSize.smallTextCount}
+                      </div>
+                      <div className="text-blue-700 mt-1">
+                        Minimum detected: {accessibilityAudit.textSize.minimumSize}
+                      </div>
+                    </div>
+                    <div className="text-xs font-mono text-blue-700">
+                      {accessibilityAudit.textSize.recommendation}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-xs text-gray-600 font-mono">
+                    ✓ Text size analysis not available
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
       </motion.div>
 
       {/* Strengths and Weaknesses */}
-      {(accessibilityAudit.strengths || accessibilityAudit.weaknesses) && (
+      {isManualAudit(accessibilityAudit) && (accessibilityAudit.strengths || accessibilityAudit.weaknesses) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Strengths */}
-          {accessibilityAudit.strengths && accessibilityAudit.strengths.length > 0 && (
+          {isManualAudit(accessibilityAudit) && accessibilityAudit.strengths && accessibilityAudit.strengths.length > 0 && (
             <motion.div 
               className="border-2 border-black bg-[#f5f1e6] p-4 relative overflow-hidden"
               initial={{ opacity: 0, x: -20 }}
@@ -182,7 +265,7 @@ export default function FeedbackAccessibility({
                 </div>
               </div>
               <div className="space-y-3">
-                {accessibilityAudit.strengths.map((strength, i) => (
+                {accessibilityAudit.strengths!.map((strength: string, i: number) => (
                   <motion.div 
                     key={i} 
                     className="flex items-start gap-3 p-3 bg-white border-2 border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]"
@@ -199,7 +282,7 @@ export default function FeedbackAccessibility({
           )}
           
           {/* Weaknesses */}
-          {accessibilityAudit.weaknesses && accessibilityAudit.weaknesses.length > 0 && (
+          {isManualAudit(accessibilityAudit) && accessibilityAudit.weaknesses && accessibilityAudit.weaknesses.length > 0 && (
             <motion.div 
               className="border-2 border-black bg-[#f5f1e6] p-4 relative overflow-hidden"
               initial={{ opacity: 0, x: 20 }}
@@ -213,7 +296,7 @@ export default function FeedbackAccessibility({
                 </div>
               </div>
               <div className="space-y-3">
-                {accessibilityAudit.weaknesses.map((weakness, i) => (
+                {accessibilityAudit.weaknesses!.map((weakness: string, i: number) => (
                   <motion.div 
                     key={i} 
                     className="flex items-start gap-3 p-3 bg-white border-2 border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]"
@@ -232,7 +315,7 @@ export default function FeedbackAccessibility({
       )}
 
       {/* Critical Failures */}
-      {accessibilityAudit.criticalFailures && accessibilityAudit.criticalFailures.length > 0 && (
+      {isManualAudit(accessibilityAudit) && accessibilityAudit.criticalFailures && accessibilityAudit.criticalFailures.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -242,12 +325,12 @@ export default function FeedbackAccessibility({
           <div className="flex items-center gap-3 mb-6">
             <div className="text-4xl">🎯</div>
             <div className="text-2xl font-bold text-red-600 font-mono tracking-wider">
-              VISUAL ACCESSIBILITY ISSUES
+              {isAutomated ? 'AUTOMATED ACCESSIBILITY ISSUES' : 'VISUAL ACCESSIBILITY ISSUES'}
             </div>
           </div>
 
           <div className="space-y-6">
-            {accessibilityAudit.criticalFailures.map((failure, i) => (
+            {accessibilityAudit.criticalFailures!.map((failure: import('@/types/analysis').AccessibilityFailure, i: number) => (
               <motion.div 
                 key={i} 
                 className="border-2 border-black bg-[#f5f1e6] p-4 relative overflow-hidden"
@@ -292,7 +375,7 @@ export default function FeedbackAccessibility({
       )}
 
       {/* Priority Recommendations */}
-      {accessibilityAudit.recommendations && accessibilityAudit.recommendations.length > 0 && (
+      {isManualAudit(accessibilityAudit) && accessibilityAudit.recommendations && accessibilityAudit.recommendations.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -308,7 +391,7 @@ export default function FeedbackAccessibility({
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {['HIGH', 'MEDIUM', 'LOW'].map((priority, priorityIndex) => {
-              const priorityRecs = accessibilityAudit.recommendations!.filter(rec => rec.priority === priority);
+              const priorityRecs = accessibilityAudit.recommendations!.filter((rec: any) => rec.priority === priority);
               if (priorityRecs.length === 0) return null;
 
               const priorityColors = {
@@ -329,7 +412,7 @@ export default function FeedbackAccessibility({
                 >
                   <div className="text-center mb-4">
                     <div className={`text-lg font-bold font-mono tracking-wider ${colors.text}`}>{priority} PRIORITY</div>
-                    <div className="text-sm opacity-70">{priorityRecs.length} action{priorityRecs.length !== 1 ? 's' : ''}</div>
+                    <div className="text-sm opacity-70">{priorityRecs.length} action{priorityRecs.length !== 1 ? '&apos;s' : ''}</div>
                   </div>
 
                   <div className="space-y-4">
@@ -371,11 +454,11 @@ export default function FeedbackAccessibility({
                               transition={{ duration: 0.3 }}
                               className="overflow-hidden"
                             >
-                                                          <div className="mt-3 pt-3 border-t border-black/20">
-                              <div className="text-xs text-black/80 leading-relaxed font-mono">
-                                Additional implementation details would be provided here for this recommendation.
+                              <div className="mt-3 pt-3 border-t border-black/20">
+                                <div className="text-xs text-black/80 leading-relaxed font-mono">
+                                  Additional implementation details would be provided here for this recommendation.
+                                </div>
                               </div>
-                            </div>
                             </motion.div>
                           )}
                         </AnimatePresence>
@@ -390,4 +473,4 @@ export default function FeedbackAccessibility({
       )}
     </motion.div>
   );
-} 
+}
