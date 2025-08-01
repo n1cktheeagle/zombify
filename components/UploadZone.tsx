@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Upload } from 'lucide-react';
 import { useAuthModal } from '@/hooks/useAuthModal';
 import { AuthModal } from '@/components/AuthModal';
@@ -29,8 +29,95 @@ export default function UploadZone({
   const [error, setError] = useState('');
   const [cooldownTime, setCooldownTime] = useState(0);
   const [showAuthMessage, setShowAuthMessage] = useState(false);
+  const [animatedText, setAnimatedText] = useState('Feed Zombify');
+  const [typingText, setTypingText] = useState('Feed Zombify');
+  const [isTyping, setIsTyping] = useState(false);
+  const typewriterIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const animationTimersRef = useRef<NodeJS.Timeout[]>([]);
   
   const { showAuthModal, authMode, openSignIn, openSignUp, closeModal } = useAuthModal();
+
+  // Define computed values first
+  const isDisabledComputed = disabled || cooldownTime > 0 || (!isLoggedIn && showCooldown);
+  const shouldShowCooldownComputed = showCooldown && cooldownTime > 0;
+
+  // Typewriter effect function
+  const typeText = (text: string, callback?: () => void) => {
+    // Clear any existing interval
+    if (typewriterIntervalRef.current) {
+      clearInterval(typewriterIntervalRef.current);
+      typewriterIntervalRef.current = null;
+    }
+    
+    setIsTyping(true);
+    setTypingText('');
+    let currentIndex = 0;
+    
+    const interval = setInterval(() => {
+      if (currentIndex < text.length) {
+        setTypingText(text.slice(0, currentIndex + 1));
+        currentIndex++;
+      } else {
+        clearInterval(interval);
+        typewriterIntervalRef.current = null;
+        setIsTyping(false);
+        if (callback) callback();
+      }
+    }, 80);
+    
+    typewriterIntervalRef.current = interval;
+  };
+
+  // Text animation effect with looping and typewriter
+  useEffect(() => {
+    // Clear all timers when dependencies change
+    animationTimersRef.current.forEach(timer => clearTimeout(timer));
+    animationTimersRef.current = [];
+    
+    if (!uploadedFile && !isDisabledComputed && !showAuthMessage && !shouldShowCooldownComputed) {
+      const runTextAnimation = () => {
+        const timer1 = setTimeout(() => {
+          typeText('...hello?');
+        }, 7500);
+
+        const timer2 = setTimeout(() => {
+          typeText("c'mon feed me");
+        }, 15000);
+
+        const timer3 = setTimeout(() => {
+          typeText('are you alive?...');
+        }, 22500);
+
+        const timer4 = setTimeout(() => {
+          typeText('Feed Zombify', () => {
+            // Restart the loop after typing is complete
+            const loopTimer = setTimeout(runTextAnimation, 100);
+            animationTimersRef.current.push(loopTimer);
+          });
+        }, 30000);
+
+        animationTimersRef.current = [timer1, timer2, timer3, timer4];
+      };
+
+      runTextAnimation();
+    } else {
+      // Clear any running typewriter effect
+      if (typewriterIntervalRef.current) {
+        clearInterval(typewriterIntervalRef.current);
+        typewriterIntervalRef.current = null;
+      }
+      setTypingText('Feed Zombify');
+      setIsTyping(false);
+    }
+    
+    return () => {
+      // Cleanup on unmount
+      animationTimersRef.current.forEach(timer => clearTimeout(timer));
+      if (typewriterIntervalRef.current) {
+        clearInterval(typewriterIntervalRef.current);
+      }
+    };
+  }, [uploadedFile, isDisabledComputed, showAuthMessage, shouldShowCooldownComputed]);
 
   // Cooldown timer effect
   useEffect(() => {
@@ -143,28 +230,26 @@ export default function UploadZone({
     return `${minutes}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const isDisabled = disabled || cooldownTime > 0 || (!isLoggedIn && showCooldown);
-  const shouldShowCooldown = showCooldown && cooldownTime > 0;
 
   return (
     <>
-      <div className="w-full max-w-2xl mx-auto">
+      <div className="w-full">
         <div
           className={`
             relative overflow-hidden
             border-2 border-dashed rounded-lg p-8 text-center
-            transition-all duration-300 
-            ${isDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer group'}
-            ${isDragOver && !isDisabled ? 'border-black/50 bg-black/5 glitch-border' : 'border-black/20'}
+            transition-all duration-300 scanline-effect
+            ${isDisabledComputed ? 'cursor-not-allowed opacity-60' : 'cursor-pointer group'}
+            ${!isDisabledComputed && !showAuthMessage && !shouldShowCooldownComputed ? 'border-black/50 bg-black/5' : 'border-black/20'}
             ${uploadedFile ? 'border-black/40 bg-black/5' : ''}
             ${showAuthMessage ? 'border-red-400 bg-red-50' : ''}
-            ${shouldShowCooldown ? 'border-orange-400 bg-orange-50' : ''}
+            ${shouldShowCooldownComputed ? 'border-orange-400 bg-orange-50' : ''}
           `}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => {
-            if (isDisabled) return;
+            if (isDisabledComputed) return;
             document.getElementById('file-input')?.click();
           }}
           onMouseEnter={() => {
@@ -186,12 +271,12 @@ export default function UploadZone({
             accept="image/*" 
             onChange={handleFileInput} 
             className="hidden" 
-            disabled={isDisabled}
+            disabled={isDisabledComputed}
           />
 
           <div className="space-y-4 relative z-10">
             {/* Cooldown Timer */}
-            {shouldShowCooldown && (
+            {shouldShowCooldownComputed && (
               <div className="text-center">
                 <div className="text-2xl font-bold text-orange-600 mb-2 font-mono">
                   {formatCooldownTime(cooldownTime)}
@@ -235,7 +320,7 @@ export default function UploadZone({
             )}
 
             {/* File Preview or Default State */}
-            {!shouldShowCooldown && !showAuthMessage && (
+            {!shouldShowCooldownComputed && !showAuthMessage && (
               <>
                 {uploadedFile ? (
                   <>
@@ -251,7 +336,7 @@ export default function UploadZone({
                         )}
                         
                         {/* Remove Button Overlay */}
-                        {!isDisabled && (
+                        {!isDisabledComputed && (
                           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
                             <button
                               onClick={(e) => {
@@ -276,15 +361,16 @@ export default function UploadZone({
                   </>
                 ) : (
                   <>
-                    <div className={`w-12 h-12 mx-auto border-2 border-black/20 rounded-lg flex items-center justify-center transition-colors ${!isDisabled ? 'group-hover:border-black/40' : ''}`}>
-                      <Upload className={`w-6 h-6 opacity-60 transition-opacity ${!isDisabled ? 'group-hover:opacity-80' : ''}`} />
+                    <div className={`w-12 h-12 mx-auto border-2 border-black/20 rounded-lg flex items-center justify-center transition-colors ${!isDisabledComputed ? 'group-hover:border-black/40' : ''}`}>
+                      <Upload className={`w-6 h-6 opacity-60 transition-opacity ${!isDisabledComputed ? 'group-hover:opacity-80' : ''}`} />
                     </div>
                     <div className="space-y-1">
                       <p className="text-lg font-medium">
-                        {isDisabled ? 'Upload disabled' : 'Drop your interface here'}
+                        {isDisabledComputed ? 'Upload disabled' : typingText}
+                        {isTyping && <span className="inline-block w-[2px] h-[1em] bg-current ml-[1px] animate-blink align-middle"></span>}
                       </p>
                       <p className="text-sm opacity-60">
-                        {isDisabled ? 'Account required for more uploads' : 'or click to browse • PNG, JPG, or any UI screenshot'}
+                        {isDisabledComputed ? 'Account required for more uploads' : 'or click to browse • PNG, JPG, or any UI screenshot'}
                       </p>
                     </div>
                   </>
@@ -311,28 +397,6 @@ export default function UploadZone({
           </div>
         )}
 
-        {/* Footer with auth options for guests */}
-        {!isLoggedIn && !shouldShowCooldown && !showAuthMessage && (
-          <div className="mt-8 text-center border-t border-gray-200 pt-6">
-            <p className="text-sm text-gray-600 font-mono mb-3">
-              Want more feedback? Create an account for 3 uploads per month
-            </p>
-            <div className="flex gap-3 justify-center">
-              <button 
-                onClick={openSignIn}
-                className="text-sm font-mono tracking-wide text-black opacity-70 hover:opacity-100 transition-opacity"
-              >
-                LOGIN
-              </button>
-              <button 
-                onClick={openSignUp}
-                className="text-sm font-mono tracking-wide px-4 py-2 border-2 border-black/20 text-black hover:border-black/40 hover:bg-black/5 transition-all"
-              >
-                SIGN UP FREE
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Auth Modal */}

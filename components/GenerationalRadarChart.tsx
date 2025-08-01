@@ -65,159 +65,152 @@ export default function GenerationalRadarChart({ scores, primaryTarget }: Props)
   }));
 
   return (
-    <div className="w-full">
-      {/* Compact layout with chart and scores side by side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-        
-        {/* Left: Chart */}
-        <div className="flex flex-col items-center">
-          <div className="text-center mb-3">
-            <h3 className="text-sm font-bold mb-1 font-mono tracking-wider">GENERATIONAL APPEAL</h3>
-            <p className="text-xs opacity-70 font-mono">
-              Target: <span className="font-bold">{
-                generations.find(g => g.key === primaryTarget)?.label || 'Unknown'
-              }</span>
-            </p>
-          </div>
+    <div className="w-full space-y-4">
+      {/* Chart at the top */}
+      <div className="flex flex-col items-center">
+        <div className="text-center mb-3">
+          <p className="text-xs opacity-70 font-mono">
+            Target: <span className="font-bold">{
+              generations.find(g => g.key === primaryTarget)?.label || 'Unknown'
+            }</span>
+          </p>
+        </div>
 
-          {/* Zombify-styled chart container */}
-          <div className="border-2 border-black bg-white p-4 shadow-[2px_2px_0px_0px_rgba(0,0,0,0.4)] relative">
-            <svg width={size} height={size} className="mx-auto">
-              {/* Grid circles */}
-              {gridCircles.map((circle, index) => (
-                <circle
+        {/* Zombify-styled chart container */}
+        <div className="border-2 border-black bg-white p-4 shadow-[2px_2px_0px_0px_rgba(0,0,0,0.4)] relative">
+          <svg width={size} height={size} className="mx-auto">
+            {/* Grid circles */}
+            {gridCircles.map((circle, index) => (
+              <circle
+                key={index}
+                cx={center}
+                cy={center}
+                r={circle.radius}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1"
+                opacity={circle.opacity}
+              />
+            ))}
+
+            {/* Axis lines */}
+            {generations.map((gen, index) => {
+              const x2 = center + radius * Math.cos(gen.angle - Math.PI / 2);
+              const y2 = center + radius * Math.sin(gen.angle - Math.PI / 2);
+              return (
+                <line
                   key={index}
-                  cx={center}
-                  cy={center}
-                  r={circle.radius}
-                  fill="none"
+                  x1={center}
+                  y1={center}
+                  x2={x2}
+                  y2={y2}
                   stroke="currentColor"
                   strokeWidth="1"
-                  opacity={circle.opacity}
+                  opacity="0.2"
                 />
-              ))}
-
-              {/* Axis lines */}
-              {generations.map((gen, index) => {
-                const x2 = center + radius * Math.cos(gen.angle - Math.PI / 2);
-                const y2 = center + radius * Math.sin(gen.angle - Math.PI / 2);
-                return (
-                  <line
-                    key={index}
-                    x1={center}
-                    y1={center}
-                    x2={x2}
-                    y2={y2}
-                    stroke="currentColor"
-                    strokeWidth="1"
-                    opacity="0.2"
-                  />
-                );
-              })}
-
-              {/* Score polygon */}
-              <path
-                d={pathData}
-                fill={generations.find(g => g.key === primaryTarget)?.color || '#000000'}
-                fillOpacity="0.3"
-                stroke={generations.find(g => g.key === primaryTarget)?.color || '#000000'}
-                strokeWidth="3"
-              />
-
-              {/* Score points */}
-              {scorePoints.map((point, index) => (
-                <circle
-                  key={index}
-                  cx={point.x}
-                  cy={point.y}
-                  r="4"
-                  fill={generations[index].color}
-                  stroke="#000000"
-                  strokeWidth="2"
-                />
-              ))}
-
-              {/* Generation labels */}
-              {generations.map((gen, index) => {
-                const labelDistance = radius + 15;
-                const x = center + labelDistance * Math.cos(gen.angle - Math.PI / 2);
-                const y = center + labelDistance * Math.sin(gen.angle - Math.PI / 2);
-                const generationData = scores?.[gen.key as keyof GenerationalScores];
-                const score = generationData?.score || 0;
-                
-                return (
-                  <g key={index}>
-                    <text
-                      x={x}
-                      y={y - 2}
-                      textAnchor="middle"
-                      className="text-xs font-bold fill-current"
-                      style={{ color: gen.color }}
-                    >
-                      {gen.label.replace(' ', '')}
-                    </text>
-                    <text
-                      x={x}
-                      y={y + 10}
-                      textAnchor="middle"
-                      className="text-xs font-bold fill-current"
-                      style={{ color: gen.color }}
-                    >
-                      {score}
-                    </text>
-                  </g>
-                );
-              })}
-            </svg>
-            
-            {/* Zombify status indicator */}
-            <div className="absolute top-2 right-2 w-2 h-2 bg-green-500 border border-black"></div>
-          </div>
-        </div>
-
-        {/* Right: Compact scores grid */}
-        <div className="lg:col-span-1">
-          <div className="grid grid-cols-1 gap-2">
-            {generations.map((gen) => {
-              const generationScore = scores?.[gen.key as keyof GenerationalScores];
-              if (!generationScore) return null;
-              
-              const isPrimary = gen.key === primaryTarget;
-              
-              return (
-                <div 
-                  key={gen.key} 
-                  className={`bg-white border-2 border-black p-2 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)] relative hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,0.5)] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-200 ${isPrimary ? 'ring-2 ring-offset-1' : ''}`}
-                  style={isPrimary ? { '--tw-ring-color': gen.color } as React.CSSProperties : undefined}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center space-x-2">
-                      <div 
-                        className="w-2 h-2 rounded-full" 
-                        style={{ backgroundColor: gen.color }}
-                      />
-                      <span className="font-medium text-xs font-mono">{gen.label}</span>
-                      <span className="text-xs opacity-60 font-mono">({gen.ageRange})</span>
-                    </div>
-                    <span className="font-bold text-xs font-mono" style={{ color: gen.color }}>
-                      {generationScore.score}/100
-                    </span>
-                  </div>
-                  <p className="text-xs opacity-70 ml-4 font-mono leading-tight">
-                    {generationScore.reasoning}
-                  </p>
-                  
-                  {/* Generation status indicator */}
-                  <div className={`absolute top-1 right-1 w-1.5 h-1.5 border border-black ${
-                    generationScore.score >= 80 ? 'bg-green-500' : 
-                    generationScore.score >= 60 ? 'bg-yellow-500' : 
-                    'bg-red-500'
-                  }`}></div>
-                </div>
               );
             })}
-          </div>
+
+            {/* Score polygon */}
+            <path
+              d={pathData}
+              fill={generations.find(g => g.key === primaryTarget)?.color || '#000000'}
+              fillOpacity="0.3"
+              stroke={generations.find(g => g.key === primaryTarget)?.color || '#000000'}
+              strokeWidth="3"
+            />
+
+            {/* Score points */}
+            {scorePoints.map((point, index) => (
+              <circle
+                key={index}
+                cx={point.x}
+                cy={point.y}
+                r="4"
+                fill={generations[index].color}
+                stroke="#000000"
+                strokeWidth="2"
+              />
+            ))}
+
+            {/* Generation labels */}
+            {generations.map((gen, index) => {
+              const labelDistance = radius + 15;
+              const x = center + labelDistance * Math.cos(gen.angle - Math.PI / 2);
+              const y = center + labelDistance * Math.sin(gen.angle - Math.PI / 2);
+              const generationData = scores?.[gen.key as keyof GenerationalScores];
+              const score = generationData?.score || 0;
+              
+              return (
+                <g key={index}>
+                  <text
+                    x={x}
+                    y={y - 2}
+                    textAnchor="middle"
+                    className="text-xs font-bold fill-current"
+                    style={{ color: gen.color }}
+                  >
+                    {gen.label.replace(' ', '')}
+                  </text>
+                  <text
+                    x={x}
+                    y={y + 10}
+                    textAnchor="middle"
+                    className="text-xs font-bold fill-current"
+                    style={{ color: gen.color }}
+                  >
+                    {score}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+          
+          {/* Zombify status indicator */}
+          <div className="absolute top-2 right-2 w-2 h-2 bg-green-500 border border-black"></div>
         </div>
+      </div>
+
+      {/* Generation cards below the chart */}
+      <div className="grid grid-cols-1 gap-2">
+        {generations.map((gen) => {
+          const generationScore = scores?.[gen.key as keyof GenerationalScores];
+          if (!generationScore) return null;
+          
+          const isPrimary = gen.key === primaryTarget;
+          
+          return (
+            <div 
+              key={gen.key} 
+              className={`bg-white border-2 border-black p-2 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)] relative hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,0.5)] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-200 ${isPrimary ? 'ring-2 ring-offset-1' : ''}`}
+              style={isPrimary ? { '--tw-ring-color': gen.color } as React.CSSProperties : undefined}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center space-x-2">
+                  <div 
+                    className="w-2 h-2 rounded-full" 
+                    style={{ backgroundColor: gen.color }}
+                  />
+                  <span className="font-medium text-xs font-mono">{gen.label}</span>
+                  <span className="text-xs opacity-60 font-mono">({gen.ageRange})</span>
+                </div>
+                <span className="font-bold text-xs font-mono" style={{ color: gen.color }}>
+                  {generationScore.score}/100
+                </span>
+              </div>
+              <p className="text-xs opacity-70 ml-4 font-mono leading-tight">
+                {generationScore.reasoning}
+              </p>
+              
+              {/* Generation status indicator */}
+              <div className={`absolute top-1 right-1 w-1.5 h-1.5 border border-black ${
+                generationScore.score >= 80 ? 'bg-green-500' : 
+                generationScore.score >= 60 ? 'bg-yellow-500' : 
+                'bg-red-500'
+              }`}></div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

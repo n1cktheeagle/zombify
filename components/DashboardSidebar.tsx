@@ -3,6 +3,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Folder, Clock, Lock, ChevronDown, Settings, LogOut } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import Image from 'next/image';
+import GlitchLogo from './GlitchLogo';
 
 interface RecentAnalysis {
   id: string;
@@ -92,21 +93,9 @@ export default function DashboardSidebar({
     <div className="w-full h-full bg-[#f5f1e6] border-r border-black/10 flex flex-col font-mono">
       {/* Header with Logo */}
       <div className="p-4 border-b border-black/10">
-        <div 
-          className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+        <GlitchLogo 
           onClick={() => router.push('/dashboard')}
-        >
-          <Image 
-            src="/logo.png" 
-            alt="Logo" 
-            width={28} 
-            height={28} 
-            className="object-contain"
-          />
-          <div className="text-lg font-bold tracking-tight text-black">
-            ZOMBIFY
-          </div>
-        </div>
+        />
       </div>
 
       {/* Projects Section */}

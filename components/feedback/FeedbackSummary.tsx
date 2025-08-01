@@ -81,7 +81,7 @@ export default function FeedbackSummary({ analysis, imageUrl, className = '' }: 
         transition={{ delay: 0.1 }}
       >
         <GlitchText className="text-3xl font-bold font-mono tracking-wider" trigger="mount">
-          EXECUTIVE SUMMARY
+          OVERVIEW
         </GlitchText>
       </motion.div>
       

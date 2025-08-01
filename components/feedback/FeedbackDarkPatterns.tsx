@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ZombifyAnalysis } from '@/types/analysis';
 import GlitchText from '../GlitchText';
+import InfoTooltip from '../InfoTooltip';
 
 interface FeedbackDarkPatternsProps {
   analysis: ZombifyAnalysis;
@@ -69,8 +70,15 @@ export default function FeedbackDarkPatterns({
       >
         <div className="flex justify-between items-start">
           <div>
-            <div className="text-3xl font-bold mb-3 font-mono tracking-wider">
-              DARK PATTERN DETECTION
+            <div className="flex items-center gap-3 mb-3">
+              <div className="text-3xl font-bold font-mono tracking-wider">
+                DARK PATTERN DETECTION
+              </div>
+              <InfoTooltip 
+                title="WHY DARK PATTERN DETECTION MATTERS"
+                content="Dark patterns may boost short-term metrics but damage long-term trust, increase churn, and can lead to legal issues. Ethical design creates sustainable business growth while respecting your users."
+                className="mt-1"
+              />
             </div>
             <div className="text-lg opacity-70 font-mono mb-2">
               Ethical design analysis - identifying manipulative UX patterns
@@ -328,27 +336,6 @@ export default function FeedbackDarkPatterns({
         </motion.div>
       )}
 
-      {/* Educational Footer */}
-      <motion.div
-        className="border-2 border-black bg-[#f5f1e6] p-4 relative overflow-hidden"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8 }}
-      >
-        <div className="text-center">
-          <div className="text-lg font-bold mb-2 font-mono tracking-wider">
-            WHY DARK PATTERN DETECTION MATTERS
-          </div>
-          <p className="text-sm opacity-70 font-mono mb-4 max-w-3xl mx-auto leading-relaxed">
-            Dark patterns may boost short-term metrics but damage long-term trust, increase churn, 
-            and can lead to legal issues. Ethical design creates sustainable business growth 
-            while respecting your users.
-          </p>
-          <div className="text-xs opacity-50 font-mono">
-            This analysis is powered by Zombify&apos;s proprietary ethical design detection system
-          </div>
-        </div>
-      </motion.div>
     </motion.div>
   );
 }
