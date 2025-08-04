@@ -6,6 +6,7 @@ import { DarkPattern } from '@/types/analysis';
 interface EthicsScoreProps {
   userId: string;
   latestDarkPatterns?: DarkPattern[];
+  latestFeedbackId?: string;
   onScoreUpdate?: (score: number) => void;
   onShowDarkPatterns?: () => void;
   feedback?: any[];
@@ -15,12 +16,14 @@ interface UploadHistory {
   hadDarkPatterns: boolean;
   patterns: DarkPattern[];
   timestamp: Date;
+  uploadId?: string;
 }
 
-export default function EthicsScore({ userId, latestDarkPatterns, onScoreUpdate, onShowDarkPatterns, feedback = [] }: EthicsScoreProps) {
+export default function EthicsScore({ userId, latestDarkPatterns, latestFeedbackId, onScoreUpdate, onShowDarkPatterns, feedback = [] }: EthicsScoreProps) {
   const [score, setScore] = useState(100);
   const [uploadHistory, setUploadHistory] = useState<UploadHistory[]>([]);
   const [hovering, setHovering] = useState(false);
+  const [isGlitching, setIsGlitching] = useState(false);
 
   // Load history from localStorage on mount
   useEffect(() => {
@@ -37,16 +40,31 @@ export default function EthicsScore({ userId, latestDarkPatterns, onScoreUpdate,
 
   // Process new upload when latestDarkPatterns changes
   useEffect(() => {
-    if (latestDarkPatterns !== undefined) {
-      processNewUpload(latestDarkPatterns);
+    if (latestDarkPatterns !== undefined && latestFeedbackId) {
+      // Check if we've already processed this upload
+      const alreadyProcessed = uploadHistory.some(upload => upload.uploadId === latestFeedbackId);
+      if (!alreadyProcessed) {
+        processNewUpload(latestDarkPatterns, latestFeedbackId);
+      }
     }
-  }, [latestDarkPatterns]);
+  }, [latestDarkPatterns, latestFeedbackId, uploadHistory]);
 
-  const processNewUpload = (patterns: DarkPattern[]) => {
+  // Glitch effect timer
+  useEffect(() => {
+    const glitchInterval = setInterval(() => {
+      setIsGlitching(true);
+      setTimeout(() => setIsGlitching(false), 300);
+    }, 7000);
+
+    return () => clearInterval(glitchInterval);
+  }, []);
+
+  const processNewUpload = (patterns: DarkPattern[], uploadId: string) => {
     const newUpload: UploadHistory = {
       hadDarkPatterns: patterns.length > 0,
       patterns: patterns,
-      timestamp: new Date()
+      timestamp: new Date(),
+      uploadId: uploadId
     };
 
     // Calculate consecutive uploads with dark patterns
@@ -109,9 +127,9 @@ export default function EthicsScore({ userId, latestDarkPatterns, onScoreUpdate,
   };
 
   const getBarColor = () => {
-    if (score >= 80) return 'bg-green-500';
-    if (score >= 50) return 'bg-yellow-500';
-    return 'bg-red-500';
+    if (score >= 80) return 'bg-green-600';
+    if (score >= 50) return 'bg-yellow-600';
+    return 'bg-red-600';
   };
 
   const getTooltipMessage = () => {
@@ -119,6 +137,30 @@ export default function EthicsScore({ userId, latestDarkPatterns, onScoreUpdate,
     if (score >= 70) return "Minor ethical concerns detected.";
     if (score >= 50) return "You're toeing the ethical line.";
     return "Dark patterns are consuming your soul.";
+  };
+
+  const getEthicsTitle = () => {
+    if (score >= 99) return "Pattern Prophet";
+    if (score >= 93) return "UX Saint";
+    if (score >= 87) return "Interface Ally";
+    if (score >= 80) return "Design Steward";
+    if (score >= 70) return "UX Acolyte";
+    if (score >= 65) return "Dark Dabbler";
+    if (score >= 55) return "Metrics Minion";
+    if (score >= 45) return "Pattern Parasite";
+    if (score >= 35) return "Conversion Goblin";
+    if (score >= 25) return "UX Sinner";
+    return "Lost Soul";
+  };
+
+  const glitchText = (text: string) => {
+    const glitchChars = '!@#$%^&*()_+{}|:"<>?[]\\;\',./-=`~';
+    return text.split('').map((char, i) => {
+      if (Math.random() < 0.3) {
+        return glitchChars[Math.floor(Math.random() * glitchChars.length)];
+      }
+      return char;
+    }).join('');
   };
 
   // Count uploads with dark patterns
@@ -131,46 +173,41 @@ export default function EthicsScore({ userId, latestDarkPatterns, onScoreUpdate,
 
   return (
     <div 
-      className="bg-white border-2 border-black p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] cursor-pointer hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 transition-all min-w-[280px]"
+      className="bg-[#f5f1e6] p-4 border-2 border-black/70 cursor-pointer group h-full"
       onClick={onShowDarkPatterns}
     >
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2 font-mono text-base font-bold">
-          <span>🧭</span>
-          <span>Ethics Score</span>
-        </div>
-        <div className="text-2xl font-bold">{score}/100</div>
+      <div className="text-xs text-black/60 mb-1 font-mono">[ETHICS_SCORE]</div>
+      <div className="text-5xl font-bold font-mono mb-1">{score.toString().padStart(3, '0')}</div>
+      
+      <div className={`w-full text-center text-xs font-bold text-white mb-2 py-1 transition-all duration-75 ${
+        isGlitching 
+          ? 'bg-red-600 animate-pulse' 
+          : 'bg-black/80'
+      }`}>
+        {isGlitching ? glitchText(getEthicsTitle()) : getEthicsTitle()}
       </div>
       
-      <div 
-        className="relative w-full"
-        onMouseEnter={() => setHovering(true)}
-        onMouseLeave={() => setHovering(false)}
-      >
-        {/* Progress bar background */}
-        <div className="w-full h-3 bg-gray-200 border border-black overflow-hidden">
-          {/* Progress bar fill */}
-          <div 
-            className={`h-full transition-all duration-500 ${getBarColor()}`}
-            style={{ width: `${score}%` }}
-          />
-        </div>
-        
-        {/* Tooltip */}
-        {hovering && (
-          <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-black text-white px-3 py-2 text-xs font-mono whitespace-nowrap z-10 rounded">
-            {getTooltipMessage()}
-            <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[4px] border-t-black" />
+      {/* Blocky CRT terminal progress bar */}
+      <div className="mb-2">
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1 flex-1">
+            {[...Array(20)].map((_, i) => (
+              <div 
+                key={i}
+                className={`h-3 flex-1 ${
+                  i < Math.floor(score / 5) 
+                    ? 'bg-green-500'
+                    : 'bg-black/20'
+                }`}
+              />
+            ))}
           </div>
-        )}
+          <div className="text-xs text-black/60 font-mono">{score}%</div>
+        </div>
       </div>
       
-      {/* Click indicator */}
-      <div className="text-xs opacity-60 mt-2 text-center">
-        {uploadsWithDarkPatterns > 0 
-          ? `View ${uploadsWithDarkPatterns} upload${uploadsWithDarkPatterns !== 1 ? 's' : ''} with dark patterns`
-          : 'No dark patterns detected'
-        }
+      <div className="text-xs text-black/60">
+        └ {uploadsWithDarkPatterns} with dark patterns
       </div>
     </div>
   );

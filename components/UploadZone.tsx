@@ -12,6 +12,7 @@ interface UploadZoneProps {
   disabled?: boolean;
   showCooldown?: boolean;
   cooldownSeconds?: number;
+  disableTypingAnimation?: boolean;
 }
 
 export default function UploadZone({ 
@@ -20,7 +21,8 @@ export default function UploadZone({
   isLoggedIn = false, 
   disabled = false,
   showCooldown = false,
-  cooldownSeconds = 86400 // 24 hours default
+  cooldownSeconds = 86400, // 24 hours default
+  disableTypingAnimation = false
 }: UploadZoneProps) {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -74,7 +76,7 @@ export default function UploadZone({
     animationTimersRef.current.forEach(timer => clearTimeout(timer));
     animationTimersRef.current = [];
     
-    if (!uploadedFile && !isDisabledComputed && !showAuthMessage && !shouldShowCooldownComputed) {
+    if (!uploadedFile && !isDisabledComputed && !showAuthMessage && !shouldShowCooldownComputed && !disableTypingAnimation) {
       const runTextAnimation = () => {
         const timer1 = setTimeout(() => {
           typeText('...hello?');
@@ -117,7 +119,7 @@ export default function UploadZone({
         clearInterval(typewriterIntervalRef.current);
       }
     };
-  }, [uploadedFile, isDisabledComputed, showAuthMessage, shouldShowCooldownComputed]);
+  }, [uploadedFile, isDisabledComputed, showAuthMessage, shouldShowCooldownComputed, disableTypingAnimation]);
 
   // Cooldown timer effect
   useEffect(() => {
@@ -367,7 +369,7 @@ export default function UploadZone({
                     <div className="space-y-1">
                       <p className="text-lg font-medium">
                         {isDisabledComputed ? 'Upload disabled' : typingText}
-                        {isTyping && <span className="inline-block w-[2px] h-[1em] bg-current ml-[1px] animate-blink align-middle"></span>}
+                        {isTyping && !disableTypingAnimation && <span className="inline-block w-[2px] h-[1em] bg-current ml-[1px] animate-blink align-middle"></span>}
                       </p>
                       <p className="text-sm opacity-60">
                         {isDisabledComputed ? 'Account required for more uploads' : 'or click to browse • PNG, JPG, or any UI screenshot'}

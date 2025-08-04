@@ -35,6 +35,7 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [navigating, setNavigating] = useState<string | null>(null);
   const [latestDarkPatterns, setLatestDarkPatterns] = useState<any>(undefined);
+  const [latestFeedbackId, setLatestFeedbackId] = useState<string | undefined>(undefined);
   const [showDarkPatternsModal, setShowDarkPatternsModal] = useState(false);
   
   const router = useRouter();
@@ -87,6 +88,7 @@ export default function Dashboard() {
             const mostRecent = feedbackData[0];
             if (isNewAnalysisFormat(mostRecent.analysis)) {
               setLatestDarkPatterns(mostRecent.analysis.darkPatterns);
+              setLatestFeedbackId(mostRecent.id);
             }
           }
         }
@@ -223,52 +225,37 @@ export default function Dashboard() {
     <div className="p-12">
       <div>
         
-        {/* Header */}
-        <div className="mb-8 flex items-start justify-between">
-          <div>
-            <h1 className="text-4xl font-bold mb-2 font-heading">DASHBOARD</h1>
-            <p className="text-lg opacity-70">
-              Welcome back, {user.email?.split('@')[0]}! Upload and manage your interface analyses.
-            </p>
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-[#f5f1e6] p-4 border-2 border-black/70">
+            <div className="text-xs text-black/60 mb-1 font-mono">[TOTAL_ANALYSES]</div>
+            <div className="text-5xl font-bold font-mono mb-1">{feedback.length.toString().padStart(3, '0')}</div>
+            <div className="text-xs text-black/60">└ all time</div>
           </div>
-          <div className="flex-shrink-0">
+          <div className="bg-[#f5f1e6] p-4 border-2 border-black/70">
+            <div className="text-xs text-black/60 mb-1 font-mono">[MONTH_USAGE]</div>
+            <div className="text-5xl font-bold font-mono mb-1">
+              {(profile?.feedback_count || 0).toString().padStart(3, '0')}
+              {profile?.plan_type === 'free' && (
+                <span className="text-3xl text-black/60">/{profile?.monthly_limit || 3}</span>
+              )}
+            </div>
+            <div className="text-xs text-black/60">└ {profile?.plan_type === 'free' ? 'free tier' : 'pro tier'}</div>
+          </div>
+          <div className="bg-[#f5f1e6] p-4 border-2 border-black/70">
+            <div className="text-xs text-black/60 mb-1 font-mono">[AVG_GRIP]</div>
+            <div className="text-5xl font-bold font-mono mb-1">{avgScore ? avgScore.toString().padStart(3, '0') : '---'}</div>
+            <div className="text-xs text-black/60">└ overall</div>
+          </div>
+          <div className="md:col-span-1">
             <EthicsScore 
               userId={user.id} 
               latestDarkPatterns={latestDarkPatterns}
+              latestFeedbackId={latestFeedbackId}
               onShowDarkPatterns={() => setShowDarkPatternsModal(true)}
               feedback={feedback}
             />
-          </div>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white border border-black/20 p-6 rounded">
-            <h3 className="text-sm font-bold uppercase tracking-wide mb-2 opacity-70">Total Analyses</h3>
-            <div className="text-3xl font-bold">{feedback.length}</div>
-          </div>
-          <div className="bg-white border border-black/20 p-6 rounded">
-            <h3 className="text-sm font-bold uppercase tracking-wide mb-2 opacity-70">This Month</h3>
-            <div className="text-3xl font-bold">
-              {profile?.feedback_count || 0}
-              {profile?.plan_type === 'free' && (
-                <span className="text-lg opacity-60">/{profile?.monthly_limit || 3}</span>
-              )}
-            </div>
-          </div>
-          <div className="bg-white border border-black/20 p-6 rounded">
-            <h3 className="text-sm font-bold uppercase tracking-wide mb-2 opacity-70">Avg Score</h3>
-            <div className="text-3xl font-bold">{avgScore || '—'}</div>
-          </div>
-          <div className="bg-white border border-black/20 p-6 rounded">
-            <h3 className="text-sm font-bold uppercase tracking-wide mb-2 opacity-70">Status</h3>
-            <div className="text-2xl font-bold">
-              {profile?.plan_type === 'pro' ? (
-                <span className="text-purple-600">⭐ PRO</span>
-              ) : (
-                <span>FREE</span>
-              )}
-            </div>
           </div>
         </div>
 
@@ -280,6 +267,7 @@ export default function Dashboard() {
             <UploadZone 
               isLoggedIn={true}
               showCooldown={false}
+              disableTypingAnimation={true}
               onZombify={handleUpload}
             />
           ) : (
@@ -321,61 +309,90 @@ export default function Dashboard() {
                 const industry = isNew ? item.analysis.industry : null;
 
                 const getScoreColor = (score: number) => {
-                  if (score >= 80) return 'text-green-600';
-                  if (score >= 60) return 'text-yellow-600';
-                  return 'text-red-600';
+                  if (score >= 80) return 'text-green-700';
+                  if (score >= 60) return 'text-yellow-700';
+                  return 'text-red-700';
                 };
+
+                // Generate timestamp for retro feel
+                const timestamp = new Date(item.created_at);
+                const unixTime = Math.floor(timestamp.getTime() / 1000);
+                const retroDate = timestamp.toISOString().slice(0, 19).replace('T', ' ');
 
                 return (
                   <div 
                     key={item.id} 
-                    className={`border-2 border-black bg-[#f5f1e6] hover:bg-white cursor-pointer transition-all duration-200 relative overflow-hidden group hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,0.8)] ${
+                    className={`bg-[#f5f1e6] cursor-pointer transition-all duration-200 relative font-mono text-xs border border-black/30 hover:bg-[#ebe7dc] hover:border-black/50 ${
                       navigating === item.id ? 'opacity-50 pointer-events-none' : ''
                     }`}
                     onClick={() => handleNavigate(item.id)}
                   >
-                    {/* Subtle scanlines */}
-                    <div className="absolute inset-0 opacity-3 pointer-events-none" 
+                    {/* Retro scanlines */}
+                    <div className="absolute inset-0 pointer-events-none" 
                          style={{
                            backgroundImage: `repeating-linear-gradient(
-                             90deg,
+                             0deg,
                              transparent,
-                             transparent 100px,
-                             rgba(0,0,0,0.05) 101px
+                             transparent 2px,
+                             rgba(0, 0, 0, 0.02) 2px,
+                             rgba(0, 0, 0, 0.02) 4px
                            )`
                          }}>
                     </div>
 
-                    <div className="relative z-10 p-4">
-                      {/* Clean header */}
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
-                          <h3 className="font-medium text-sm truncate mb-1">
-                            {item.original_filename || `Analysis ${item.id.slice(0, 8)}`}
-                          </h3>
-                          <div className="text-xs text-black/60">
-                            {new Date(item.created_at).toLocaleDateString()} • {item.user_id ? 'User' : 'Guest'}
+                    <div className="p-4 space-y-3 relative z-10">
+                      {/* File header */}
+                      <div className="border-b border-black/20 pb-2 mb-3">
+                        <div className="flex items-center justify-between">
+                          <div className="text-black/80 font-bold">
+                            {item.original_filename || `analysis_${item.id.slice(0, 8)}.ui`}
                           </div>
-                        </div>
-                        <div className="text-right">
-                          <div className={`text-2xl font-bold ${getScoreColor(score)}`}>
-                            {score}
+                          <div className={`font-bold text-sm ${getScoreColor(score)}`}>
+                            GRIP:{score.toString().padStart(3, '0')}
                           </div>
-                          <p className="text-xs text-black/60">Score</p>
                         </div>
                       </div>
 
-                      {/* Image with clean styling */}
-                      <div className="relative mb-4">
+                      {/* Date info */}
+                      <div className="text-xs mb-3">
+                        <div className="space-y-1">
+                          <div className="text-black/40">UPLOADED:</div>
+                          <div className="text-black/70 font-mono">{new Date(item.created_at).toLocaleDateString()} at {new Date(item.created_at).toLocaleTimeString()}</div>
+                        </div>
+                      </div>
+
+                      {/* System tags */}
+                      {(context || (industry && industry !== 'UNKNOWN')) && (
+                        <div className="mb-3">
+                          <div className="flex flex-wrap gap-1">
+                            {context && (
+                              <span className="text-xs bg-black/20 text-black/80 px-1 font-mono">
+                                {context.replace('_', ' ')}
+                              </span>
+                            )}
+                            {industry && industry !== 'UNKNOWN' && (
+                              <span className="text-xs bg-black/20 text-black/80 px-1 font-mono">
+                                {industry}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Terminal-style image display */}
+                      <div className="relative mb-3">
+                        <div className="text-xs text-black/40 mb-1">
+                          ┌─[ VISUAL_DATA ]─┐
+                        </div>
                         {navigating === item.id ? (
-                          <div className="w-full h-32 bg-gray-100 rounded border border-black/20 flex items-center justify-center">
-                            <div className="text-black/60 font-mono text-sm">Loading...</div>
+                          <div className="w-full h-32 bg-black/10 border border-black/20 flex items-center justify-center">
+                            <div className="text-black/60 font-mono text-sm">░░░ LOADING ░░░</div>
                           </div>
                         ) : (
                           <img
                             src={item.image_url}
                             alt="Analysis"
-                            className="w-full h-32 object-cover rounded border border-black/20"
+                            className="w-full h-32 object-cover border border-black/30"
                             onError={(e: any) => {
                               if (e.target.src !== 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjU2IiBoZWlnaHQ9IjEyOCIgdmlld0JveD0iMCAwIDI1NiAxMjgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyNTYiIGhlaWdodD0iMTI4IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04MCA0MEgxNzZWODhIODBWNDBaIiBmaWxsPSIjRDFENURCIi8+Cjwvc3ZnPgo=') {
                                 e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjU2IiBoZWlnaHQ9IjEyOCIgdmlld0JveD0iMCAwIDI1NiAxMjgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyNTYiIGhlaWdodD0iMTI4IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04MCA0MEgxNzZWODhIODBWNDBaIiBmaWxsPSIjRDFENURCIi8+Cjwvc3ZnPgo=';
@@ -385,34 +402,26 @@ export default function Dashboard() {
                         )}
                       </div>
 
-                      {/* Better tags */}
-                      {(context || (industry && industry !== 'UNKNOWN')) && (
-                        <div className="flex flex-wrap gap-1 mb-3">
-                          {context && (
-                            <span className="text-xs bg-black/10 text-black/80 px-2 py-1 rounded font-mono border border-black/20">
-                              {context.replace('_', ' ')}
-                            </span>
-                          )}
-                          {industry && industry !== 'UNKNOWN' && (
-                            <span className="text-xs bg-black/10 text-black/80 px-2 py-1 rounded font-mono border border-black/20">
-                              {industry}
-                            </span>
-                          )}
+                      {/* System summary */}
+                      {verdict?.summary && (
+                        <div className="mb-3">
+                          <div className="text-xs text-black/40 mb-1">
+                            ├─[ ANALYSIS_LOG ]
+                          </div>
+                          <div className="bg-black/5 border-l-2 border-black/30 p-2 ml-3">
+                            <p className="text-xs text-black/80 line-clamp-2 font-mono">
+                              > {verdict.summary}
+                            </p>
+                          </div>
                         </div>
                       )}
 
-                      {/* Summary */}
-                      {verdict?.summary && (
-                        <div className="bg-black/5 border-l-2 border-black/30 p-2 mb-3 rounded-r">
-                          <p className="text-xs text-black/80 line-clamp-2">
-                            {verdict.summary}
-                          </p>
-                        </div>
-                      )}
 
                       {navigating === item.id && (
-                        <div className="absolute inset-0 bg-white/90 flex items-center justify-center">
-                          <div className="text-black font-mono text-sm">Navigating...</div>
+                        <div className="absolute inset-0 bg-black/10 flex items-center justify-center">
+                          <div className="text-black font-mono text-sm bg-[#f5f1e6] px-3 py-1 border border-black/40">
+                            ░░░ ACCESSING FILE ░░░
+                          </div>
                         </div>
                       )}
                     </div>
