@@ -23,7 +23,7 @@ export default function FeedbackCriticalIssues({
 }: FeedbackCriticalIssuesProps) {
   const [showImageComparison, setShowImageComparison] = useState(false);
 
-  const totalIssues = analysis.criticalIssues.length + analysis.usabilityIssues.length;
+  const totalIssues = ((analysis.criticalIssues || []) || []).length + ((analysis.usabilityIssues || []) || []).length;
 
   return (
     <motion.div 
@@ -44,9 +44,9 @@ export default function FeedbackCriticalIssues({
             ISSUES & FIXES
           </div>
           <div className="flex items-center gap-4 text-sm opacity-60 font-mono">
-            <span>{analysis.criticalIssues.length} Critical Issues</span>
+            <span>{(analysis.criticalIssues || []).length} Critical Issues</span>
             <span>•</span>
-            <span>{analysis.usabilityIssues.length} Usability Issues</span>
+            <span>{(analysis.usabilityIssues || []).length} Usability Issues</span>
             <span>•</span>
             <span className="text-red-600 font-bold">{totalIssues} Total</span>
           </div>
@@ -94,7 +94,7 @@ export default function FeedbackCriticalIssues({
         {/* Issues list */}
         <div className="space-y-8">
           {/* Critical Issues Section */}
-          {analysis.criticalIssues.length > 0 && (
+          {(analysis.criticalIssues || []).length > 0 && (
             <motion.div 
               className="space-y-4"
               initial={{ opacity: 0, y: 20 }}
@@ -104,7 +104,7 @@ export default function FeedbackCriticalIssues({
 
               
               <div className="space-y-4">
-                {analysis.criticalIssues.map((issue, index) => (
+                {(analysis.criticalIssues || []).map((issue, index) => (
                   <motion.div
                     key={`critical-${index}`}
                     initial={{ opacity: 0, x: -20 }}
@@ -124,7 +124,7 @@ export default function FeedbackCriticalIssues({
           )}
 
           {/* Usability Issues Section */}
-          {analysis.usabilityIssues.length > 0 && (
+          {(analysis.usabilityIssues || []).length > 0 && (
             <motion.div 
               className="space-y-4"
               initial={{ opacity: 0, y: 20 }}
@@ -134,7 +134,7 @@ export default function FeedbackCriticalIssues({
 
               
               <div className="space-y-4">
-                {analysis.usabilityIssues.slice(0, isLoggedIn ? undefined : 2).map((issue, index) => (
+                {(analysis.usabilityIssues || []).slice(0, isLoggedIn ? undefined : 2).map((issue, index) => (
                   <motion.div
                     key={`usability-${index}`}
                     initial={{ opacity: 0, x: -20 }}
@@ -143,14 +143,14 @@ export default function FeedbackCriticalIssues({
                   >
                     <IssueCard
                       issue={issue}
-                      index={index + analysis.criticalIssues.length}
+                      index={index + (analysis.criticalIssues || []).length}
                       type="usability"
                       isPro={isPro}
                     />
                   </motion.div>
                 ))}
                 
-                {!isLoggedIn && analysis.usabilityIssues.length > 2 && (
+                {!isLoggedIn && (analysis.usabilityIssues || []).length > 2 && (
                   <motion.div
                     className="text-center py-8 border-2 border-black bg-[#f5f1e6] relative overflow-hidden"
                     initial={{ opacity: 0, scale: 0.95 }}
@@ -159,7 +159,7 @@ export default function FeedbackCriticalIssues({
                   >
                     <div className="text-4xl mb-4">🔒</div>
                     <div className="font-mono text-sm opacity-70 mb-3">
-                      + {analysis.usabilityIssues.length - 2} more issues detected
+                      + {(analysis.usabilityIssues || []).length - 2} more issues detected
                     </div>
                     <div className="text-lg font-bold mb-4 font-mono tracking-wider">
                       UNLOCK ALL ISSUES
@@ -174,7 +174,7 @@ export default function FeedbackCriticalIssues({
           )}
 
           {/* No Issues State */}
-          {analysis.criticalIssues.length === 0 && analysis.usabilityIssues.length === 0 && (
+          {(analysis.criticalIssues || []).length === 0 && (analysis.usabilityIssues || []).length === 0 && (
                       <motion.div
             className="text-center py-16 border-2 border-black bg-[#f5f1e6] relative overflow-hidden"
             initial={{ opacity: 0, scale: 0.95 }}

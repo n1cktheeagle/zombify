@@ -141,32 +141,44 @@ export default function UploadZone({
   const handleFileSelect = (file: File) => {
     if (!file) return;
     
-    // Check if user is logged in for multiple uploads
-    if (!isLoggedIn && showCooldown) {
-      setShowAuthMessage(true);
-      setTimeout(() => setShowAuthMessage(false), 3000);
-      return;
-    }
-    
-    setUploadedFile(file);
-    setError('');
-    
-    // Create preview URL
-    const url = URL.createObjectURL(file);
-    setPreviewUrl(url);
-    
-    if (onFileSelect) {
-      onFileSelect(file);
+    try {
+      // Check if user is logged in for multiple uploads
+      if (!isLoggedIn && showCooldown) {
+        setShowAuthMessage(true);
+        setTimeout(() => setShowAuthMessage(false), 3000);
+        return;
+      }
+      
+      setUploadedFile(file);
+      setError('');
+      
+      // Create preview URL with error handling
+      if (typeof URL !== 'undefined' && URL.createObjectURL) {
+        const url = URL.createObjectURL(file);
+        setPreviewUrl(url);
+      }
+      
+      if (onFileSelect) {
+        onFileSelect(file);
+      }
+    } catch (error) {
+      console.error('Error in handleFileSelect:', error);
+      setError('Failed to process file');
     }
   };
 
   const handleRemoveFile = () => {
-    setUploadedFile(null);
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
+    try {
+      setUploadedFile(null);
+      if (previewUrl && typeof URL !== 'undefined' && URL.revokeObjectURL) {
+        URL.revokeObjectURL(previewUrl);
+        setPreviewUrl(null);
+      }
+      setError('');
+    } catch (error) {
+      console.error('Error in handleRemoveFile:', error);
+      setError('');
     }
-    setError('');
   };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -383,12 +395,12 @@ export default function UploadZone({
         </div>
 
         {/* Action Button */}
-        {uploadedFile && onZombify && !shouldShowCooldown && !showAuthMessage && (
+        {uploadedFile && onZombify && !shouldShowCooldownComputed && !showAuthMessage && (
           <div className="mt-6 text-center space-y-4">
             <button
               onClick={handleZombify}
-              disabled={isAnalyzing || isDisabled}
-              className={`zombify-primary-button px-8 py-3 text-lg font-bold tracking-wide transition-all duration-200 ${isAnalyzing || isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={isAnalyzing || isDisabledComputed}
+              className={`zombify-primary-button px-8 py-3 text-lg font-bold tracking-wide transition-all duration-200 ${isAnalyzing || isDisabledComputed ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {isAnalyzing ? 'ANALYZING...' : 'ZOMBIFY'}
             </button>

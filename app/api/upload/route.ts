@@ -49,8 +49,8 @@ export async function POST(req: NextRequest) {
     console.log('OpenAI analysis result:', {
       context: analysis.context,
       industry: analysis.industry,
-      gripScore: analysis.gripScore.overall,
-      issueCount: analysis.criticalIssues.length + analysis.usabilityIssues.length
+      gripScore: analysis.gripScore?.overall || 0,
+      issueCount: (analysis.criticalIssues || []).length + (analysis.usabilityIssues || []).length
     });
 
     // Determine user information for database insert
@@ -60,15 +60,15 @@ export async function POST(req: NextRequest) {
 
     // Extract top issues for backward compatibility
     const topIssues = [
-      ...analysis.criticalIssues.map(issue => issue.issue),
-      ...analysis.usabilityIssues.map(issue => issue.issue)
+      ...(analysis.criticalIssues || []).map(issue => issue.issue),
+      ...(analysis.usabilityIssues || []).map(issue => issue.issue)
     ].slice(0, 5); // Keep top 5 issues for the legacy 'issues' column
 
     // Prepare the data for insertion
     const feedbackData = {
       id,
       image_url: imageUrl,
-      score: analysis.gripScore.overall, 
+      score: analysis.gripScore?.overall || 0, 
       issues: topIssues,
       analysis: analysis, // Store full analysis as JSONB
       user_id: finalUserId,
@@ -154,11 +154,11 @@ export async function POST(req: NextRequest) {
       feedbackId: id,
       redirectUrl: `/feedback/${id}`,
       analysisPreview: {
-        context: analysis.context,
-        industry: analysis.industry,
-        gripScore: analysis.gripScore.overall,
-        criticalIssueCount: analysis.criticalIssues.length,
-        totalIssueCount: analysis.criticalIssues.length + analysis.usabilityIssues.length
+        context: analysis.context || 'UNKNOWN',
+        industry: analysis.industry || 'UNKNOWN',
+        gripScore: analysis.gripScore?.overall || 0,
+        criticalIssueCount: (analysis.criticalIssues || []).length,
+        totalIssueCount: (analysis.criticalIssues || []).length + (analysis.usabilityIssues || []).length
       }
     }, { status: 200 });
   } catch (err) {
