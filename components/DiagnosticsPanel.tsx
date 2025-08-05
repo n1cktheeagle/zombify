@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { ZombifyAnalysis } from '@/types/analysis';
+import { shouldShowModule, isBullshitContent } from '@/utils/analysisCompatibility';
 
 interface DiagnosticsPanelProps {
   analysis: ZombifyAnalysis;
@@ -10,6 +11,51 @@ interface DiagnosticsPanelProps {
 
 export default function DiagnosticsPanel({ analysis, className = '' }: DiagnosticsPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [showAllModules, setShowAllModules] = useState(false);
+  
+  // Calculate which modules are hidden and why
+  const moduleVisibility = {
+    visualDesign: shouldShowModule('visualDesign', analysis),
+    uxCopyInsights: shouldShowModule('uxCopyInsights', analysis),
+    opportunities: shouldShowModule('opportunities', analysis),
+    behavioralInsights: shouldShowModule('behavioralInsights', analysis),
+    frictionPoints: shouldShowModule('frictionPoints', analysis),
+    darkPatterns: shouldShowModule('darkPatterns', analysis),
+    issuesAndFixes: shouldShowModule('issuesAndFixes', analysis),
+    accessibility: shouldShowModule('accessibility', analysis),
+  };
+  
+  const hiddenModules = Object.entries(moduleVisibility)
+    .filter(([_, shown]) => !shown)
+    .map(([module, _]) => module);
+  
+  // Check for bullshit content in opportunities
+  const bullshitOpportunities = (analysis.opportunities || []).filter(opp => 
+    isBullshitContent(opp.opportunity)
+  );
+  
+  // Get detailed reasons for why modules are hidden
+  const getHiddenReason = (moduleName: string): string => {
+    const strength = analysis.moduleStrength?.[moduleName as keyof typeof analysis.moduleStrength] || 0;
+    const clarityFlag = analysis.perceptionLayer?.clarityFlags?.[moduleName as keyof typeof analysis.perceptionLayer.clarityFlags];
+    
+    switch (moduleName) {
+      case 'opportunities':
+        return 'No UI-grounded suggestions found';
+      case 'behavioralInsights':
+        return 'Insights not specific to visible UI elements';
+      case 'visualDesign':
+        return `Low strength (${strength}/5) and no clear visual insights`;
+      case 'uxCopyInsights':
+        return `No copy issues detected (strength: ${strength}/5)`;
+      case 'frictionPoints':
+        return 'No specific UI friction identified';
+      case 'accessibility':
+        return `Accessibility score too low or unclear (strength: ${strength}/5)`;
+      default:
+        return `Low quality signal (strength: ${strength}/5, clarity: ${clarityFlag ? 'true' : 'false'})`;
+    }
+  };
   
   // Calculate diagnostics
   const diagnostics = {
@@ -25,7 +71,9 @@ export default function DiagnosticsPanel({ analysis, className = '' }: Diagnosti
     analysisComplete: !!(analysis.perceptionLayer && analysis.gripScore),
     perceptionLayerActive: !!analysis.perceptionLayer,
     moduleStrengthCalculated: !!analysis.moduleStrength,
-    userContextProvided: analysis.context && analysis.context !== 'LEGACY'
+    userContextProvided: analysis.context && analysis.context !== 'LEGACY',
+    hiddenModules,
+    bullshitContentDetected: bullshitOpportunities.length > 0
   };
   
   return (
@@ -124,8 +172,69 @@ export default function DiagnosticsPanel({ analysis, className = '' }: Diagnosti
               {diagnostics.analysisComplete ? '✅ Complete' : '⚠️ Partial'}
             </span>
           </div>
+          
+          <div className="flex justify-between items-center">
+            <span className="text-gray-500">Hidden Modules:</span>
+            <span className="font-mono bg-red-100 text-red-700 px-2 py-1 rounded">
+              {diagnostics.hiddenModules.length}
+            </span>
+          </div>
+          
+          <div className="flex justify-between items-center">
+            <span className="text-gray-500">Bullshit Content:</span>
+            <span className={`font-mono px-2 py-1 rounded ${
+              diagnostics.bullshitContentDetected 
+                ? 'bg-red-100 text-red-700' 
+                : 'bg-green-100 text-green-700'
+            }`}>
+              {diagnostics.bullshitContentDetected ? '⚠️ Detected' : '✅ Clean'}
+            </span>
+          </div>
         </div>
       </div>
+      
+      {/* Power User Toggle */}
+      <div className="mt-4 pt-4 border-t border-gray-200">
+        <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={showAllModules}
+            onChange={(e) => setShowAllModules(e.target.checked)}
+            className="w-3 h-3"
+          />
+          <span>Show all modules (including low-confidence)</span>
+        </label>
+        <div className="text-xs text-gray-400 mt-1">
+          Advanced option: Display hidden modules with quality warnings
+        </div>
+      </div>
+
+      {/* Hidden Modules Details */}
+      {diagnostics.hiddenModules.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <div className="text-gray-700 font-medium mb-2">
+            Hidden Modules ({diagnostics.hiddenModules.length}):
+          </div>
+          <div className="space-y-1">
+            {diagnostics.hiddenModules.map(module => (
+              <div key={module} className="text-xs">
+                <div className="flex items-start gap-2">
+                  <span className="text-red-500 mt-0.5">×</span>
+                  <div className="flex-1">
+                    <span className="text-gray-600 font-medium capitalize">{module.replace(/([A-Z])/g, ' $1').trim()}</span>
+                    <div className="text-gray-400">{getHiddenReason(module)}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {showAllModules && (
+            <div className="mt-2 text-xs text-blue-600">
+              ℹ️ Toggle enabled - hidden modules will show with quality warnings
+            </div>
+          )}
+        </div>
+      )}
       
       {/* Detailed Module Breakdown */}
       {isOpen && (

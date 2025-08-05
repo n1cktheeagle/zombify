@@ -22,6 +22,17 @@ export default function FeedbackAccessibility({
   const isManualAudit = (audit: any): audit is import('@/types/analysis').AccessibilityAudit => {
     return audit && !('automated' in audit);
   };
+  
+  const getQualityBadge = () => {
+    const strength = analysis.moduleStrength?.accessibility || 0;
+    const clarityFlag = analysis.perceptionLayer?.clarityFlags?.accessibility;
+    
+    if (strength >= 4 && clarityFlag) return { icon: '🟢', label: 'High Quality', color: 'bg-green-100 text-green-700' };
+    if (strength >= 3 || clarityFlag) return { icon: '🟡', label: 'Good Signal', color: 'bg-yellow-100 text-yellow-700' };
+    return { icon: '🔴', label: 'Low Signal', color: 'bg-red-100 text-red-700' };
+  };
+  
+  const qualityBadge = getQualityBadge();
 
   if (!accessibilityAudit) {
     return (
@@ -37,8 +48,13 @@ export default function FeedbackAccessibility({
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <div className="text-3xl font-bold mb-3 font-mono tracking-wider">
-            ACCESSIBILITY ANALYSIS
+          <div className="flex items-center gap-3 mb-3">
+            <div className="text-3xl font-bold font-mono tracking-wider">
+              ACCESSIBILITY ANALYSIS
+            </div>
+            <span className={`text-xs px-2 py-1 rounded font-mono font-bold ${qualityBadge.color}`}>
+              {qualityBadge.icon} {qualityBadge.label}
+            </span>
           </div>
           <div className="text-lg opacity-70 font-mono">
             Visual accessibility analysis for inclusive design
@@ -95,8 +111,13 @@ export default function FeedbackAccessibility({
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
       >
-        <div className="text-3xl font-bold mb-3 font-mono tracking-wider">
-          ACCESSIBILITY ANALYSIS
+        <div className="flex items-center gap-3 mb-3">
+          <div className="text-3xl font-bold font-mono tracking-wider">
+            ACCESSIBILITY ANALYSIS
+          </div>
+          <span className={`text-xs px-2 py-1 rounded font-mono font-bold ${qualityBadge.color}`}>
+            {qualityBadge.icon} {qualityBadge.label}
+          </span>
         </div>
         <div className="text-lg opacity-70 font-mono mb-2">
           {isAutomated ? 'Automated visual accessibility assessment' : 'Visual accessibility assessment for inclusive design'}

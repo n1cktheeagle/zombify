@@ -506,9 +506,22 @@ function calculateSimilarity(str1: string, str2: string): number {
   return intersection.size / union.size;
 }
 
-// NEW: Check if two insights are similar (>80% threshold)
+// NEW: Check if two insights are similar (>60% threshold for more aggressive deduplication)
 function isSimilarInsight(insightA: string, insightB: string): boolean {
-  return calculateSimilarity(insightA, insightB) > 0.8;
+  const similarity = calculateSimilarity(insightA, insightB);
+  
+  // Also check for common patterns that indicate duplication
+  const a = insightA.toLowerCase();
+  const b = insightB.toLowerCase();
+  
+  // Check if they're talking about the same UI element
+  const commonElements = ['button', 'cta', 'form', 'header', 'navigation', 'text', 'color', 'contrast'];
+  const sharedElement = commonElements.some(elem => 
+    a.includes(elem) && b.includes(elem)
+  );
+  
+  // If they share an element and have >60% similarity, they're duplicates
+  return similarity > 0.6 || (sharedElement && similarity > 0.5);
 }
 
 // ENHANCED: Cross-reference checker with similarity detection
@@ -979,6 +992,42 @@ CRITICAL RULES:
 5. Score each module's quality (1-5) based on how useful the insights are
 6. Include clarity flags (true/false) for confidence in each analysis
 
+SIGNAL QUALITY RULE: Only include a module if there is REAL SIGNAL.
+- Empty or generic modules waste user time and reduce trust
+- Better to have 3 high-quality modules than 6 mediocre ones
+- If you can't find specific, actionable insights for a module, set its clarity flag to false
+
+ANTI-BULLSHIT RULES - NEVER suggest these unless you can see them in the UI:
+- Email marketing, newsletters, lead magnets
+- Referral programs, affiliate marketing
+- Social media campaigns, influencer marketing
+- Gamification (unless game elements are visible)
+- Generic growth hacks, viral loops
+- Community building (unless community features are visible)
+- A/B testing everything
+- SEO optimization
+
+FRICTION POINT RULES - ONLY identify friction from VISIBLE UI elements:
+- Evidence MUST quote actual text or describe specific visual issues
+- Valid friction examples:
+  * "Submit button is gray (#ccc) on light gray background - hard to see"
+  * "Form shows 12 required fields with no progress indicator"
+  * "Error messages appear in small text below the fold"
+- BANNED generic phrases:
+  * "Users don't understand value prop" (without quoting actual confusing text)
+  * "Improve trust" (without specific trust-breaking element)
+  * "Optimize conversion funnel" (too vague)
+  * "Add social proof" (unless you see missing testimonials/reviews)
+
+Journey stages should match what you actually see:
+- ENTRY: Issues understanding what this interface is/does
+- EXPLORATION: Problems finding or accessing features
+- TASK: Obstacles completing the main action
+- COMPLETION: Barriers to finishing the workflow
+
+ONLY suggest improvements for what you can SEE in the interface.
+Every suggestion must reference a specific UI element from the Vision data.
+
 Return JSON:
 
 {
@@ -1115,38 +1164,38 @@ Return JSON:
   },
   "opportunities": [
     {
-      "category": "ENGAGEMENT",
-      "opportunity": "Unique growth opportunity not mentioned elsewhere",
-      "potentialImpact": "Could increase engagement by 25%",
-      "implementation": "Specific steps to implement",
-      "reasoning": "Why this works for this interface",
+      "category": "ENGAGEMENT|TRUST|CLARITY|CONVERSION",
+      "opportunity": "Specific improvement based on VISIBLE UI elements only",
+      "potentialImpact": "Measurable impact (e.g., 'Reduce form abandonment by 20%')",
+      "implementation": "Step-by-step changes to existing UI elements",
+      "reasoning": "Based on what I can see: [specific element] could be improved because...",
       "location": {
-        "element": "Where to add this",
-        "region": "Section of interface"
+        "element": "EXACT element name from Vision data that needs improvement",
+        "region": "EXACT region where this element exists"
       }
     }
   ],
   "frictionPoints": [
     {
-      "stage": "AWARENESS",
-      "friction": "Users don't understand the value prop",
-      "evidence": "Headline uses jargon: '${observationData.visualObservations?.textElements?.[0] || 'technical terms'}'",
-      "dropoffRisk": "HIGH",
-      "quickFix": "Rewrite in plain language",
-      "impact": "30% better comprehension"
+      "stage": "ENTRY|EXPLORATION|TASK|COMPLETION",
+      "friction": "Specific UI obstacle preventing smooth interaction",
+      "evidence": "EXACT description of problematic element - quote text or describe specific visual issue",
+      "dropoffRisk": "HIGH|MEDIUM|LOW based on impact severity",
+      "quickFix": "Specific change to [named UI element]",
+      "impact": "Clear benefit (e.g., 'Easier navigation', 'Clearer feedback')"
     }
   ],
   "behavioralInsights": [
     {
-      "pattern": "Analysis paralysis from too many options",
-      "observation": "${observationData.visualObservations?.ctaElements?.length || 3} CTAs compete for attention",
-      "psychology": "Paradox of choice creates decision fatigue",
+      "pattern": "Specific behavioral pattern observed in the UI",
+      "observation": "What I can see: [exact elements and their arrangement]",
+      "psychology": "Why this specific UI pattern affects user behavior",
       "emotionalImpact": {
         "primaryEmotion": "${interpretationData.psychologicalAnalysis?.primaryEmotion || 'confusion'}",
         "intensity": ${interpretationData.psychologicalAnalysis?.intensity || 5},
-        "reasoning": "${interpretationData.psychologicalAnalysis?.reasoning || 'Multiple competing elements'}"
+        "reasoning": "How these specific UI elements trigger this emotion"
       },
-      "recommendation": "Reduce to single primary CTA with clear hierarchy"
+      "recommendation": "Change [specific element] to [specific improvement]"
     }
   ],
   "darkPatterns": [
@@ -1277,22 +1326,32 @@ Return JSON:
       // Update clarity flags based on module strength and content quality
       // A module has clarity if its strength is >= 3 OR it has substantial content
       if (combinedAnalysis.perceptionLayer?.clarityFlags) {
+        // Simple inline bullshit checker
+        const hasBullshitKeywords = (text: string) => {
+          const bullshitTerms = ['email marketing', 'referral program', 'viral loop', 'leverage social', 'growth hack', 'newsletter', 'gamify'];
+          const lowerText = text.toLowerCase();
+          return bullshitTerms.some(term => lowerText.includes(term));
+        };
+        
         combinedAnalysis.perceptionLayer.clarityFlags = {
           uxCopy: combinedAnalysis.moduleStrength.uxCopyInsights >= 3 || 
-                   (combinedAnalysis.uxCopyInsights?.issues?.length > 1),
+                   (combinedAnalysis.uxCopyInsights?.issues?.length > 0),
           visual: combinedAnalysis.moduleStrength.visualDesign >= 3 || 
+                  (combinedAnalysis.visualDesign?.tileFeedback?.length > 0) ||
                   (combinedAnalysis.visualDesign?.score > 60),
-          darkPattern: combinedAnalysis.moduleStrength.darkPatterns >= 3 || 
-                       (combinedAnalysis.darkPatterns?.length > 0),
-          behavioral: combinedAnalysis.moduleStrength.behavioralInsights >= 3 || 
-                      (combinedAnalysis.behavioralInsights?.length > 1),
+          darkPattern: combinedAnalysis.darkPatterns?.length > 0,
+          behavioral: combinedAnalysis.moduleStrength.behavioralInsights >= 3 && 
+                      combinedAnalysis.behavioralInsights?.some((b: any) => 
+                        b.observation && !hasBullshitKeywords(b.observation)
+                      ),
           accessibility: combinedAnalysis.moduleStrength.accessibility >= 3 || 
                          (combinedAnalysis.accessibility?.score > 50),
           strategicIntent: combinedAnalysis.intentAnalysis?.alignmentScore >= 3,
-          issuesAndFixes: combinedAnalysis.moduleStrength.issuesAndFixes >= 3 || 
-                          (combinedAnalysis.issuesAndFixes?.length > 1),
-          opportunities: combinedAnalysis.moduleStrength.opportunities >= 3 || 
-                        (combinedAnalysis.opportunities?.length > 1)
+          issuesAndFixes: combinedAnalysis.issuesAndFixes?.length > 0,
+          opportunities: combinedAnalysis.opportunities?.some((o: any) => 
+                        o.opportunity && !hasBullshitKeywords(o.opportunity) && 
+                        o.location?.element !== 'Where to add this'
+                       ) || false
         };
       }
     }

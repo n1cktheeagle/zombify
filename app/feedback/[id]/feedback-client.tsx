@@ -6,7 +6,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ZombifyAnalysis } from '@/types/analysis';
 import { useUpload } from '@/contexts/UploadContext';
-import { normalizeAnalysisData } from '@/utils/analysisCompatibility';
+import { normalizeAnalysisData, shouldShowModule } from '@/utils/analysisCompatibility';
 import GlitchText from '@/components/GlitchText';
 import FeedbackSummary from '@/components/feedback/FeedbackSummary';
 import FeedbackDarkPatterns from '@/components/feedback/FeedbackDarkPatterns';
@@ -737,73 +737,100 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
         </section>
 
         {/* 4. Copy Analysis - ENHANCED */}
-        <section id="copy">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-6"
-          >
+        {shouldShowModule('uxCopyInsights', processedAnalysis) && (
+          <section id="copy">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mb-8"
+              className="space-y-6"
             >
-              <div className="text-3xl font-bold mb-3 font-mono tracking-wider">
-                UX COPY INTELLIGENCE
-              </div>
-              <div className="text-lg opacity-70 font-mono mb-2">
-                Audience targeting, microcopy optimization, and strategic copy analysis
-              </div>
-              <div className="flex items-center gap-4 text-sm opacity-60 font-mono">
-                <span>{processedAnalysis.uxCopyAnalysis?.issues?.length || 0} Copy Issues</span>
-                <span>•</span>
-                <span className="text-blue-600 font-bold">Score: {processedAnalysis.uxCopyAnalysis?.score || 0}/100</span>
-              </div>
-            </motion.div>
-
-            {processedAnalysis.uxCopyAnalysis ? (
-              <div className="grid grid-cols-1 max-w-4xl mx-auto">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                >
-                  <UXCopyAnalysisCard uxCopy={processedAnalysis.uxCopyAnalysis} />
-                </motion.div>
-              </div>
-            ) : (
               <motion.div
-                className="text-center py-16 border-2 border-black bg-[#f5f1e6] relative overflow-hidden"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.3 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-8"
               >
-                <div className="text-8xl mb-6">📝</div>
-                <div className="text-3xl font-bold mb-4 font-mono tracking-wider">
-                  COPY ANALYSIS UNAVAILABLE
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="text-3xl font-bold font-mono tracking-wider">
+                    UX COPY INTELLIGENCE
+                  </div>
+                  <span className={`text-xs px-2 py-1 rounded font-mono font-bold ${
+                    (() => {
+                      const strength = processedAnalysis.moduleStrength?.uxCopyInsights || 0;
+                      const clarityFlag = processedAnalysis.perceptionLayer?.clarityFlags?.uxCopyInsights;
+                      
+                      if (strength >= 4 && clarityFlag) return 'bg-green-100 text-green-700';
+                      if (strength >= 3 || clarityFlag) return 'bg-yellow-100 text-yellow-700';
+                      return 'bg-red-100 text-red-700';
+                    })()
+                  }`}>
+                    {(() => {
+                      const strength = processedAnalysis.moduleStrength?.uxCopyInsights || 0;
+                      const clarityFlag = processedAnalysis.perceptionLayer?.clarityFlags?.uxCopyInsights;
+                      
+                      if (strength >= 4 && clarityFlag) return '🟢 High Quality';
+                      if (strength >= 3 || clarityFlag) return '🟡 Good Signal';
+                      return '🔴 Low Signal';
+                    })()}
+                  </span>
                 </div>
-                <p className="text-lg opacity-70 font-mono mb-4">
-                  No copy analysis available for this interface
-                </p>
+                <div className="text-lg opacity-70 font-mono mb-2">
+                  Audience targeting, microcopy optimization, and strategic copy analysis
+                </div>
+                <div className="flex items-center gap-4 text-sm opacity-60 font-mono">
+                  <span>{processedAnalysis.uxCopyAnalysis?.issues?.length || 0} Copy Issues</span>
+                  <span>•</span>
+                  <span className="text-blue-600 font-bold">Score: {processedAnalysis.uxCopyAnalysis?.score || 0}/100</span>
+                </div>
               </motion.div>
-            )}
-          </motion.div>
-        </section>
+
+              {processedAnalysis.uxCopyAnalysis ? (
+                <div className="grid grid-cols-1 max-w-4xl mx-auto">
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <UXCopyAnalysisCard uxCopy={processedAnalysis.uxCopyAnalysis} />
+                  </motion.div>
+                </div>
+              ) : (
+                <motion.div
+                  className="text-center py-16 border-2 border-black bg-[#f5f1e6] relative overflow-hidden"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <div className="text-8xl mb-6">📝</div>
+                  <div className="text-3xl font-bold mb-4 font-mono tracking-wider">
+                    COPY ANALYSIS UNAVAILABLE
+                  </div>
+                  <p className="text-lg opacity-70 font-mono mb-4">
+                    No copy analysis available for this interface
+                  </p>
+                </motion.div>
+              )}
+            </motion.div>
+          </section>
+        )}
 
         {/* 5. Design Analysis */}
-        <section id="design">
-          <FeedbackDetailedAnalysis 
-            analysis={processedAnalysis}
-          />
-        </section>
+        {shouldShowModule('visualDesign', processedAnalysis) && (
+          <section id="design">
+            <FeedbackDetailedAnalysis 
+              analysis={processedAnalysis}
+            />
+          </section>
+        )}
 
-        {/* 6. Friction Points - CONVERSION BARRIERS */}
-        <section id="friction">
-          <FeedbackFrictionPoints 
-            analysis={processedAnalysis}
-            imageUrl={data?.image_url}
-          />
-        </section>
+        {/* 6. Friction Points - UI OBSTACLES */}
+        {shouldShowModule('frictionPoints', processedAnalysis) && (
+          <section id="friction">
+            <FeedbackFrictionPoints 
+              analysis={processedAnalysis}
+              imageUrl={data?.image_url}
+            />
+          </section>
+        )}
 
         {/* 7. Intent Analysis - STRATEGIC PURPOSE ALIGNMENT */}
         <section id="intent">
@@ -814,23 +841,27 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
         </section>
 
         {/* 8. Growth Opportunities - Pro Feature */}
-        <section id="growth">
-          <FeedbackOpportunities 
-            analysis={processedAnalysis}
-            imageUrl={data?.image_url}
-            isPro={isLoggedIn}
-            onUpgrade={() => {/* Handle upgrade logic */}}
-          />
-        </section>
+        {shouldShowModule('opportunities', processedAnalysis) && (
+          <section id="growth">
+            <FeedbackOpportunities 
+              analysis={processedAnalysis}
+              imageUrl={data?.image_url}
+              isPro={isLoggedIn}
+              onUpgrade={() => {/* Handle upgrade logic */}}
+            />
+          </section>
+        )}
 
         {/* 9. Behavioral Insights - Pro Feature */}
-        <section id="behavior">
-          <FeedbackInsights 
-            analysis={processedAnalysis}
-            isPro={isLoggedIn}
-            onUpgrade={() => {/* Handle upgrade logic */}}
-          />
-        </section>
+        {shouldShowModule('behavioralInsights', processedAnalysis) && (
+          <section id="behavior">
+            <FeedbackInsights 
+              analysis={processedAnalysis}
+              isPro={isLoggedIn}
+              onUpgrade={() => {/* Handle upgrade logic */}}
+            />
+          </section>
+        )}
 
         {/* 10. Accessibility Analysis */}
         <section id="access">

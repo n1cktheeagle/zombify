@@ -47,7 +47,7 @@ export const feedbackSections = [
     id: 'friction', 
     label: 'FRICTION', 
     getCount: (a: ZombifyAnalysis) => a.frictionPoints?.length || 0,
-    description: 'Conversion friction points'
+    description: 'UI obstacles & interaction barriers'
   },
   { 
     id: 'intent', 

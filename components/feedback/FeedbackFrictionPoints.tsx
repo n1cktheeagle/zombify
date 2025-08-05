@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ZombifyAnalysis } from '@/types/analysis';
+import { getModuleConfidence } from '@/utils/analysisCompatibility';
 import GlitchText from '../GlitchText';
 
 interface FeedbackFrictionPointsProps {
@@ -20,6 +21,18 @@ export default function FeedbackFrictionPoints({
   const [expandedFriction, setExpandedFriction] = useState<number | null>(null);
 
   const frictionPoints = analysis.frictionPoints || [];
+  const confidence = getModuleConfidence('frictionPoints', analysis);
+  
+  const getQualityBadge = () => {
+    const strength = analysis.moduleStrength?.frictionPoints || 0;
+    const clarityFlag = analysis.perceptionLayer?.clarityFlags?.frictionPoints;
+    
+    if (strength >= 4 && clarityFlag) return { icon: '🟢', label: 'High Quality', color: 'bg-green-100 text-green-700' };
+    if (strength >= 3 || clarityFlag) return { icon: '🟡', label: 'Good Signal', color: 'bg-yellow-100 text-yellow-700' };
+    return { icon: '🔴', label: 'Low Signal', color: 'bg-red-100 text-red-700' };
+  };
+  
+  const qualityBadge = getQualityBadge();
 
   // Group friction points by user journey stage
   const frictionByStage = {
@@ -73,10 +86,10 @@ export default function FeedbackFrictionPoints({
           className="mb-8"
         >
           <div className="text-3xl font-bold mb-3 font-mono tracking-wider">
-            CONVERSION FRICTION ANALYSIS
+            FRICTION POINTS
           </div>
           <div className="text-lg opacity-70 font-mono">
-            Identifying barriers in the user journey
+            UI obstacles preventing smooth user flow
           </div>
         </motion.div>
 
@@ -101,13 +114,13 @@ export default function FeedbackFrictionPoints({
             🛤️
           </motion.div>
           <div className="text-3xl font-bold mb-4 font-mono tracking-wider">
-            SMOOTH USER JOURNEY DETECTED
+            SMOOTH INTERFACE DETECTED
           </div>
           <p className="text-lg opacity-70 font-mono mb-4">
-            No significant conversion friction points identified
+            No significant UI friction points identified
           </p>
           <div className="text-sm opacity-60 font-mono bg-white border-2 border-black p-4 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)] inline-block">
-            This interface appears to have a relatively friction-free user experience
+            This interface appears to have a relatively smooth user experience
           </div>
         </motion.div>
       </motion.div>
@@ -127,11 +140,16 @@ export default function FeedbackFrictionPoints({
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
       >
-        <div className="text-3xl font-bold mb-3 font-mono tracking-wider">
-          CONVERSION FRICTION ANALYSIS
+        <div className="flex items-center gap-3 mb-3">
+          <div className="text-3xl font-bold font-mono tracking-wider">
+            FRICTION POINTS
+          </div>
+          <span className={`text-xs px-2 py-1 rounded font-mono font-bold ${qualityBadge.color}`}>
+            {qualityBadge.icon} {qualityBadge.label}
+          </span>
         </div>
         <div className="text-lg opacity-70 font-mono mb-2">
-          Critical barriers preventing user success
+          UI obstacles preventing smooth user flow
         </div>
         <div className="flex items-center gap-4 text-sm opacity-60 font-mono">
           <span>Journey Stage Analysis</span>

@@ -24,6 +24,17 @@ export default function FeedbackOpportunities({
   const [expandedOpportunity, setExpandedOpportunity] = useState<number | null>(null);
 
   const opportunities = analysis.opportunities || [];
+  
+  const getQualityBadge = () => {
+    const strength = analysis.moduleStrength?.opportunities || 0;
+    const clarityFlag = analysis.perceptionLayer?.clarityFlags?.opportunities;
+    
+    if (strength >= 4 && clarityFlag) return { icon: '🟢', label: 'High Quality', color: 'bg-green-100 text-green-700' };
+    if (strength >= 3 || clarityFlag) return { icon: '🟡', label: 'Good Signal', color: 'bg-yellow-100 text-yellow-700' };
+    return { icon: '🔴', label: 'Low Signal', color: 'bg-red-100 text-red-700' };
+  };
+  
+  const qualityBadge = getQualityBadge();
 
   return (
     <motion.div 
@@ -40,8 +51,13 @@ export default function FeedbackOpportunities({
       >
         <div className="flex justify-between items-start">
           <div>
-            <div className="text-3xl font-bold mb-3 font-mono tracking-wider">
-              GROWTH OPPORTUNITIES
+            <div className="flex items-center gap-3 mb-3">
+              <div className="text-3xl font-bold font-mono tracking-wider">
+                GROWTH OPPORTUNITIES
+              </div>
+              <span className={`text-xs px-2 py-1 rounded font-mono font-bold ${qualityBadge.color}`}>
+                {qualityBadge.icon} {qualityBadge.label}
+              </span>
             </div>
             <div className="text-lg opacity-70 font-mono mb-2">
               Revenue-boosting insights and conversion optimization opportunities

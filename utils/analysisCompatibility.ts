@@ -100,7 +100,58 @@ function calculateContentStrength(contentArray: any[], defaultStrength: number):
 }
 
 /**
- * Determines if a module should be displayed based on strength and clarity
+ * List of bullshit keywords that indicate generic, non-UI-grounded content
+ */
+const BULLSHIT_KEYWORDS = [
+  'email marketing',
+  'referral program',
+  'leverage social',
+  'growth hack',
+  'nurture campaign',
+  'gamify',
+  'viral loop',
+  'influencer',
+  'affiliate',
+  'newsletter',
+  'lead magnet',
+  'funnel optimization',
+  'A/B test everything',
+  'content marketing',
+  'SEO strategy',
+  'social media presence',
+  'community building',
+  'user-generated content',
+  'retention loops',
+  'onboarding flow', // unless specifically about visible UI
+  'optimize conversion funnel',
+  'improve trust without',
+  'add social proof',
+  'value prop confusion',
+  'users don\'t understand'
+];
+
+/**
+ * Checks if content contains bullshit/generic suggestions without UI grounding
+ */
+export function isBullshitContent(content: string): boolean {
+  if (!content) return false;
+  
+  const lowerContent = content.toLowerCase();
+  
+  // Check for bullshit keywords
+  const hasBullshitKeyword = BULLSHIT_KEYWORDS.some(keyword => 
+    lowerContent.includes(keyword.toLowerCase())
+  );
+  
+  // Check if content has UI grounding (mentions specific elements)
+  const hasUIGrounding = /button|form|header|nav|menu|text|image|icon|link|input|dropdown|modal|banner|section|footer|sidebar|card/.test(lowerContent);
+  
+  // If it has bullshit keywords AND no UI grounding, it's bullshit
+  return hasBullshitKeyword && !hasUIGrounding;
+}
+
+/**
+ * Enhanced module visibility determination with quality checks
  */
 export function shouldShowModule(
   moduleName: keyof ModuleStrength, 
@@ -109,8 +160,77 @@ export function shouldShowModule(
   const strength = analysis.moduleStrength?.[moduleName] || 0;
   const clarityFlag = analysis.perceptionLayer?.clarityFlags?.[moduleName];
   
-  // Show if strength is good OR has clear signal
-  return strength >= 3 || clarityFlag === true;
+  // Module-specific rules based on ChatGPT recommendations
+  switch (moduleName) {
+    case 'visualDesign':
+      // Show if clarity flag OR has actual insights
+      const visualData = analysis.visualDesign;
+      const hasVisualInsights = visualData?.tileFeedback?.length > 0 || 
+                               visualData?.typography?.issues?.length > 0 ||
+                               visualData?.colorAndContrast?.contrastFailures?.length > 0;
+      return clarityFlag === true || hasVisualInsights || strength >= 3;
+      
+    case 'uxCopyInsights':
+      // Show if clarity flag OR has insights
+      const copyIssues = analysis.uxCopyInsights?.issues || [];
+      return clarityFlag === true || copyIssues.length >= 1 || strength >= 3;
+      
+    case 'accessibility':
+      // Similar logic - show if has insights or good strength
+      const hasAccessibilityIssues = analysis.accessibilityAudit && 
+                                    ('criticalFailures' in analysis.accessibilityAudit ? 
+                                     analysis.accessibilityAudit.criticalFailures?.length > 0 : false);
+      return clarityFlag === true || hasAccessibilityIssues || strength >= 3;
+      
+    case 'frictionPoints':
+      // Show only if friction points are UI-grounded with specific evidence
+      const frictionPoints = analysis.frictionPoints || [];
+      const hasRealFriction = frictionPoints.some(fp => {
+        // Check for generic phrases we want to filter out
+        const hasGenericFriction = /don't understand.*value prop|improve trust|optimize.*funnel|add social proof/i.test(fp.friction || '');
+        const hasGenericEvidence = /uses jargon|technical terms|improve trust/i.test(fp.evidence || '');
+        
+        // Must have specific evidence and not be generic
+        return !isBullshitContent(fp.friction) && 
+               fp.evidence && 
+               fp.evidence.length > 20 && // Substantial evidence
+               !hasGenericFriction && 
+               !hasGenericEvidence;
+      });
+      return hasRealFriction;
+      
+    case 'opportunities':
+      // STRICT: Only show if opportunities are specific and UI-grounded
+      const opportunities = analysis.opportunities || [];
+      const hasRealOpportunities = opportunities.some(opp => 
+        !isBullshitContent(opp.opportunity) && 
+        opp.location?.element && 
+        opp.location?.element !== 'Where to add this'
+      );
+      return hasRealOpportunities;
+      
+    case 'behavioralInsights':
+      // Show only if insights reference actual UI elements
+      const insights = analysis.behavioralInsights || [];
+      const hasRealInsights = insights.some(insight => 
+        insight.observation && 
+        !isBullshitContent(insight.observation) &&
+        /button|form|cta|element|text|section/.test(insight.observation.toLowerCase())
+      );
+      return hasRealInsights && (strength >= 3 || clarityFlag === true);
+      
+    case 'darkPatterns':
+      // Always show if any patterns detected
+      return (analysis.darkPatterns?.length || 0) > 0;
+      
+    case 'issuesAndFixes':
+      // Always show if issues exist
+      return (analysis.issuesAndFixes?.length || 0) > 0;
+      
+    default:
+      // Default logic for other modules
+      return strength >= 3 || clarityFlag === true;
+  }
 }
 
 /**
