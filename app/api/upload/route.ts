@@ -18,6 +18,7 @@ export async function POST(req: NextRequest) {
     const file = formData.get('file') as File | null;
     const userId = formData.get('user_id') as string | null;
     const isGuest = formData.get('is_guest') === 'true';
+    const userContext = formData.get('user_context') as string | null;
 
     if (!file) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
@@ -44,13 +45,14 @@ export async function POST(req: NextRequest) {
     const imageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/screenshots/${filename}`;
 
     // Get real OpenAI analysis
-    console.log('Getting OpenAI analysis for:', imageUrl);
-    const analysis: ZombifyAnalysis = await analyzeImage(imageUrl);
+    console.log('Getting OpenAI analysis for:', imageUrl, 'with user context:', userContext?.substring(0, 50));
+    const analysis: ZombifyAnalysis = await analyzeImage(imageUrl, userContext || undefined);
     console.log('OpenAI analysis result:', {
       context: analysis.context,
       industry: analysis.industry,
       gripScore: analysis.gripScore?.overall || 0,
-      issueCount: (analysis.criticalIssues || []).length + (analysis.usabilityIssues || []).length
+      issueCount: (analysis.issuesAndFixes || analysis.criticalIssues || []).length + (analysis.usabilityIssues || []).length,
+      userContext: analysis.userContext
     });
 
     // Determine user information for database insert
@@ -58,9 +60,9 @@ export async function POST(req: NextRequest) {
     const finalUserId = authenticatedUser?.id || null;
     const finalIsGuest = !authenticatedUser || isGuest;
 
-    // Extract top issues for backward compatibility
+    // Extract top issues for backward compatibility - use new field names first, fallback to old
     const topIssues = [
-      ...(analysis.criticalIssues || []).map(issue => issue.issue),
+      ...(analysis.issuesAndFixes || analysis.criticalIssues || []).map(issue => issue.issue),
       ...(analysis.usabilityIssues || []).map(issue => issue.issue)
     ].slice(0, 5); // Keep top 5 issues for the legacy 'issues' column
 
@@ -157,8 +159,8 @@ export async function POST(req: NextRequest) {
         context: analysis.context || 'UNKNOWN',
         industry: analysis.industry || 'UNKNOWN',
         gripScore: analysis.gripScore?.overall || 0,
-        criticalIssueCount: (analysis.criticalIssues || []).length,
-        totalIssueCount: (analysis.criticalIssues || []).length + (analysis.usabilityIssues || []).length
+        criticalIssueCount: (analysis.issuesAndFixes || analysis.criticalIssues || []).length,
+        totalIssueCount: (analysis.issuesAndFixes || analysis.criticalIssues || []).length + (analysis.usabilityIssues || []).length
       }
     }, { status: 200 });
   } catch (err) {

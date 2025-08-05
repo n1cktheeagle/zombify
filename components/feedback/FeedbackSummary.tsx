@@ -5,7 +5,8 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ZombifyAnalysis } from '@/types/analysis';
 import GlitchText from '../GlitchText';
-import GenerationalRadarChart from '../GenerationalRadarChart';
+import ModuleStrengthIndicator from '../ModuleStrengthIndicator';
+import AnalysisDiagnostics from '../AnalysisDiagnostics';
 
 interface FeedbackSummaryProps {
   analysis: ZombifyAnalysis;
@@ -246,6 +247,19 @@ export default function FeedbackSummary({ analysis, imageUrl, className = '' }: 
                   </motion.div>
                 )}
               </div>
+
+              {/* Parsed Context Display */}
+              {((analysis as any).interfaceType || (analysis as any).strategicIntent) && (
+                <div className="mt-4 p-3 bg-blue-50 border-2 border-blue-200 rounded-lg text-sm">
+                  <h4 className="text-xs font-medium text-blue-800 mb-1 font-mono tracking-wider">PARSED CONTEXT</h4>
+                  {(analysis as any).interfaceType && (
+                    <p className="text-blue-700 font-mono text-xs">Interface: {(analysis as any).interfaceType}</p>
+                  )}
+                  {(analysis as any).strategicIntent && (
+                    <p className="text-blue-700 font-mono text-xs">Intent: {(analysis as any).strategicIntent}</p>
+                  )}
+                </div>
+              )}
             </motion.div>
           </div>
         </div>
@@ -261,8 +275,22 @@ export default function FeedbackSummary({ analysis, imageUrl, className = '' }: 
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
           >
-            <div className="text-lg font-bold opacity-70 font-mono tracking-wider mb-2 lg:mb-0">
-              GRIP SCORE ANALYSIS
+            <div className="flex items-center gap-2 mb-2 lg:mb-0">
+              <div className="text-lg font-bold opacity-70 font-mono tracking-wider">
+                GRIP SCORE ANALYSIS
+              </div>
+              <div className="relative group">
+                <button className="text-gray-400 hover:text-gray-600 text-sm">
+                  ⓘ
+                </button>
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-3 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
+                  <div className="font-mono text-center">
+                    Grip Score reflects how effectively your interface holds user attention. 
+                    Calculated from visual flow, clarity, friction, and dark pattern risk.
+                  </div>
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-black"></div>
+                </div>
+              </div>
             </div>
             
             {/* Compact Score Display */}
@@ -380,201 +408,68 @@ export default function FeedbackSummary({ analysis, imageUrl, className = '' }: 
         </div>
       </div>
 
-      {/* Bottom Row: Attention Flow + Generational Analysis */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Attention Flow Section - Clean Timeline */}
-        {verdict?.attentionFlow && verdict.attentionFlow.length > 0 && (
-          <motion.div 
-            className="border-2 border-black bg-[#f5f1e6] relative overflow-hidden"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.9 }}
-          >
-          <div className="p-4">
-            <div className="text-center mb-6">
-              <div className="text-lg font-bold mb-2 font-mono tracking-wider">
-                USER ATTENTION FLOW
-              </div>
-              <div className="text-xs opacity-60 font-mono">The sequence users&apos; eyes follow when scanning your interface</div>
-            </div>
+      {/* Module Strength Indicators */}
+      {analysis.moduleStrength && (
+        <motion.div 
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
+          className="mb-6"
+        >
+          <div className="text-sm font-bold mb-3 opacity-70 font-mono tracking-wider">ANALYSIS QUALITY</div>
+          
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { key: 'issuesAndFixes', label: 'Issues & Fixes', icon: '🔧' },
+              { key: 'uxCopyInsights', label: 'UX Copy', icon: '📝' },
+              { key: 'visualDesign', label: 'Visual Design', icon: '🎨' },
+              { key: 'darkPatterns', label: 'Dark Patterns', icon: '⚠️' },
+              { key: 'behavioralInsights', label: 'Behavioral', icon: '🧠' },
+              { key: 'accessibility', label: 'Accessibility', icon: '♿' }
+            ].map((module, index) => {
+              const strength = analysis.moduleStrength[module.key as keyof typeof analysis.moduleStrength];
+              if (strength === undefined) return null;
 
-            {/* Timeline Flow */}
-            <div className="relative max-w-4xl mx-auto">
-              {/* Connecting Line */}
-              <div className="absolute left-4 top-6 bottom-6 w-0.5 bg-black opacity-20"></div>
-              
-              <div className="space-y-4">
-                {verdict.attentionFlow.map((step, index) => (
-                  <motion.div 
-                    key={index}
-                    className="relative flex items-start gap-3"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 1 + index * 0.15 }}
-                  >
-                    {/* Number Circle */}
-                    <div className="flex-shrink-0 w-8 h-8 border-2 border-black bg-white text-black text-sm font-bold font-mono flex items-center justify-center shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)] z-10">
-                      {index + 1}
-                    </div>
-                    
-                    {/* Step Content */}
-                    <div className="flex-1 mt-1">
-                      <div className="bg-white border-2 border-black p-4 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]">
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="text-sm font-bold text-black font-mono flex-1">
-                            {typeof step === 'string' ? step : step.element}
-                          </div>
-                          {typeof step !== 'string' && step.conversionImpact && (
-                            <div className={`text-xs px-2 py-1 rounded font-mono font-bold ml-2 flex-shrink-0 ${
-                              step.conversionImpact === 'HIGH' ? 'text-green-600 bg-green-50 border border-green-200' :
-                              step.conversionImpact === 'MEDIUM' ? 'text-yellow-600 bg-yellow-50 border border-yellow-200' :
-                              'text-gray-600 bg-gray-50 border border-gray-200'
-                            }`}>
-                              {step.conversionImpact}
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Enhanced Data */}
-                        {typeof step !== 'string' && (
-                          <div className="space-y-2 mt-3 pt-2 border-t border-black/10">
-                            {step.reasoning && (
-                              <div className="text-xs text-black/70 font-mono">
-                                <strong>Why:</strong> {step.reasoning}
-                              </div>
-                            )}
-                            {step.timeSpent && (
-                              <div className="text-xs font-mono">
-                                <div className="flex items-center justify-between mb-1">
-                                  <span className="text-blue-600"><strong>Time:</strong> {step.timeSpent}</span>
-                                </div>
-                                {(() => {
-                                  // Extract seconds from timeSpent string (e.g., "2-3 seconds" -> 2.5)
-                                  const timeMatch = step.timeSpent.match(/(\d+)(?:-(\d+))?\s*second/i);
-                                  let seconds = 0;
-                                  if (timeMatch) {
-                                    const min = parseInt(timeMatch[1]);
-                                    const max = timeMatch[2] ? parseInt(timeMatch[2]) : min;
-                                    seconds = (min + max) / 2;
-                                  }
-                                  
-                                  // Color coding: 0-2s (green), 2-5s (yellow), 5-8s (orange), 8+ (red)
-                                  const getTimeColor = (sec: number) => {
-                                    if (sec <= 2) return 'bg-green-500';
-                                    if (sec <= 5) return 'bg-yellow-500';
-                                    if (sec <= 8) return 'bg-orange-500';
-                                    return 'bg-red-500';
-                                  };
-                                  
-                                  // Bar width: scale 0-10+ seconds to 0-100%
-                                  const barWidth = Math.min((seconds / 10) * 100, 100);
-                                  
-                                  return (
-                                    <div className="w-full">
-                                      <div className="flex justify-between text-xs text-gray-500 mb-1">
-                                        <span>0s</span>
-                                        <span>5s</span>
-                                        <span>10s+</span>
-                                      </div>
-                                      <div className="w-full bg-gray-200 rounded-full h-2 border border-black/20">
-                                        <motion.div
-                                          className={`h-full rounded-full ${getTimeColor(seconds)}`}
-                                          initial={{ width: 0 }}
-                                          animate={{ width: `${barWidth}%` }}
-                                          transition={{ duration: 0.8, delay: 1.2 + index * 0.15 }}
-                                        />
-                                      </div>
-                                    </div>
-                                  );
-                                })()}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Connecting Arrow for flow */}
-                    {index < verdict.attentionFlow.length - 1 && (
-                      <motion.div 
-                        className="absolute left-7 top-10 text-black opacity-40 text-xs"
-                        initial={{ opacity: 0, y: -5 }}
-                        animate={{ opacity: 0.4, y: 0 }}
-                        transition={{ delay: 1.2 + index * 0.15 }}
-                      >
-                        ↓
-                      </motion.div>
-                    )}
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-6 text-center">
-              <div className="text-xs font-mono opacity-60 bg-white border-2 border-black p-3 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)] inline-block">
-                💡 This sequence represents the natural scanning pattern for your interface layout
-              </div>
-            </div>
-          </div>
-          </motion.div>
-        )}
-
-        {/* Generational Analysis Section */}
-        {analysis.generationalAnalysis && (
-          <motion.div 
-            className="border-2 border-black bg-[#f5f1e6] relative overflow-hidden"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.0 }}
-          >
-            <div className="p-4">
-              <div className="text-center mb-6">
-                <div className="text-lg font-bold mb-2 font-mono tracking-wider">
-                  GENERATIONAL APPEAL
-                </div>
-                <div className="text-xs opacity-60 font-mono">How different age groups respond to your interface design</div>
-              </div>
-
-              <GenerationalRadarChart
-                scores={{
-                  genAlpha: analysis.generationalAnalysis.scores.genAlpha || { score: 0, reasoning: 'No data available' },
-                  genZ: analysis.generationalAnalysis.scores.genZ || { score: 0, reasoning: 'No data available' },
-                  millennials: analysis.generationalAnalysis.scores.millennials || { score: 0, reasoning: 'No data available' },
-                  genX: analysis.generationalAnalysis.scores.genX || { score: 0, reasoning: 'No data available' },
-                  boomers: analysis.generationalAnalysis.scores.boomers || { score: 0, reasoning: 'No data available' }
-                }}
-                primaryTarget={analysis.generationalAnalysis.primaryTarget || 'millennials'}
-              />
-
-              {/* Compact Recommendations */}
-              {analysis.generationalAnalysis.recommendations && analysis.generationalAnalysis.recommendations.length > 0 && (
+              return (
                 <motion.div
-                  initial={{ opacity: 0, y: 20 }}
+                  key={module.key}
+                  className="border-2 border-black bg-white p-3 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)] relative"
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 1.3 }}
-                  className="mt-4 pt-4 border-t border-black/20"
+                  transition={{ delay: 0.9 + index * 0.1 }}
                 >
-                  <h4 className="text-sm font-bold mb-2 font-mono tracking-wider text-center">
-                    OPTIMIZATION TIPS
-                  </h4>
-                  <div className="grid grid-cols-1 gap-2">
-                    {analysis.generationalAnalysis.recommendations.slice(0, 2).map((rec, index) => (
-                      <motion.div
-                        key={index}
-                        className="bg-white border-2 border-black p-2 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 1.4 + index * 0.1 }}
-                      >
-                        <div className="text-xs font-mono opacity-80 leading-tight">{rec}</div>
-                      </motion.div>
-                    ))}
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">{module.icon}</span>
+                      <span className="text-xs font-bold font-mono">{module.label}</span>
+                    </div>
                   </div>
+                  
+                  <ModuleStrengthIndicator 
+                    strength={strength} 
+                    moduleName={module.label}
+                    compact={true} 
+                  />
                 </motion.div>
-              )}
-            </div>
-          </motion.div>
-        )}
+              );
+            })}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Bottom Row: Overview Fields Only */}
+      <div className="grid grid-cols-1 gap-6">
+
+        
+        {/* Analysis Diagnostics - show enhanced features status */}
+        <motion.div 
+          className="lg:col-span-1"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.1 }}
+        >
+          <AnalysisDiagnostics analysis={analysis} />
+        </motion.div>
       </div>
 
       {/* Image Modal using Portal */}

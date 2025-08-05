@@ -6,6 +6,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ZombifyAnalysis } from '@/types/analysis';
 import { useUpload } from '@/contexts/UploadContext';
+import { normalizeAnalysisData } from '@/utils/analysisCompatibility';
 import GlitchText from '@/components/GlitchText';
 import FeedbackSummary from '@/components/feedback/FeedbackSummary';
 import FeedbackDarkPatterns from '@/components/feedback/FeedbackDarkPatterns';
@@ -18,6 +19,9 @@ import FeedbackIntentAnalysis from '@/components/feedback/FeedbackIntentAnalysis
 import FeedbackAccessibility from '@/components/feedback/FeedbackAccessibility';
 import FeedbackTabs, { FeedbackSectionId } from '@/components/FeedbackTabs';
 import UXCopyAnalysisCard from '@/components/UXCopyAnalysisCard';
+import PerceptionDisplay from '@/components/PerceptionDisplay';
+import ModuleStrengthIndicator from '@/components/ModuleStrengthIndicator';
+import DiagnosticsPanel from '@/components/DiagnosticsPanel';
 
 // TypeScript interfaces
 interface FeedbackData {
@@ -39,7 +43,7 @@ function isNewAnalysisFormat(analysis: any): analysis is ZombifyAnalysis {
   return analysis && 
     typeof analysis === 'object' && 
     'gripScore' in analysis && 
-    'criticalIssues' in analysis &&
+    ('issuesAndFixes' in analysis || 'criticalIssues' in analysis) &&
     'context' in analysis;
 }
 
@@ -79,8 +83,9 @@ function createLegacyAnalysis(score: number): ZombifyAnalysis {
     },
     frictionPoints: [],
     
-    // Existing sections with minimal data for legacy
-    visualDesignAnalysis: {
+    // Required new fields for compatibility
+    issuesAndFixes: [],
+    visualDesign: {
       score: Math.round(score * 0.7),
       typography: {
         score: Math.round(score * 0.7),
@@ -110,7 +115,7 @@ function createLegacyAnalysis(score: number): ZombifyAnalysis {
         improvements: []
       }
     },
-    uxCopyAnalysis: {
+    uxCopyInsights: {
       score: Math.round(score * 0.6),
       audienceAlignment: {
         detectedAudience: "Unknown",
@@ -157,7 +162,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
   const score = isNewFormat ? analysis.gripScore?.overall || 0 : (data?.score || 0);
   
   // Create proper analysis object for components
-  const processedAnalysis = isNewFormat ? analysis : createLegacyAnalysis(score);
+  const processedAnalysis = isNewFormat ? normalizeAnalysisData(analysis) : createLegacyAnalysis(score);
 
   // Active section state - start with summary
   const [activeSection, setActiveSection] = useState<FeedbackSectionId>('summary');
@@ -672,6 +677,47 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
           />
         </section>
 
+        {/* 1.5. Perception Layer - User Psychology */}
+        {processedAnalysis.perceptionLayer && (
+          <section id="perception">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-6"
+            >
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-8"
+              >
+                <div className="text-3xl font-bold mb-3 font-mono tracking-wider">
+                  USER PERCEPTION
+                </div>
+                <div className="text-lg opacity-70 font-mono mb-2">
+                  How users emotionally react and what they focus on first
+                </div>
+                <div className="flex items-center gap-4 text-sm opacity-60 font-mono">
+                  <span>Primary Emotion: {processedAnalysis.perceptionLayer.primaryEmotion.type}</span>
+                  <span>•</span>
+                  <span>Intensity: {processedAnalysis.perceptionLayer.primaryEmotion.intensity}/10</span>
+                  <span>•</span>
+                  <span>{processedAnalysis.perceptionLayer.attentionFlow?.length || 0} Focus Points</span>
+                </div>
+              </motion.div>
+
+              <div className="grid grid-cols-1 max-w-4xl mx-auto">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <PerceptionDisplay perceptionLayer={processedAnalysis.perceptionLayer} />
+                </motion.div>
+              </div>
+            </motion.div>
+          </section>
+        )}
+
         {/* 2. Dark Patterns - NEW SECTION */}
         <section id="dark-patterns">
           <FeedbackDarkPatterns 
@@ -793,6 +839,9 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
           />
         </section>
       </div>
+
+      {/* Diagnostics Panel */}
+      <DiagnosticsPanel analysis={processedAnalysis} />
 
       {/* Bottom CTA Section - Only show if NOT logged in */}
       {!isLoggedIn && (

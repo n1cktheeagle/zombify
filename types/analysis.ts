@@ -1,4 +1,4 @@
-// types/analysis.ts - Enhanced version with all new features
+// types/analysis.ts - Enhanced version with all new features including PerceptionLayer and ModuleStrength
 // Place this file in your project root: /types/analysis.ts
 
 // === VISION API TYPES - KEEP FOR DATA ENHANCEMENT ===
@@ -49,34 +49,73 @@ export interface VisionAnalysisResult {
   };
 }
 
-// === NEW ENHANCED TYPES ===
+// === NEW PERCEPTION LAYER AND MODULE STRENGTH TYPES ===
 
-// Dark Pattern Detection
+// Enhanced Attention Flow Item with structured data
+export interface AttentionFlowItem {
+  priority: number; // 1 = highest priority (what users see first)
+  element: string; // e.g. "Hero headline", "Primary CTA button"
+  reasoning: string; // Why this draws attention (size, color, position)
+  timeSpent: string; // e.g. "2-3 seconds"
+  conversionImpact: 'HIGH' | 'MEDIUM' | 'LOW';
+}
+
+// New Perception Layer for cognitive processing
+export interface PerceptionLayer {
+  primaryEmotion: {
+    type: 'trust' | 'anxiety' | 'excitement' | 'confusion' | 'frustration' | 'delight' | 'anticipation' | 'skepticism' | 'curiosity';
+    intensity: number; // 1-10 scale
+  };
+  attentionFlow: AttentionFlowItem[]; // Moved here from just verdict
+  clarityFlags: {
+    uxCopy: boolean;
+    visual: boolean;
+    darkPattern: boolean;
+    behavioral: boolean;
+    accessibility: boolean;
+    strategicIntent: boolean;
+    [key: string]: boolean; // Allow future expansion
+  };
+}
+
+// Module Strength scoring for signal clarity
+export interface ModuleStrength {
+  uxCopyInsights: number; // 1-5 scale
+  visualDesign: number;
+  behavioralInsights: number; // Changed from behavioralInsight to match new structure
+  darkPatterns: number;
+  accessibility: number;
+  issuesAndFixes: number;
+  opportunities: number;
+  frictionPoints: number;
+  generationalAnalysis: number;
+  [key: string]: number; // Allow future module additions
+}
+
+// === ENHANCED ANALYSIS TYPES ===
+
+// Dark Pattern Detection - Enhanced with risk assessment
 export interface DarkPattern {
   type: 'URGENCY_MANIPULATION' | 'BAIT_AND_SWITCH' | 'HIDDEN_COSTS' | 'FORCED_CONTINUITY' | 'ROACH_MOTEL' | 'CONFIRM_SHAMING';
   severity: 'HIGH' | 'MEDIUM' | 'LOW';
   element: string;
+  location: string; // Where in the interface
   evidence: string;
   impact: string;
   ethicalAlternative: string;
+  // NEW: Risk assessment fields
+  riskLevel?: 'LOW' | 'MEDIUM' | 'HIGH';
+  fallbackExplanation?: string;
 }
 
 // Strategic Intent Analysis
 export interface IntentAnalysis {
   perceivedPurpose: string;
   actualPurpose: string;
-  alignmentScore: number;
+  clarity?: 'clear' | 'mixed' | 'unclear'; // Made optional for backward compatibility
+  alignmentScore: number; // 1-5 scale
   misalignments: string[];
   clarityImprovements: string[];
-}
-
-// Enhanced Attention Flow
-export interface AttentionFlowItem {
-  priority: number;
-  element: string;
-  reasoning: string;
-  timeSpent: string;
-  conversionImpact: 'HIGH' | 'MEDIUM' | 'LOW';
 }
 
 // Friction Points Analysis
@@ -135,6 +174,98 @@ export interface EnhancedBehavioralInsight {
   psychology: string;
   emotionalImpact: EmotionalImpact;
   recommendation: string;
+}
+
+// Visual Design Feedback (new tile-based structure)
+export interface VisualDesignFeedback {
+  area: string; // e.g. "Header section", "CTA button"
+  feedback: string; // Clean, actionable feedback
+  confidence: number; // 0-1 scale
+}
+
+// === EXISTING TYPES (KEPT FOR COMPATIBILITY) ===
+
+// Location interface - enhanced with visual context
+export interface Location {
+  element: string;
+  region: string;
+  visualContext?: string; // Enhanced by Vision API
+}
+
+// Fix information with implementation details
+export interface Fix {
+  immediate: string;
+  better?: string;
+  implementation?: string;
+  cssTokens?: string;
+  designTokens?: string;
+  explanation?: string;
+  css?: string;
+  suggestion?: string;
+}
+
+// Issue structure - now includes issuesAndFixes
+export interface Issue {
+  severity: number; // 0-4
+  category: string;
+  issue: string;
+  area?: string; // For issuesAndFixes
+  location?: Location;
+  impact: string;
+  evidence?: string;
+  fix: Fix;
+  assumption?: string;
+  context?: string;
+  finding?: string;
+}
+
+// Enhanced Grip Score Breakdown with reasoning
+export interface GripScoreBreakdownItem {
+  score: number;
+  reasoning: string;
+  evidence: string[];
+}
+
+export interface GripScoreBreakdown {
+  firstImpression: GripScoreBreakdownItem;
+  usability: GripScoreBreakdownItem;
+  trustworthiness: GripScoreBreakdownItem;
+  conversion: GripScoreBreakdownItem;
+  accessibility: GripScoreBreakdownItem;
+}
+
+// Updated Grip Score with detailed breakdown
+export interface GripScore {
+  overall: number;
+  breakdown: GripScoreBreakdown;
+}
+
+// Enhanced Verdict interface with attention flow
+export interface Verdict {
+  summary: string; // Now includes brutal punchline first
+  attentionSpan: string;
+  likelyAction: string;
+  dropoffPoint: string;
+  memorable: string;
+  attentionFlow: AttentionFlowItem[]; // Keep for backward compatibility
+}
+
+// Enhanced Generational Score with specific issues
+export interface GenerationalScore {
+  score: number;
+  reasoning: string;
+  specificIssues: string[];
+  improvements: string;
+}
+
+// Growth opportunity
+export interface Opportunity {
+  category: string;
+  opportunity: string;
+  potentialImpact: string;
+  implementation: string;
+  reasoning: string;
+  location?: Location;
 }
 
 // Unified Accessibility Audit - FIXED TYPE CONFLICTS
@@ -316,6 +447,7 @@ export interface SpacingAnalysis {
 }
 
 export interface ModernPatternsAnalysis {
+  score?: number;
   detected: string[];
   implementation: Record<string, any>;
   trendAlignment: {
@@ -325,6 +457,7 @@ export interface ModernPatternsAnalysis {
 }
 
 export interface VisualHierarchyAnalysis {
+  score?: number;
   scanPattern: string;
   focalPoints: Array<{
     element: string;
@@ -336,6 +469,7 @@ export interface VisualHierarchyAnalysis {
   }>;
 }
 
+// Updated Visual Design Analysis with tile-based feedback
 export interface VisualDesignAnalysis {
   score: number;
   typography: TypographyAnalysis;
@@ -343,6 +477,7 @@ export interface VisualDesignAnalysis {
   spacing: SpacingAnalysis;
   modernPatterns: ModernPatternsAnalysis;
   visualHierarchy: VisualHierarchyAnalysis;
+  tileFeedback?: VisualDesignFeedback[]; // New tile-based feedback
 }
 
 // ENHANCED UX Copy Analysis with new features
@@ -411,29 +546,44 @@ export interface GenerationalAnalysis {
   recommendations: string[];
 }
 
-// MAIN ENHANCED ANALYSIS INTERFACE
+// === MAIN ENHANCED ANALYSIS INTERFACE ===
 export interface ZombifyAnalysis {
-  context: 'COMPONENT' | 'FULL_INTERFACE' | 'WIREFRAME' | 'DATA_VIZ' | 'MARKETING' | 'MOBILE' | 'ERROR';
+  // Context and classification
+  context: 'COMPONENT' | 'FULL_INTERFACE' | 'WIREFRAME' | 'DATA_VIZ' | 'MARKETING' | 'MOBILE' | 'ERROR' | 'LANDING_PAGE' | 'DASHBOARD' | 'FORM' | 'ECOMMERCE';
   industry: 'SAAS' | 'ECOMMERCE' | 'FINTECH' | 'HEALTHCARE' | 'EDUCATION' | 'SOCIAL' | 'ENTERPRISE' | 'UNKNOWN';
   industryConfidence: number;
+  
+  // Core scoring and verdict
   gripScore: GripScore;
   verdict: Verdict;
   
-  // NEW ENHANCED SECTIONS
+  // NEW: Perception Layer
+  perceptionLayer?: PerceptionLayer;
+  
+  // NEW: Module Strength Scores
+  moduleStrength?: ModuleStrength;
+  
+  // Enhanced analysis sections
   darkPatterns: DarkPattern[];
-  intentAnalysis: IntentAnalysis;
+  intentAnalysis: IntentAnalysis | null;
   frictionPoints: FrictionPoint[];
   
-  visualDesignAnalysis: VisualDesignAnalysis;
-  uxCopyAnalysis: EnhancedUXCopyAnalysis; // Enhanced version
-  criticalIssues: Issue[];
-  usabilityIssues: Issue[];
+  // Core analysis sections (renamed from criticalIssues)
+  issuesAndFixes: Issue[]; // Renamed from criticalIssues
   opportunities: Opportunity[];
-  behavioralInsights: EnhancedBehavioralInsight[]; // Enhanced version
-  accessibilityAudit: AccessibilityAudit | null; // UNIFIED TYPE - FIXED
+  
+  // Design and copy analysis
+  visualDesign: VisualDesignAnalysis; // Renamed from visualDesignAnalysis
+  uxCopyInsights: EnhancedUXCopyAnalysis; // Renamed from uxCopyAnalysis
+  
+  // Behavioral and accessibility
+  behavioralInsights: EnhancedBehavioralInsight[]; // Now singular to match new structure
+  accessibilityAudit: AccessibilityAudit | null;
+  
+  // Audience analysis
   generationalAnalysis: GenerationalAnalysis;
   
-  // KEEP: Vision API data for enhanced analysis
+  // Vision API enhancement data
   visionData?: {
     textCount: number;
     hasLogos: boolean;
@@ -441,8 +591,45 @@ export interface ZombifyAnalysis {
     hasCTAs: boolean;
     detectedText: string[];
   };
+  
+  // NEW: User context and inference
+  userContext?: string;
+  interfaceType?: string; // Inferred from context (e.g., "E-COMMERCE_CHECKOUT")
+  strategicIntent?: string; // Inferred from context (e.g., "REDUCE_ABANDONMENT")
+  
+  // DEPRECATED - Remove these old fields
+  // inferredInterfaceType?: string;
+  // inferredStrategicIntent?: string;
+  
+  // NEW: Model tracking
+  gptVersion?: string;
+  modelConfig?: {
+    model: string;
+    version: string;
+    promptHash: string;
+  };
+  
+  // NEW: Enhanced Diagnostics
+  diagnostics?: {
+    totalInsights: number;
+    duplicateInsightCount: number; // More specific than duplicateCount
+    activeModules: string[]; // List of non-empty modules
+    weakModules: string[]; // Modules with strength ≤ 2
+    visionDataUsed: boolean; // Was Google Vision API used?
+    userContextProvided: boolean;
+    analysisComplete: boolean; // Did analysis run successfully?
+  };
+  
+  // Metadata
   timestamp: string;
   error?: boolean;
+  
+  // Legacy fields for backward compatibility
+  criticalIssues?: Issue[]; // Deprecated - use issuesAndFixes
+  usabilityIssues?: Issue[]; // Deprecated - merged into issuesAndFixes
+  visualDesignAnalysis?: VisualDesignAnalysis; // Deprecated - use visualDesign
+  uxCopyAnalysis?: EnhancedUXCopyAnalysis; // Deprecated - use uxCopyInsights
+  behavioralInsight?: EnhancedBehavioralInsight; // Deprecated - use behavioralInsights
 }
 
 // Grip score visualization data
@@ -473,8 +660,10 @@ export interface FeedbackData {
   is_guest: boolean;
 
   // BACKWARDS COMPATIBILITY NOTES:
-  // - Old BehavioralInsight[] will still work, just won't have emotionalImpact
-  // - Old UXCopyAnalysis will still work, just won't have audienceAlignment etc.
+  // - Old criticalIssues will map to issuesAndFixes
+  // - Old visualDesignAnalysis will map to visualDesign
+  // - Old uxCopyAnalysis will map to uxCopyInsights
+  // - Old behavioralInsight (singular) will map to behavioralInsights (plural)
   // - Old Verdict with string[] attentionFlow will still work
-  // - All existing components should continue working
+  // - All existing components should continue working with compatibility layer
 }

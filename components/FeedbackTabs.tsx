@@ -2,8 +2,8 @@ import { motion } from 'framer-motion';
 import GlitchText from './GlitchText';
 import { ZombifyAnalysis } from '@/types/analysis';
 
-// Updated 9-tab structure following the strategic plan
-export type FeedbackSectionId = 'summary' | 'dark-patterns' | 'issues' | 'copy' | 'design' | 'friction' | 'intent' | 'growth' | 'behavior' | 'access';
+// Updated 10-tab structure including perception layer
+export type FeedbackSectionId = 'summary' | 'perception' | 'dark-patterns' | 'issues' | 'copy' | 'design' | 'friction' | 'intent' | 'growth' | 'behavior' | 'access';
 
 export const feedbackSections = [
   { 
@@ -11,6 +11,13 @@ export const feedbackSections = [
     label: 'OVERVIEW', 
     getCount: () => 0,
     description: 'Executive overview & grip score'
+  },
+  { 
+    id: 'perception', 
+    label: 'PERCEPTION', 
+    getCount: (a: ZombifyAnalysis) => a.perceptionLayer ? 1 : 0,
+    description: 'User emotional response & attention',
+    isNew: true
   },
   { 
     id: 'dark-patterns', 

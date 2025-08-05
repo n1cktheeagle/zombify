@@ -3,6 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ZombifyAnalysis } from '@/types/analysis';
+import { getModuleConfidence } from '@/utils/analysisCompatibility';
 import GlitchText from '../GlitchText';
 import VisualDesignAnalysisCard from '../VisualDesignAnalysisCard';
 
@@ -16,10 +17,13 @@ export default function FeedbackDetailedAnalysis({
   className = '' 
 }: FeedbackDetailedAnalysisProps) {
   const hasVisualAnalysis = analysis.visualDesignAnalysis;
+  const confidence = getModuleConfidence('visualDesign', analysis);
 
   return (
     <motion.div 
-      className={`space-y-8 ${className}`}
+      className={`space-y-8 transition-all duration-200 ${
+        confidence === 'low' ? 'opacity-50 bg-gray-50' : ''
+      } ${className}`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6 }}

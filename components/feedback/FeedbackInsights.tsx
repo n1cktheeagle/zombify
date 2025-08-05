@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ZombifyAnalysis } from '@/types/analysis';
+import { getModuleConfidence } from '@/utils/analysisCompatibility';
 import GlitchText from '../GlitchText';
 
 interface FeedbackInsightsProps {
@@ -21,6 +22,7 @@ export default function FeedbackInsights({
   const [expandedInsight, setExpandedInsight] = useState<number | null>(null);
 
   const insights = analysis.behavioralInsights || [];
+  const confidence = getModuleConfidence('behavioralInsights', analysis);
 
   return (
     <motion.div 
@@ -61,6 +63,12 @@ export default function FeedbackInsights({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 + index * 0.1 }}
               >
+                {/* Low Confidence Label */}
+                {confidence === 'low' && (
+                  <span className="absolute top-2 right-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded font-mono">
+                    Low Confidence
+                  </span>
+                )}
                 <div className="p-6">
                   {/* Pattern Header */}
                   <div className="flex items-start gap-4 mb-4">

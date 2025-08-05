@@ -1,5 +1,48 @@
-// analyzeImage.ts - Enhanced with ALL ChatGPT feedback implementation
-import { ZombifyAnalysis, VisionAnalysisResult } from '@/types/analysis';
+// analyzeImage.ts - Enhanced with all new features including PerceptionLayer and ModuleStrength
+import { 
+  ZombifyAnalysis, 
+  VisionAnalysisResult, 
+  AttentionFlowItem,
+  DarkPattern,
+  Issue,
+  PerceptionLayer,
+  ModuleStrength,
+  EnhancedBehavioralInsight,
+  VisualDesignFeedback
+} from '@/types/analysis';
+import crypto from 'crypto';
+
+// Model version tracking
+const GPT_MODEL = 'gpt-4o';
+const GPT_VERSION = 'gpt-4o-2025-08-04';
+
+// Enhanced dark pattern interface with risk assessment
+interface EnhancedDarkPattern extends DarkPattern {
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+  manipulativeness: number; // 1-10 scale
+  intent: boolean; // is it deceptive?
+  impact: 'LOW' | 'MEDIUM' | 'HIGH';
+  fallbackExplanation: string;
+}
+
+// Helper function to parse user context into structured tags
+function parseContextToTags(context: string): { interfaceType: string; strategicIntent: string } {
+  // This function prepares the context for GPT to intelligently infer the tags
+  // Rather than hardcoding patterns, we'll let GPT handle the inference
+  // This is just to structure the request
+  return {
+    interfaceType: 'TO_BE_INFERRED',
+    strategicIntent: 'TO_BE_INFERRED'
+  };
+}
+
+// Helper to generate a hash of the prompt for tracking changes
+function generatePromptHash(promptContent: string): string {
+  return crypto.createHash('sha256')
+    .update(promptContent)
+    .digest('hex')
+    .substring(0, 8); // First 8 chars is enough for tracking
+}
 
 // Keep your existing extractAndParseJSON function exactly as is
 function extractAndParseJSON(content: string): any {
@@ -375,11 +418,11 @@ function enhanceAnalysisWithVision(analysis: any, visionData: VisionAnalysisResu
       : 'Visual accessibility appears good based on automated analysis'
   };
 
-  // Enhanced visual design analysis with Vision data
-  const enhancedVisualDesign = {
-    ...analysis.visualDesignAnalysis,
+  // Enhanced visual design analysis with Vision data - check if visualDesign exists
+  const enhancedVisualDesign = analysis.visualDesign ? {
+    ...analysis.visualDesign,
     colorAndContrast: {
-      ...analysis.visualDesignAnalysis.colorAndContrast,
+      ...analysis.visualDesign.colorAndContrast,
       measuredContrasts: contrastIssues.map(issue => ({
         severity: issue.contrastRatio < 3 ? 'HIGH' : 'MEDIUM',
         colors: [dominantColors[0].color, dominantColors[1].color],
@@ -392,18 +435,18 @@ function enhanceAnalysisWithVision(analysis: any, visionData: VisionAnalysisResu
       }))
     },
     typography: {
-      ...analysis.visualDesignAnalysis.typography,
+      ...analysis.visualDesign.typography,
       smallTextWarnings: smallTextElements.length > 0 ? {
         count: smallTextElements.length,
         message: `${smallTextElements.length} text elements may be too small for comfortable reading`
       } : null
     }
-  };
+  } : null;
 
   return {
     ...analysis,
     accessibilityAudit: enhancedAccessibilityAudit,
-    visualDesignAnalysis: enhancedVisualDesign,
+    ...(enhancedVisualDesign && { visualDesign: enhancedVisualDesign }),
     visionData: {
       textCount: visionData.textAnnotations.length,
       hasLogos: visionData.logoAnnotations.length > 0,
@@ -442,28 +485,215 @@ function rgbToHex(color: any): string {
   return '#' + toHex(color.red) + toHex(color.green) + toHex(color.blue);
 }
 
-// MAIN ENHANCED FUNCTION WITH 3-PROMPT CHAIN - ChatGPT feedback #1, #2, #3, #4
-export async function analyzeImage(imageUrl: string): Promise<ZombifyAnalysis> {
+// NEW: Calculate string similarity (simple Levenshtein-based approach)
+function calculateSimilarity(str1: string, str2: string): number {
+  const s1 = str1.toLowerCase().trim();
+  const s2 = str2.toLowerCase().trim();
+  
+  // Quick exact match check
+  if (s1 === s2) return 1;
+  
+  // Simple word overlap similarity
+  const words1 = s1.split(/\s+/);
+  const words2 = s2.split(/\s+/);
+  const set1 = new Set(words1);
+  const set2 = new Set(words2);
+  
+  const intersection = new Set([...set1].filter(x => set2.has(x)));
+  const union = new Set([...set1, ...set2]);
+  
+  // Jaccard similarity coefficient
+  return intersection.size / union.size;
+}
+
+// NEW: Check if two insights are similar (>80% threshold)
+function isSimilarInsight(insightA: string, insightB: string): boolean {
+  return calculateSimilarity(insightA, insightB) > 0.8;
+}
+
+// ENHANCED: Cross-reference checker with similarity detection
+function checkForDuplication(modules: any): Map<string, Set<string>> {
+  const insightsByModule = new Map<string, string[]>();
+  const duplicatesByModule = new Map<string, Set<string>>();
+  
+  // Collect all insights by module
+  if (modules.darkPatterns?.length > 0) {
+    insightsByModule.set('darkPatterns', modules.darkPatterns.map((dp: DarkPattern) => dp.evidence));
+  }
+  
+  if (modules.issuesAndFixes?.length > 0) {
+    insightsByModule.set('issuesAndFixes', modules.issuesAndFixes.map((issue: Issue) => issue.issue));
+  }
+  
+  if (modules.uxCopyInsights?.issues?.length > 0) {
+    insightsByModule.set('uxCopyInsights', modules.uxCopyInsights.issues.map((issue: any) => issue.issue));
+  }
+  
+  if (modules.behavioralInsights?.length > 0) {
+    insightsByModule.set('behavioralInsights', modules.behavioralInsights.map((insight: any) => insight.observation));
+  }
+  
+  if (modules.opportunities?.length > 0) {
+    insightsByModule.set('opportunities', modules.opportunities.map((opp: any) => opp.opportunity));
+  }
+  
+  // Check for similar insights across all modules
+  const allInsights: Array<{module: string, insight: string}> = [];
+  insightsByModule.forEach((insights, module) => {
+    insights.forEach(insight => {
+      allInsights.push({module, insight});
+    });
+  });
+  
+  // Find duplicates using similarity check
+  for (let i = 0; i < allInsights.length; i++) {
+    for (let j = i + 1; j < allInsights.length; j++) {
+      if (isSimilarInsight(allInsights[i].insight, allInsights[j].insight)) {
+        // Mark the second occurrence as duplicate
+        const moduleWithDupe = allInsights[j].module;
+        if (!duplicatesByModule.has(moduleWithDupe)) {
+          duplicatesByModule.set(moduleWithDupe, new Set());
+        }
+        duplicatesByModule.get(moduleWithDupe)!.add(allInsights[j].insight);
+        
+        console.log(`[DUPLICATE] Similar insights found:
+          Module ${allInsights[i].module}: "${allInsights[i].insight.substring(0, 50)}..."
+          Module ${allInsights[j].module}: "${allInsights[j].insight.substring(0, 50)}..."`);
+      }
+    }
+  }
+  
+  return duplicatesByModule;
+}
+
+// NEW: Calculate module strength based on content quality
+function calculateModuleStrength(moduleData: any, moduleName: string): number {
+  if (!moduleData) return 0;
+  
+  // Base scoring criteria
+  let score = 0;
+  
+  switch (moduleName) {
+    case 'issuesAndFixes':
+      if (Array.isArray(moduleData) && moduleData.length > 0) {
+        score = Math.min(5, Math.ceil(moduleData.length / 2));
+        // Reduce score if issues are generic
+        const hasSpecificEvidence = moduleData.some((i: Issue) => i.evidence && i.evidence.length > 20);
+        if (!hasSpecificEvidence) score = Math.max(1, score - 2);
+      }
+      break;
+      
+    case 'uxCopyInsights':
+      if (moduleData.issues && moduleData.issues.length > 0) {
+        score = Math.min(5, Math.ceil(moduleData.issues.length / 2));
+        // Boost if audience alignment is clear
+        if (moduleData.audienceAlignment?.toneMismatch < 30) score = Math.min(5, score + 1);
+      }
+      break;
+      
+    case 'visualDesign':
+      if (moduleData.score > 0) {
+        score = Math.ceil(moduleData.score / 20); // Convert 0-100 to 1-5
+        // Reduce if no specific issues found
+        const hasIssues = moduleData.typography?.issues?.length > 0 || 
+                         moduleData.colorAndContrast?.contrastFailures?.length > 0;
+        if (!hasIssues && score > 3) score = 3;
+      }
+      break;
+      
+    case 'darkPatterns':
+      if (Array.isArray(moduleData)) {
+        score = moduleData.length > 0 ? Math.min(5, moduleData.length + 2) : 0;
+      }
+      break;
+      
+    case 'behavioralInsights':
+      if (Array.isArray(moduleData) && moduleData.length > 0) {
+        score = Math.min(5, Math.ceil(moduleData.length * 1.5));
+        // Boost for high emotional intensity
+        const hasHighIntensity = moduleData.some((b: EnhancedBehavioralInsight) => 
+          b.emotionalImpact?.intensity >= 7
+        );
+        if (hasHighIntensity) score = Math.min(5, score + 1);
+      }
+      break;
+      
+    case 'accessibility':
+      if (moduleData && moduleData.score !== undefined) {
+        score = moduleData.score > 80 ? 2 : moduleData.score > 60 ? 3 : 4;
+        // Boost if critical failures found
+        if (moduleData.criticalFailures?.length > 0) score = Math.min(5, score + 1);
+      }
+      break;
+      
+    case 'opportunities':
+      if (Array.isArray(moduleData) && moduleData.length > 0) {
+        score = Math.min(5, Math.ceil(moduleData.length / 2));
+      }
+      break;
+      
+    case 'frictionPoints':
+      if (Array.isArray(moduleData) && moduleData.length > 0) {
+        score = Math.min(5, moduleData.length + 1);
+        // Boost for high dropoff risk
+        const hasHighRisk = moduleData.some((f: any) => f.dropoffRisk === 'HIGH');
+        if (hasHighRisk) score = Math.min(5, score + 1);
+      }
+      break;
+      
+    case 'generationalAnalysis':
+      if (moduleData.scores && Object.keys(moduleData.scores).length > 0) {
+        // Average the generation scores
+        const scores = Object.values(moduleData.scores).map((g: any) => g.score || 0);
+        const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+        score = avgScore > 70 ? 3 : avgScore > 50 ? 4 : 5; // Inverse - lower scores = more issues
+      }
+      break;
+      
+    default:
+      score = 1;
+  }
+  
+  return Math.max(1, Math.min(5, Math.round(score)));
+}
+
+// MAIN ENHANCED FUNCTION WITH FIXED 3-PROMPT CHAIN
+export async function analyzeImage(
+  imageUrl: string, 
+  userContext?: string,
+  previousAnalysis?: ZombifyAnalysis // For future multi-upload comparison
+): Promise<ZombifyAnalysis> {
   console.log('[ANALYZE_IMAGE] Starting enhanced 3-stage prompt chain analysis for:', imageUrl);
+  if (userContext) {
+    console.log('[ANALYZE_IMAGE] User context provided:', userContext);
+  }
+  if (previousAnalysis) {
+    console.log('[ANALYZE_IMAGE] Previous analysis provided for future comparison features');
+    // TODO: Implement analyzeChange() logic here in future iterations
+    // This would compare previousAnalysis with new results to detect:
+    // - Regressions vs improvements
+    // - Persistent issues vs resolved ones
+    // - Behavioral shifts over time
+  }
   
   try {
     // Step 1: Run Vision API FIRST to get element data
     console.log('[ANALYZE_IMAGE] Starting Vision API analysis...');
     const visionData = await analyzeImageWithVision(imageUrl);
     
-    // Step 2: Prepare Vision context - ChatGPT feedback #4 (mandatory usage)
+    // Step 2: Prepare Vision context
     let visionContext = '';
     if (visionData) {
       visionContext = `
-VISION API DATA AVAILABLE - MANDATORY TO USE:
+VISION API DATA AVAILABLE - YOU MUST USE THIS DATA:
 - Detected ${visionData.textAnnotations.length} text elements
 - Found ${visionData.logoAnnotations.length} logos/brand elements
 - Dominant colors: ${visionData.imageProperties.dominantColors.slice(0, 3).map(c => 
   `rgb(${c.color.red},${c.color.green},${c.color.blue})`
 ).join(', ')}
-- Text elements: ${visionData.textAnnotations.slice(0, 15).map(t => t.text).join(', ')}${visionData.textAnnotations.length > 15 ? '...' : ''}
+- Text elements: ${visionData.textAnnotations.slice(0, 15).map(t => `"${t.text}"`).join(', ')}${visionData.textAnnotations.length > 15 ? '...' : ''}
 
-MANDATORY: Use this data to make your analysis more specific and accurate. Do not guess about text, colors, or layout without referencing this data.
+CRITICAL: Reference this actual text and color data in your analysis. Do not make up elements you cannot see.
 `;
     }
     
@@ -475,9 +705,105 @@ MANDATORY: Use this data to make your analysis more specific and accurate. Do no
     }
     
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    
+    // Parse user context if provided - let GPT infer this intelligently
+    let contextPrompt = '';
+    
+    if (userContext) {
+      console.log('[CONTEXT] User provided context:', userContext);
+      contextPrompt = `
+USER CONTEXT PROVIDED: "${userContext}"
 
-    // STAGE 1: OBSERVATION - ChatGPT feedback #1 (break into stages)
+IMPORTANT: Use this context to understand what the user is trying to achieve. Infer:
+1. The type of interface (don't limit to predefined categories - be specific)
+2. The strategic goal (what success looks like for this interface)
+3. The target audience and use case
+4. Any specific concerns or focus areas mentioned
+
+Let this context guide your analysis to be more relevant and actionable.
+`;
+    }
+
+    // STAGE 1: OBSERVATION WITH FIXED ATTENTION FLOW
     console.log('[ANALYZE_IMAGE] Stage 1: Observation');
+    const observationPrompt = `You are a glitchy oracle who's seen 10,000 failed startups. Your job is to decode interface psychology with brutal honesty.
+
+${visionContext}
+${contextPrompt}
+
+STAGE 1 - OBSERVE: Examine this interface with surgical precision.
+
+First, deliver ONE brutal sentence that captures the core truth about this interface - the insight that makes users either engage or flee.
+
+${userContext ? `
+CONTEXT PARSING TASK:
+The user described their interface as: "${userContext}"
+From this description, infer:
+- interfaceType: What category of interface is this? (e.g., "E-COMMERCE_CHECKOUT", "ONBOARDING_FORM", "ANALYTICS_DASHBOARD", "MARKETING_LANDING", etc.)
+- strategicIntent: What's the primary goal? (e.g., "CONVERSION", "TRUST_BUILDING", "EDUCATION", "RETENTION", "ENGAGEMENT", etc.)
+Be specific - don't limit to generic categories.
+` : ''}
+
+Then observe:
+1. What type of interface is this? Be specific - don't just say "dashboard" or "form"
+2. ${userContext ? 'How does your observation align with the user\'s description?' : ''}
+3. Visual hierarchy - map the EXACT attention flow (3-6 elements minimum)
+4. What emotions does the design trigger?
+5. What text/CTAs can you see from Vision data?
+6. Is this modern or dated? Why?
+
+CRITICAL FOR ATTENTION FLOW:
+- List 3-6 elements in order of visual dominance
+- Consider: size, color contrast, position, whitespace
+- First element = what eyes land on immediately
+- Include actual element names from Vision data
+
+Return this JSON:
+
+{
+  "punchline": "One brutal truth about this interface that users feel immediately",
+  "context": "Specific interface type based on what you observe",
+  "industry": "Best guess at industry/vertical",
+  "industryConfidence": 0.85,
+  ${userContext ? '"interfaceType": "Inferred category from user context (be specific)",' : ''}
+  ${userContext ? '"strategicIntent": "Inferred primary goal from user context",' : ''}
+  "visualObservations": {
+    "attentionFlow": [
+      {
+        "priority": 1,
+        "element": "Exact element name from Vision data",
+        "reasoning": "Large size + high contrast + center position",
+        "timeSpent": "2-3 seconds",
+        "focusWeight": "HIGH"
+      },
+      {
+        "priority": 2,
+        "element": "Second most prominent element",
+        "reasoning": "Why this draws attention second",
+        "timeSpent": "1-2 seconds",
+        "focusWeight": "MEDIUM"
+      },
+      {
+        "priority": 3,
+        "element": "Third element in visual hierarchy",
+        "reasoning": "Visual reasoning",
+        "timeSpent": "1 second",
+        "focusWeight": "LOW"
+      }
+    ],
+    "textElements": ["exact text from Vision data only"],
+    "ctaElements": ["actual CTA text if present"],
+    "dominantColors": ["primary", "secondary", "accent"],
+    "designStyle": "modern|outdated|professional|amateur",
+    "emotionalTriggers": ["specific emotions the design evokes"]
+  },
+  "firstImpressionScore": 75,
+  "reasoning": "Why users react this way in first 3 seconds"
+}`;
+    
+    // Generate prompt hash for tracking
+    const observationPromptHash = generatePromptHash(observationPrompt);
+    
     const observationResponse = await openai.chat.completions.create({
       model: 'gpt-4o',
       temperature: 0.3,
@@ -488,48 +814,7 @@ MANDATORY: Use this data to make your analysis more specific and accurate. Do no
           content: [
             {
               type: 'text',
-              text: `You are a glitchy oracle who's seen 10,000 failed startups. You are not here to be polite. Your job is to decode interface psychology with brutal honesty.
-
-${visionContext}
-
-STAGE 1 - OBSERVE: Examine this interface with ruthless precision.
-
-First, in 1 brutal sentence, state the most critical insight about this interface. Don't hold back. This is your punchline that will hit users in the face.
-
-Then systematically observe:
-- Interface type and industry context
-- Visual hierarchy and attention flow (what draws eyes first, second, third)
-- Text elements, CTA placement, and messaging tone
-- Color psychology and emotional triggers
-- Modern vs outdated design patterns
-- Specific elements you can see using the Vision data
-
-Return this JSON structure:
-
-{
-  "punchline": "One brutal sentence that captures the biggest insight - this will be the opening line",
-  "context": "LANDING_PAGE|DASHBOARD|FORM|ECOMMERCE|MOBILE|etc",
-  "industry": "SAAS|ECOMMERCE|FINTECH|HEALTHCARE|etc",
-  "industryConfidence": 0.85,
-  "visualObservations": {
-    "attentionFlow": [
-      {
-        "priority": 1,
-        "element": "Specific element name from Vision data",
-        "reasoning": "Why this draws attention first",
-        "timeSpent": "2-3 seconds evaluation time",
-        "conversionImpact": "HIGH"
-      }
-    ],
-    "textElements": ["exact text you can see from Vision data"],
-    "ctaElements": ["specific call-to-action text"],
-    "dominantColors": ["primary color", "secondary", "accent"],
-    "designStyle": "modern|outdated|professional|amateur|etc",
-    "emotionalTriggers": ["urgency", "trust", "fear", "excitement"]
-  },
-  "firstImpressionScore": 75,
-  "reasoning": "Why users will react this way in the first 3 seconds"
-}`
+              text: observationPrompt
             },
             {
               type: 'image_url',
@@ -543,7 +828,7 @@ Return this JSON structure:
     const observationData = extractAndParseJSON(observationResponse.choices[0]?.message?.content || '{}');
     console.log('[ANALYZE_IMAGE] Stage 1 complete - Observation data captured');
 
-    // STAGE 2: INTERPRETATION - ChatGPT feedback #1 (psychology and strategy)
+    // STAGE 2: INTERPRETATION WITH DARK PATTERN DETECTION
     console.log('[ANALYZE_IMAGE] Stage 2: Interpretation');
     const interpretationResponse = await openai.chat.completions.create({
       model: 'gpt-4o',
@@ -555,79 +840,97 @@ Return this JSON structure:
           content: [
             {
               type: 'text',
-              text: `You are a ruthless UX psychologist. The interface has been observed. Now decode what's happening in users' minds.
+              text: `You are a ruthless UX psychologist analyzing user manipulation and emotional response.
 
 OBSERVATION DATA:
 ${JSON.stringify(observationData, null, 2)}
 
 ${visionContext}
 
-STAGE 2 - INTERPRET: Analyze the psychological warfare happening here.
+STAGE 2 - INTERPRET: Decode the psychological warfare.
 
-Focus on:
-- What emotions is this triggering and why? (MUST include intensity 1-10)
-- What behavioral patterns will this create?
-- How do different generations respond to these design choices?
-- What dark patterns or manipulative tactics are present?
-- Where is business intent misaligned with user perception?
+Analyze:
+1. Primary emotion triggered (with 1-10 intensity)
+2. How users will actually behave vs intended behavior
+3. Dark patterns - ENHANCED DETECTION with risk assessment:
+   For each potential dark pattern, evaluate:
+   - manipulativeness: 1-10 scale (how much it exploits psychology)
+   - intent: true/false (is it deceptive?)
+   - impact: LOW/MEDIUM/HIGH (harm to user goals)
+   
+   ONLY flag as dark pattern if ALL conditions met:
+   - manipulativeness >= 6
+   - intent === true
+   - impact === MEDIUM or HIGH
+   
+   Include fallbackExplanation for why something was/wasn't flagged
+4. Business intent vs user perception alignment
+5. Generational responses to design
 
-Return this JSON structure:
+Return JSON:
 
 {
   "psychologicalAnalysis": {
     "primaryEmotion": "trust|anxiety|excitement|confusion|frustration|delight|anticipation|skepticism",
     "intensity": 7,
-    "reasoning": "Specific design elements causing this emotional response with evidence from Vision data",
-    "behavioralPrediction": "How users will actually behave vs intended behavior"
+    "reasoning": "Specific elements from Vision data causing this emotion",
+    "behavioralPrediction": "Users will likely... vs business wants them to..."
   },
   "generationalBreakdown": {
     "genAlpha": {
       "score": 45,
-      "reasoning": "Why this appeals/doesn't appeal with specific evidence",
-      "specificIssues": ["Static layout lacks interactivity", "No gamification"],
-      "improvements": "Add micro-animations and interactive elements"
+      "reasoning": "Lacks gamification and instant gratification elements",
+      "specificIssues": ["No interactive elements", "Static design"],
+      "improvements": "Add micro-interactions and achievement systems"
     },
     "genZ": {
       "score": 72,
-      "reasoning": "Gen Z appeal analysis with evidence",
-      "specificIssues": ["Lacks social proof", "Missing authenticity markers"],
-      "improvements": "Add user testimonials and authentic imagery"
+      "reasoning": "Visual-first but missing authenticity markers",
+      "specificIssues": ["Stock photos", "Corporate tone"],
+      "improvements": "Use real user content and casual language"
     },
     "millennials": {
       "score": 85,
-      "reasoning": "Millennial compatibility with evidence",
+      "reasoning": "Clear value prop and efficiency-focused",
       "specificIssues": ["Could use more personalization"],
       "improvements": "Add customization options"
     },
     "genX": {
       "score": 78,
-      "reasoning": "Gen X appeal with evidence",
-      "specificIssues": ["Needs more detailed information"],
-      "improvements": "Add comprehensive feature details"
+      "reasoning": "Professional but needs more details",
+      "specificIssues": ["Missing comprehensive features list"],
+      "improvements": "Add detailed specifications"
     },
     "boomers": {
       "score": 65,
-      "reasoning": "Boomer accessibility and appeal",
-      "specificIssues": ["Text may be too small", "Complex navigation"],
-      "improvements": "Increase text size and simplify navigation"
+      "reasoning": "Text could be larger, navigation complex",
+      "specificIssues": ["Small fonts", "Unclear navigation"],
+      "improvements": "Increase text size, simplify menu"
     }
   },
   "darkPatterns": [
     {
       "type": "URGENCY_MANIPULATION",
       "severity": "HIGH",
-      "element": "Specific text from Vision data showing fake urgency",
-      "evidence": "What makes this manipulative with proof",
-      "impact": "How this damages user trust and long-term business",
-      "ethicalAlternative": "Honest alternative approach that builds trust"
+      "element": "Exact text showing fake urgency",
+      "location": "Where this appears",
+      "evidence": "Timer resets on refresh + no real inventory",
+      "impact": "Erodes trust when users discover deception",
+      "ethicalAlternative": "Show real inventory or remove timer",
+      "riskLevel": "HIGH",
+      "manipulativeness": 8,
+      "intent": true,
+      "impactLevel": "HIGH",
+      "fallbackExplanation": "Flagged because it uses false scarcity (manipulativeness=8) with deceptive intent to pressure purchases"
     }
   ],
   "intentAnalysis": {
-    "perceivedPurpose": "What users think this interface is for based on visual cues",
-    "actualPurpose": "Likely business intention based on structure",
-    "alignmentScore": 75,
-    "misalignments": ["Specific areas where purpose is unclear"],
-    "clarityImprovements": ["How to make intent clearer"]
+    "perceivedPurpose": "What users think this is for",
+    "actualPurpose": "What business actually wants",
+    "clarity": "clear|mixed|unclear",
+    "alignmentScore": 3,
+    "misalignments": ["Specific conflicts between perception and intent"],
+    "clarityImprovements": ["How to align user and business goals"]
   }
 }`
             },
@@ -643,7 +946,7 @@ Return this JSON structure:
     const interpretationData = extractAndParseJSON(interpretationResponse.choices[0]?.message?.content || '{}');
     console.log('[ANALYZE_IMAGE] Stage 2 complete - Psychological analysis captured');
 
-    // STAGE 3: RECOMMENDATIONS - ChatGPT feedback #1 (actionable fixes)
+    // STAGE 3: RECOMMENDATIONS WITH DEDUPLICATION
     console.log('[ANALYZE_IMAGE] Stage 3: Recommendations');
     const recommendationsResponse = await openai.chat.completions.create({
       model: 'gpt-4o',
@@ -655,7 +958,7 @@ Return this JSON structure:
           content: [
             {
               type: 'text',
-              text: `You are a conversion optimization specialist. Time to fix this interface's problems with surgical precision.
+              text: `You are a conversion optimization specialist providing surgical fixes.
 
 OBSERVATION DATA:
 ${JSON.stringify(observationData, null, 2)}
@@ -664,171 +967,221 @@ INTERPRETATION DATA:
 ${JSON.stringify(interpretationData, null, 2)}
 
 ${visionContext}
+${contextPrompt}
 
-STAGE 3 - RECOMMEND: Provide surgical fixes that boost conversions.
+STAGE 3 - RECOMMEND: Provide actionable fixes with NO DUPLICATION.
 
-Focus on:
-- Critical issues that kill conversions with EXACT locations
-- Specific copy improvements with before/after examples
-- Visual hierarchy fixes with precise positioning
-- Psychological optimization tactics
-- Growth opportunities that increase revenue
-- Friction points in the user journey
+CRITICAL RULES:
+1. Each insight should appear ONLY ONCE across all sections
+2. Visual design should focus on spacing, typography, layout - NOT copy issues
+3. UX copy should focus on messaging and tone - NOT visual presentation
+4. Don't assume everything is about conversion - respect the interface type
+5. Score each module's quality (1-5) based on how useful the insights are
+6. Include clarity flags (true/false) for confidence in each analysis
 
-Return this JSON structure:
+Return JSON:
 
 {
   "gripScore": {
     "overall": 75,
     "breakdown": {
-      "firstImpression": {"score": 80, "reasoning": "Clear assessment with evidence", "evidence": ["Specific visual elements supporting this score"]},
-      "usability": {"score": 70, "reasoning": "Task completion ease assessment", "evidence": ["Navigation clarity evidence"]},
-      "trustworthiness": {"score": 75, "reasoning": "Professional credibility assessment", "evidence": ["Trust signals present"]},
-      "conversion": {"score": 65, "reasoning": "Action-driving effectiveness", "evidence": ["CTA prominence issues"]},
-      "accessibility": {"score": 60, "reasoning": "Inclusive design assessment", "evidence": ["Contrast and text size issues"]}
+      "firstImpression": {"score": 80, "reasoning": "Clear value prop but overwhelming options", "evidence": ["Large hero text visible", "Multiple CTAs competing"]},
+      "usability": {"score": 70, "reasoning": "Navigation clear but form complex", "evidence": ["Menu structure logical", "Form has 12 fields"]},
+      "trustworthiness": {"score": 75, "reasoning": "Professional design but lacks social proof", "evidence": ["Clean layout", "No testimonials found"]},
+      "conversion": {"score": 65, "reasoning": "CTAs present but not optimally placed", "evidence": ["CTA below fold", "Weak action words"]},
+      "accessibility": {"score": 60, "reasoning": "Poor color contrast and small text", "evidence": ["Gray on white text", "14px font size"]}
+    }
+  },
+  "perceptionLayer": {
+    "primaryEmotion": {
+      "type": "${interpretationData.psychologicalAnalysis?.primaryEmotion || 'confusion'}",
+      "intensity": ${interpretationData.psychologicalAnalysis?.intensity || 5}
+    },
+    "attentionFlow": ${JSON.stringify(observationData.visualObservations?.attentionFlow || [])},
+    "clarityFlags": {
+      "uxCopy": true,
+      "visual": true,
+      "darkPattern": true,
+      "behavioral": true,
+      "accessibility": true
     }
   },
   "verdict": {
-    "summary": "The brutal punchline from observation + main strength and critical weakness combined",
-    "attentionSpan": "2-3 minutes for focused users, 30 seconds for browsers",
-    "likelyAction": "Most probable user behavior on this interface",
-    "dropoffPoint": "Where users are most likely to abandon",
-    "memorable": "What users remember after leaving",
-    "attentionFlow": [
-      {
-        "priority": 1,
-        "element": "Specific element from Vision data",
-        "reasoning": "Why this draws attention first with evidence",
-        "timeSpent": "2-3 seconds evaluation time",
-        "conversionImpact": "HIGH"
-      }
-    ]
+    "summary": "${observationData.punchline} The ${interpretationData.psychologicalAnalysis?.primaryEmotion || 'confused'} user faces ${interpretationData.darkPatterns?.length || 0} manipulation tactics while trying to ${interpretationData.intentAnalysis?.perceivedPurpose || 'complete their task'}.",
+    "attentionSpan": "Power users: 3-5 minutes. Casual visitors: 15-30 seconds before bounce.",
+    "likelyAction": "Most will ${interpretationData.psychologicalAnalysis?.behavioralPrediction || 'leave confused'}",
+    "dropoffPoint": "Primary abandonment at ${observationData.visualObservations?.attentionFlow?.[2]?.element || 'third element'}",
+    "memorable": "The ${observationData.visualObservations?.emotionalTriggers?.[0] || 'confusion'} from ${observationData.visualObservations?.attentionFlow?.[0]?.element || 'main element'}",
+    "attentionFlow": ${JSON.stringify(observationData.visualObservations?.attentionFlow || [])}
   },
-  "criticalIssues": [
+  "issuesAndFixes": [
     {
       "severity": 3,
-      "category": "HIERARCHY|ACCESSIBILITY|CONVERSION|TRUST|USABILITY",
-      "issue": "Specific problem with precise description",
+      "category": "HIERARCHY",
+      "issue": "Most critical usability/hierarchy problem (not copy or visual style)",
+      "area": "Specific interface section",
       "location": {
-        "element": "Exact element from Vision data you can see",
-        "region": "Top-left header|Center CTA|Main content area|etc"
+        "element": "Exact element name from Vision data",
+        "region": "Top header|Main content|etc"
       },
-      "impact": "How this hurts business goals with metrics",
-      "evidence": "What you observe from Vision data that proves this",
+      "impact": "Quantified business impact",
+      "evidence": "What proves this is a problem",
       "fix": {
-        "immediate": "Quick fix available now",
-        "better": "Optimal solution with more effort",
-        "implementation": "Step-by-step how to implement the better solution"
+        "immediate": "Quick fix in 1 day",
+        "better": "Optimal fix in 1 week",
+        "implementation": "Step-by-step implementation"
       }
     }
   ],
-  "uxCopyAnalysis": {
+  "uxCopyInsights": {
     "score": 70,
     "audienceAlignment": {
-      "detectedAudience": "Professional|Consumer|GenZ|Corporate|etc",
-      "copyStyle": "Formal|Casual|Technical|Friendly|etc",
-      "brandArchetype": "Hero|Expert|Caregiver|Rebel|etc",
-      "toneMismatch": 65
+      "detectedAudience": "Professional|Consumer|Technical|etc",
+      "copyStyle": "Formal|Casual|Technical|etc",
+      "brandArchetype": "Expert|Friend|Guide|etc",
+      "toneMismatch": 35
     },
     "issues": [
       {
         "severity": "HIGH",
         "element": "Exact text from Vision data",
-        "location": "Where this text appears",
-        "issue": "Why this copy doesn't work",
-        "psychologicalImpact": "How this affects user emotions/behavior",
+        "location": "Where this appears",
+        "issue": "Why this copy fails (focus on messaging, not visuals)",
+        "psychologicalImpact": "How this affects user emotions",
         "audienceSpecific": {
-          "genZ": "Alternative for Gen Z users",
-          "millennial": "Alternative for Millennials",
-          "corporate": "Alternative for business users"
+          "genZ": "Rewrite for Gen Z",
+          "millennial": "Rewrite for Millennials",
+          "corporate": "Rewrite for B2B"
         },
-        "suggested": ["Better alternative 1", "Better alternative 2"],
-        "impact": "Expected improvement from change",
-        "reasoning": "UX writing principle applied"
+        "suggested": ["Better option 1", "Better option 2"],
+        "impact": "Expected improvement",
+        "reasoning": "UX writing principle"
       }
     ],
     "microCopyOpportunities": [
       {
         "type": "ERROR_MESSAGING",
-        "current": "Current text from interface",
+        "current": "Current message",
         "location": "Where it appears",
-        "issue": "Why current copy is suboptimal",
-        "improved": "Better version",
-        "reasoning": "Psychological principle"
+        "issue": "Why it's unclear",
+        "improved": "Clearer version",
+        "reasoning": "UX principle applied"
       }
     ],
     "writingTone": {
-      "current": "Observed tone from text analysis",
-      "recommended": "Better tone for target audience",
-      "example": "Specific rewrite example"
+      "current": "Observed tone",
+      "recommended": "Better tone for audience",
+      "example": "Specific rewrite"
     }
+  },
+  "visualDesign": {
+    "score": 75,
+    "typography": {
+      "score": 80,
+      "issues": [],
+      "hierarchy": {"h1ToH2Ratio": 1.5, "consistencyScore": 85, "recommendation": "Hierarchy is clear"},
+      "readability": {"fleschScore": 65, "avgLineLength": 12, "recommendation": "Good readability"}
+    },
+    "colorAndContrast": {
+      "score": 70,
+      "contrastFailures": [],
+      "colorHarmony": {"scheme": "Complementary", "brandColors": ["#actual colors"], "accentSuggestion": "Add warmer accent"}
+    },
+    "spacing": {"score": 75, "gridSystem": "CSS Grid", "consistency": 80, "issues": []},
+    "modernPatterns": {"detected": ["Cards", "Gradients"], "implementation": {}, "trendAlignment": {"2025Relevance": 70, "suggestions": ["Add glassmorphism"]}},
+    "visualHierarchy": {"scanPattern": "F-pattern", "focalPoints": [{"element": "Hero", "weight": 9}], "improvements": []},
+    "tileFeedback": [
+      {
+        "area": "Navigation bar",
+        "feedback": "Items spaced inconsistently - standardize to 24px gaps for cleaner look",
+        "confidence": 0.9
+      },
+      {
+        "area": "Hero section",
+        "feedback": "Strong focal point with clear visual hierarchy directing eyes to headline first",
+        "confidence": 0.85
+      },
+      {
+        "area": "Button styling",
+        "feedback": "Primary CTA could be 20% larger to improve thumb-tap accuracy on mobile",
+        "confidence": 0.8
+      },
+      {
+        "area": "Footer",
+        "feedback": "Text at 12px is too small for comfortable mobile reading - increase to 14px minimum",
+        "confidence": 0.9
+      }
+    ]
   },
   "opportunities": [
     {
-      "category": "CONVERSION|ENGAGEMENT|TRUST|PERSONALIZATION",
-      "opportunity": "Revenue-boosting enhancement with specific details",
-      "potentialImpact": "Expected business benefit with estimated impact",
-      "implementation": "Detailed how to implement",
-      "reasoning": "Why this matters strategically",
+      "category": "ENGAGEMENT",
+      "opportunity": "Unique growth opportunity not mentioned elsewhere",
+      "potentialImpact": "Could increase engagement by 25%",
+      "implementation": "Specific steps to implement",
+      "reasoning": "Why this works for this interface",
       "location": {
-        "element": "Where to make this change",
-        "region": "Specific area of interface"
+        "element": "Where to add this",
+        "region": "Section of interface"
       }
     }
   ],
   "frictionPoints": [
     {
-      "stage": "AWARENESS|CONSIDERATION|DECISION|ACTION",
-      "friction": "Specific barrier preventing user success",
-      "evidence": "What creates this friction with proof from Vision data",
-      "dropoffRisk": "HIGH|MEDIUM|LOW",
-      "quickFix": "Immediate improvement available",
-      "impact": "Expected improvement from fixing this"
+      "stage": "AWARENESS",
+      "friction": "Users don't understand the value prop",
+      "evidence": "Headline uses jargon: '${observationData.visualObservations?.textElements?.[0] || 'technical terms'}'",
+      "dropoffRisk": "HIGH",
+      "quickFix": "Rewrite in plain language",
+      "impact": "30% better comprehension"
     }
   ],
   "behavioralInsights": [
     {
-      "pattern": "Specific user behavior pattern observed",
-      "observation": "What in the design triggers this behavior",
-      "psychology": "Psychological principle explaining why this happens",
+      "pattern": "Analysis paralysis from too many options",
+      "observation": "${observationData.visualObservations?.ctaElements?.length || 3} CTAs compete for attention",
+      "psychology": "Paradox of choice creates decision fatigue",
       "emotionalImpact": {
-        "primaryEmotion": "From interpretation data",
-        "intensity": "From interpretation data",
-        "reasoning": "From interpretation data"
+        "primaryEmotion": "${interpretationData.psychologicalAnalysis?.primaryEmotion || 'confusion'}",
+        "intensity": ${interpretationData.psychologicalAnalysis?.intensity || 5},
+        "reasoning": "${interpretationData.psychologicalAnalysis?.reasoning || 'Multiple competing elements'}"
       },
-      "recommendation": "How to optimize for better behavioral outcomes"
+      "recommendation": "Reduce to single primary CTA with clear hierarchy"
     }
   ],
-  "visualDesignAnalysis": {
-    "score": 80,
-    "typography": {
-      "score": 85,
-      "issues": [],
-      "hierarchy": {"h1ToH2Ratio": 1.5, "consistencyScore": 90, "recommendation": "Typography hierarchy assessment"},
-      "readability": {"fleschScore": 65, "avgLineLength": 12, "recommendation": "Readability assessment"}
-    },
-    "colorAndContrast": {
-      "score": 75,
-      "contrastFailures": [],
-      "colorHarmony": {"scheme": "Complementary", "brandColors": ["#colors from Vision data"], "accentSuggestion": "How to improve colors"}
-    },
-    "spacing": {"score": 80, "gridSystem": "CSS Grid|Flexbox|Custom", "consistency": 85, "issues": []},
-    "modernPatterns": {"detected": ["Modern patterns seen"], "implementation": {}, "trendAlignment": {"2025Relevance": 70, "suggestions": ["Modernization tips"]}},
-    "visualHierarchy": {"scanPattern": "F-pattern|Z-pattern", "focalPoints": [{"element": "Main focus", "weight": 9}], "improvements": []}
-  },
-  "accessibilityAudit": {
+  "darkPatterns": [
+    {
+      "type": "URGENCY_MANIPULATION",
+      "severity": "HIGH", 
+      "element": "Exact element from Vision data",
+      "location": "Where this appears",
+      "evidence": "What makes this manipulative",
+      "impact": "How this affects users",
+      "ethicalAlternative": "Better approach",
+      "riskLevel": "HIGH"
+    }
+  ],
+  "accessibility": {
     "score": 65,
     "wcagLevel": "AA",
-    "strengths": ["What accessibility works well"],
-    "weaknesses": ["What needs improvement"],
+    "strengths": ["Semantic HTML structure"],
+    "weaknesses": ["Poor color contrast", "Small text"],
     "criticalFailures": [],
     "recommendations": [
-      {
-        "priority": "HIGH",
-        "action": "Specific accessibility improvement",
-        "effort": "LOW"
-      }
+      {"priority": "HIGH", "action": "Increase text contrast to 4.5:1", "effort": "LOW"},
+      {"priority": "MEDIUM", "action": "Add alt text to images", "effort": "LOW"}
     ]
+  },
+  "moduleStrength": {
+    "issuesAndFixes": 4,
+    "uxCopyInsights": 3,
+    "visualDesign": 4,
+    "darkPatterns": 0,
+    "accessibility": 3,
+    "opportunities": 3,
+    "frictionPoints": 4,
+    "behavioralInsights": 4,
+    "generationalAnalysis": 3
   }
 }`
             },
@@ -844,194 +1197,189 @@ Return this JSON structure:
     const recommendationsData = extractAndParseJSON(recommendationsResponse.choices[0]?.message?.content || '{}');
     console.log('[ANALYZE_IMAGE] Stage 3 complete - Recommendations captured');
 
-    // COMBINE ALL THREE STAGES - ChatGPT feedback #3 (brutal punchline first)
+    // COMBINE ALL THREE STAGES
     console.log('[ANALYZE_IMAGE] Combining all stages into final analysis...');
     
-    // Debug logging for data validation
-    console.log('[DEBUG] Stage data validation:', {
-      hasObservationData: !!observationData,
-      hasObservationPunchline: !!observationData?.punchline,
-      observationContext: observationData?.context,
-      observationIndustry: observationData?.industry,
-      hasInterpretationData: !!interpretationData,
-      hasPsychologicalAnalysis: !!interpretationData?.psychologicalAnalysis,
-      hasRecommendationsData: !!recommendationsData,
-      hasGripScore: !!recommendationsData?.gripScore
-    });
+    // Process dark patterns with enhanced risk data
+    const processedDarkPatterns = (interpretationData.darkPatterns || []).map((dp: any) => ({
+      type: dp.type,
+      severity: dp.severity || (dp.riskLevel === 'HIGH' ? 'HIGH' : dp.riskLevel === 'MEDIUM' ? 'MEDIUM' : 'LOW'),
+      element: dp.element,
+      location: dp.location,
+      evidence: dp.evidence,
+      impact: dp.impact,
+      ethicalAlternative: dp.ethicalAlternative,
+      // Add enhanced risk fields
+      riskLevel: dp.riskLevel || 'MEDIUM',
+      fallbackExplanation: dp.fallbackExplanation || 'No additional explanation provided'
+    }));
     
     const combinedAnalysis = {
+      // Context from observation
+      context: observationData.context || 'UNKNOWN',
+      industry: observationData.industry || 'UNKNOWN',
+      industryConfidence: observationData.industryConfidence || 0,
+      
+      // Core data from recommendations
       ...recommendationsData,
-      // Add observation data - ChatGPT feedback #2 (context and industry)
-      context: observationData.context,
-      industry: observationData.industry,
-      industryConfidence: observationData.industryConfidence,
-      // Enhanced verdict with brutal punchline first - ChatGPT feedback #3
-      verdict: {
-        ...recommendationsData.verdict,
-        summary: observationData.punchline + (recommendationsData.verdict?.summary ? ' ' + recommendationsData.verdict.summary : '')
-      },
+      
+      // Process dark patterns with enhanced data
+      darkPatterns: processedDarkPatterns,
+      
       // Add generational analysis from interpretation
       generationalAnalysis: {
         scores: interpretationData.generationalBreakdown || {},
         primaryTarget: getBestGenerationMatch(interpretationData.generationalBreakdown || {}),
         recommendations: getGenerationalRecommendations(interpretationData.generationalBreakdown || {})
       },
-      // Add dark patterns and intent analysis from interpretation
-      darkPatterns: interpretationData.darkPatterns || [],
+      
+      // Add intent analysis from interpretation
       intentAnalysis: interpretationData.intentAnalysis || null,
-      // Enhanced behavioral insights with emotional impact
-      behavioralInsights: (interpretationData.psychologicalAnalysis && 
-                          interpretationData.psychologicalAnalysis.primaryEmotion &&
-                          interpretationData.psychologicalAnalysis.reasoning) ? [
-        ...(recommendationsData.behavioralInsights || []),
-        {
-          pattern: "Primary emotional response pattern",
-          observation: `Interface triggers ${interpretationData.psychologicalAnalysis.primaryEmotion} at intensity ${interpretationData.psychologicalAnalysis.intensity || 0}/10`,
-          psychology: interpretationData.psychologicalAnalysis.reasoning,
-          emotionalImpact: {
-            primaryEmotion: interpretationData.psychologicalAnalysis.primaryEmotion,
-            intensity: interpretationData.psychologicalAnalysis.intensity || 0,
-            reasoning: interpretationData.psychologicalAnalysis.reasoning
-          },
-          recommendation: interpretationData.psychologicalAnalysis.behavioralPrediction || "No behavioral prediction available"
-        }
-      ] : (recommendationsData.behavioralInsights || [])
+      
+      // Add inferred context from observation (if user provided context)
+      interfaceType: observationData.interfaceType || undefined,
+      strategicIntent: observationData.strategicIntent || undefined,
+      userContext: userContext || undefined
     };
 
-    // Step 4: Enhance with Vision data - ChatGPT feedback #5 (better locations)
+    // Check for duplicates and adjust module strengths
+    const duplicatesByModule = checkForDuplication(combinedAnalysis);
+    if (duplicatesByModule.size > 0) {
+      console.log(`[DEDUP] Found duplicates in ${duplicatesByModule.size} modules`);
+      // Reduce module strength for modules with duplicates
+      if (combinedAnalysis.moduleStrength) {
+        duplicatesByModule.forEach((duplicates, moduleName) => {
+          if (duplicates.size > 0 && combinedAnalysis.moduleStrength[moduleName] !== undefined) {
+            // Reduce strength by 1 for each duplicate found (minimum 1)
+            combinedAnalysis.moduleStrength[moduleName] = Math.max(1, 
+              combinedAnalysis.moduleStrength[moduleName] - duplicates.size
+            );
+            console.log(`[DEDUP] Reduced ${moduleName} strength to ${combinedAnalysis.moduleStrength[moduleName]}`);
+          }
+        });
+      }
+    }
+
+    // Recalculate module strengths based on actual content
+    if (combinedAnalysis.moduleStrength) {
+      combinedAnalysis.moduleStrength = {
+        issuesAndFixes: calculateModuleStrength(combinedAnalysis.issuesAndFixes, 'issuesAndFixes'),
+        uxCopyInsights: calculateModuleStrength(combinedAnalysis.uxCopyInsights, 'uxCopyInsights'),
+        visualDesign: calculateModuleStrength(combinedAnalysis.visualDesign, 'visualDesign'),
+        darkPatterns: calculateModuleStrength(combinedAnalysis.darkPatterns, 'darkPatterns'),
+        accessibility: calculateModuleStrength(combinedAnalysis.accessibility, 'accessibility'),
+        opportunities: calculateModuleStrength(combinedAnalysis.opportunities, 'opportunities'),
+        frictionPoints: calculateModuleStrength(combinedAnalysis.frictionPoints, 'frictionPoints'),
+        behavioralInsights: calculateModuleStrength(combinedAnalysis.behavioralInsights, 'behavioralInsights'),
+        generationalAnalysis: calculateModuleStrength(combinedAnalysis.generationalAnalysis, 'generationalAnalysis')
+      };
+      
+      // Update clarity flags based on module strength and content quality
+      // A module has clarity if its strength is >= 3 OR it has substantial content
+      if (combinedAnalysis.perceptionLayer?.clarityFlags) {
+        combinedAnalysis.perceptionLayer.clarityFlags = {
+          uxCopy: combinedAnalysis.moduleStrength.uxCopyInsights >= 3 || 
+                   (combinedAnalysis.uxCopyInsights?.issues?.length > 1),
+          visual: combinedAnalysis.moduleStrength.visualDesign >= 3 || 
+                  (combinedAnalysis.visualDesign?.score > 60),
+          darkPattern: combinedAnalysis.moduleStrength.darkPatterns >= 3 || 
+                       (combinedAnalysis.darkPatterns?.length > 0),
+          behavioral: combinedAnalysis.moduleStrength.behavioralInsights >= 3 || 
+                      (combinedAnalysis.behavioralInsights?.length > 1),
+          accessibility: combinedAnalysis.moduleStrength.accessibility >= 3 || 
+                         (combinedAnalysis.accessibility?.score > 50),
+          strategicIntent: combinedAnalysis.intentAnalysis?.alignmentScore >= 3,
+          issuesAndFixes: combinedAnalysis.moduleStrength.issuesAndFixes >= 3 || 
+                          (combinedAnalysis.issuesAndFixes?.length > 1),
+          opportunities: combinedAnalysis.moduleStrength.opportunities >= 3 || 
+                        (combinedAnalysis.opportunities?.length > 1)
+        };
+      }
+    }
+
+    // Step 4: Enhance with Vision data
     const finalAnalysis = enhanceAnalysisWithVision(combinedAnalysis, visionData);
 
-    // Add metadata
+    // Calculate diagnostics for debugging and transparency
+    const totalInsights = 
+      (finalAnalysis.issuesAndFixes?.length || 0) +
+      (finalAnalysis.opportunities?.length || 0) +
+      (finalAnalysis.uxCopyInsights?.issues?.length || 0) +
+      (finalAnalysis.behavioralInsights?.length || 0) +
+      (finalAnalysis.darkPatterns?.length || 0) +
+      (finalAnalysis.frictionPoints?.length || 0);
+    
+    // Identify active modules (non-empty with actual content)
+    const activeModules: string[] = [];
+    if (finalAnalysis.issuesAndFixes?.length > 0) activeModules.push('issuesAndFixes');
+    if (finalAnalysis.opportunities?.length > 0) activeModules.push('opportunities');
+    if (finalAnalysis.uxCopyInsights?.issues?.length > 0) activeModules.push('uxCopyInsights');
+    if (finalAnalysis.behavioralInsights?.length > 0) activeModules.push('behavioralInsights');
+    if (finalAnalysis.darkPatterns?.length > 0) activeModules.push('darkPatterns');
+    if (finalAnalysis.frictionPoints?.length > 0) activeModules.push('frictionPoints');
+    if (finalAnalysis.visualDesign?.tileFeedback?.length > 0) activeModules.push('visualDesign');
+    if (finalAnalysis.accessibility?.score > 0) activeModules.push('accessibility');
+    
+    const weakModules: string[] = [];
+    if (finalAnalysis.moduleStrength) {
+      Object.entries(finalAnalysis.moduleStrength).forEach(([module, strength]) => {
+        if (typeof strength === 'number' && strength <= 2) weakModules.push(module);
+      });
+    }
+    
+    // Enhanced diagnostics block
+    finalAnalysis.diagnostics = {
+      totalInsights,
+      duplicateInsightCount: duplicatesByModule.size,
+      activeModules,
+      weakModules,
+      visionDataUsed: !!visionData,
+      userContextProvided: !!userContext,
+      analysisComplete: true
+    };
+    
+    // Add metadata with model configuration
     finalAnalysis.timestamp = new Date().toISOString();
+    finalAnalysis.gptVersion = GPT_VERSION;
+    finalAnalysis.modelConfig = {
+      model: GPT_MODEL,
+      version: GPT_VERSION,
+      promptHash: observationPromptHash // Track prompt changes
+    };
 
-    console.log('[✅ ENHANCED 3-STAGE ANALYSIS COMPLETE]', {
+    // Ensure attention flow has at least 3 items
+    if (finalAnalysis.perceptionLayer?.attentionFlow?.length < 3) {
+      console.log('[FIX] Attention flow has less than 3 items, using fallback');
+      if (finalAnalysis.verdict?.attentionFlow?.length >= 3) {
+        finalAnalysis.perceptionLayer.attentionFlow = finalAnalysis.verdict.attentionFlow;
+      }
+    }
+    
+    // Sync attention flow between perceptionLayer and verdict
+    // verdict.attentionFlow shows only top 3 items for UI display to reduce visual overload
+    if (finalAnalysis.perceptionLayer?.attentionFlow && finalAnalysis.verdict) {
+      finalAnalysis.verdict.attentionFlow = finalAnalysis.perceptionLayer.attentionFlow.slice(0, 3);
+    }
+
+    console.log('[✅ ENHANCED ANALYSIS COMPLETE]', {
       stages: 3,
-      observationSuccess: !!observationData.punchline,
-      interpretationSuccess: !!interpretationData.psychologicalAnalysis,
-      recommendationsSuccess: !!recommendationsData.gripScore,
+      hasPerceptionLayer: !!finalAnalysis.perceptionLayer,
+      hasModuleStrength: !!finalAnalysis.moduleStrength,
+      attentionFlowCount: finalAnalysis.perceptionLayer?.attentionFlow?.length || 0,
+      darkPatternsFound: finalAnalysis.darkPatterns?.length || 0,
+      duplicatesFound: duplicatesByModule.size,
       visionEnhanced: !!visionData,
-      punchlineFirst: finalAnalysis.verdict.summary.includes(observationData.punchline)
+      userContextProvided: !!userContext,
+      gptVersion: GPT_VERSION
     });
 
     return finalAnalysis;
 
   } catch (error) {
-    console.error('[ANALYZE_IMAGE] Enhanced 3-stage analysis failed:', error);
+    console.error('[ANALYZE_IMAGE] Enhanced analysis failed:', error);
     
-    // Keep your existing error handling
-    if (error instanceof Error) {
-      if (error.message.includes('Timeout while downloading')) {
-        return {
-          context: 'ERROR',
-          industry: 'UNKNOWN',
-          industryConfidence: 0,
-          darkPatterns: [],
-          intentAnalysis: {
-            perceivedPurpose: 'Unknown',
-            actualPurpose: 'Unknown',
-            alignmentScore: 0,
-            misalignments: [],
-            clarityImprovements: []
-          },
-          frictionPoints: [],
-          gripScore: {
-            overall: 0,
-            breakdown: {
-              firstImpression: { score: 0, reasoning: 'Analysis failed', evidence: [] },
-              usability: { score: 0, reasoning: 'Analysis failed', evidence: [] },
-              trustworthiness: { score: 0, reasoning: 'Analysis failed', evidence: [] },
-              conversion: { score: 0, reasoning: 'Analysis failed', evidence: [] },
-              accessibility: { score: 0, reasoning: 'Analysis failed', evidence: [] }
-            }
-          },
-          verdict: {
-            summary: 'ANALYSIS TERMINATED: Image download timeout detected - interface too complex for processing matrix.',
-            attentionSpan: 'Unable to analyze',
-            likelyAction: 'Unable to analyze',
-            dropoffPoint: 'Unable to analyze',
-            memorable: 'Unable to analyze',
-            attentionFlow: []
-          },
-          visualDesignAnalysis: {
-            score: 0,
-            typography: {
-              score: 0,
-              issues: [],
-              hierarchy: { h1ToH2Ratio: 1, consistencyScore: 0, recommendation: 'Analysis failed' },
-              readability: { fleschScore: 0, avgLineLength: 0, recommendation: 'Analysis failed' }
-            },
-            colorAndContrast: {
-              score: 0,
-              contrastFailures: [],
-              colorHarmony: { scheme: 'UNKNOWN', brandColors: [], accentSuggestion: 'Analysis failed' }
-            },
-            spacing: {
-              score: 0,
-              gridSystem: 'UNKNOWN',
-              consistency: 0,
-              issues: []
-            },
-            modernPatterns: {
-              detected: [],
-              implementation: {},
-              trendAlignment: { '2025Relevance': 0, suggestions: [] }
-            },
-            visualHierarchy: {
-              scanPattern: 'UNKNOWN',
-              focalPoints: [],
-              improvements: []
-            }
-          },
-          uxCopyAnalysis: {
-            score: 0,
-            audienceAlignment: {
-              detectedAudience: 'Unknown',
-              copyStyle: 'Unknown',
-              brandArchetype: 'Unknown',
-              toneMismatch: 0
-            },
-            issues: [],
-            microCopyOpportunities: [],
-            writingTone: {
-              current: 'Unknown',
-              recommended: 'Unknown',
-              example: 'Analysis failed'
-            }
-          },
-          criticalIssues: [
-            {
-              severity: 4,
-              category: 'SYSTEM_ERROR',
-              issue: 'Image download timeout',
-              location: {
-                element: 'system',
-                region: 'none'
-              },
-              impact: "OpenAI couldn't download your image in time. This usually happens with large files.",
-              evidence: 'The image URL timed out during download',
-              fix: {
-                immediate: 'Try uploading a smaller image (under 5MB)',
-                better: 'Optimize your image before uploading (reduce resolution or compress)',
-                implementation: 'Use an image optimization tool to reduce file size'
-              }
-            }
-          ],
-          usabilityIssues: [],
-          opportunities: [],
-          behavioralInsights: [],
-          accessibilityAudit: null,
-          generationalAnalysis: {
-            scores: {},
-            primaryTarget: 'unknown',
-            recommendations: []
-          },
-          timestamp: new Date().toISOString(),
-          error: true
-        };
-      }
-    }
-
-    return {
+    // Enhanced error handling
+    const errorAnalysis: ZombifyAnalysis = {
       context: 'ERROR',
       industry: 'UNKNOWN',
       industryConfidence: 0,
@@ -1039,6 +1387,7 @@ Return this JSON structure:
       intentAnalysis: {
         perceivedPurpose: 'Unknown',
         actualPurpose: 'Unknown',
+        clarity: 'unclear',
         alignmentScore: 0,
         misalignments: [],
         clarityImprovements: []
@@ -1055,14 +1404,39 @@ Return this JSON structure:
         }
       },
       verdict: {
-        summary: 'SYSTEM ERROR: Analysis matrix malfunction detected - unable to process interface data.',
+        summary: 'ANALYSIS FAILED: Unable to process the interface. The system encountered an error.',
         attentionSpan: 'Unable to analyze',
         likelyAction: 'Unable to analyze',
         dropoffPoint: 'Unable to analyze',
         memorable: 'Unable to analyze',
         attentionFlow: []
       },
-      visualDesignAnalysis: {
+      perceptionLayer: {
+        primaryEmotion: { type: 'confusion', intensity: 10 },
+        attentionFlow: [],
+        clarityFlags: {
+          uxCopy: false,
+          visual: false,
+          darkPattern: false,
+          behavioral: false,
+          accessibility: false,
+          strategicIntent: false,
+          issuesAndFixes: false,
+          opportunities: false
+        }
+      },
+      moduleStrength: {
+        issuesAndFixes: 0,
+        uxCopyInsights: 0,
+        visualDesign: 0,
+        darkPatterns: 0,
+        accessibility: 0,
+        opportunities: 0,
+        frictionPoints: 0,
+        behavioralInsights: 0,
+        generationalAnalysis: 0
+      },
+      visualDesign: {
         score: 0,
         typography: {
           score: 0,
@@ -1092,7 +1466,7 @@ Return this JSON structure:
           improvements: []
         }
       },
-      uxCopyAnalysis: {
+      uxCopyInsights: {
         score: 0,
         audienceAlignment: {
           detectedAudience: 'Unknown',
@@ -1108,11 +1482,13 @@ Return this JSON structure:
           example: 'Analysis failed'
         }
       },
-      criticalIssues: [
+      issuesAndFixes: [
         {
           severity: 4,
           category: 'SYSTEM_ERROR',
-          issue: 'Analysis service temporarily unavailable',
+          issue: error instanceof Error && error.message.includes('Timeout') 
+            ? 'Image download timeout' 
+            : 'Analysis service error',
           location: {
             element: 'system',
             region: 'none'
@@ -1120,13 +1496,16 @@ Return this JSON structure:
           impact: 'Unable to analyze the uploaded image',
           evidence: error instanceof Error ? error.message : 'Unknown error occurred',
           fix: {
-            immediate: 'Please check your API key and try again',
-            better: 'Ensure the image is in a supported format (PNG, JPG, GIF)',
-            implementation: 'Contact support if the issue persists'
+            immediate: error instanceof Error && error.message.includes('Timeout')
+              ? 'Try uploading a smaller image (under 5MB)'
+              : 'Please check your API key and try again',
+            better: error instanceof Error && error.message.includes('Timeout')
+              ? 'Optimize your image before uploading (reduce resolution or compress)'
+              : 'Ensure the image is in a supported format (PNG, JPG, GIF)',
+            implementation: 'Use an image optimization tool or check service status'
           }
         }
       ],
-      usabilityIssues: [],
       opportunities: [],
       behavioralInsights: [],
       accessibilityAudit: null,
@@ -1138,6 +1517,8 @@ Return this JSON structure:
       timestamp: new Date().toISOString(),
       error: true
     };
+
+    return errorAnalysis;
   }
 }
 

@@ -6,6 +6,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import UploadZone from '@/components/UploadZone';
 import { useAuth } from '@/hooks/useAuth';
 import { ZombifyAnalysis } from '@/types/analysis';
+import { normalizeAnalysisData } from '@/utils/analysisCompatibility';
 import EthicsScore from '@/components/EthicsScore';
 
 interface FeedbackItem {
@@ -87,7 +88,8 @@ export default function Dashboard() {
           if (feedbackData && feedbackData.length > 0) {
             const mostRecent = feedbackData[0];
             if (isNewAnalysisFormat(mostRecent.analysis)) {
-              setLatestDarkPatterns(mostRecent.analysis.darkPatterns);
+              const normalizedAnalysis = normalizeAnalysisData(mostRecent.analysis);
+              setLatestDarkPatterns(normalizedAnalysis.darkPatterns);
               setLatestFeedbackId(mostRecent.id);
             }
           }
@@ -104,7 +106,7 @@ export default function Dashboard() {
   }, [initialized, user, supabase]);
 
   // Handle file upload
-  const handleUpload = async (file: File) => {
+  const handleUpload = async (file: File, userContext?: string) => {
     if (!user) {
       console.error('❌ Cannot upload: user not authenticated');
       return;
@@ -116,6 +118,11 @@ export default function Dashboard() {
       formData.append('project_name', 'Untitled');
       formData.append('user_id', user.id);
       formData.append('is_guest', 'false');
+      
+      // Add user context if provided
+      if (userContext) {
+        formData.append('user_context', userContext);
+      }
 
       const res = await fetch('/api/upload', {
         method: 'POST',
@@ -214,7 +221,7 @@ export default function Dashboard() {
         feedback.reduce((acc, f) => {
           // Try to get score from new format first, then fall back to old format
           const score = isNewAnalysisFormat(f.analysis) 
-            ? f.analysis.gripScore.overall 
+            ? normalizeAnalysisData(f.analysis).gripScore.overall 
             : (f.score || 0);
           return acc + score;
         }, 0) / feedback.length
@@ -299,14 +306,15 @@ export default function Dashboard() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {feedback.map((item, index) => {
-                // Check if this is new format
+                // Check if this is new format and normalize data
                 const isNew = isNewAnalysisFormat(item.analysis);
+                const normalizedAnalysis = isNew ? normalizeAnalysisData(item.analysis) : null;
                 const score = isNew 
-                  ? item.analysis.gripScore.overall 
+                  ? normalizedAnalysis!.gripScore.overall 
                   : (item.score || 0);
-                const verdict = isNew ? item.analysis.verdict : null;
-                const context = isNew ? item.analysis.context : null;
-                const industry = isNew ? item.analysis.industry : null;
+                const verdict = isNew ? normalizedAnalysis!.verdict : null;
+                const context = isNew ? normalizedAnalysis!.context : null;
+                const industry = isNew ? normalizedAnalysis!.industry : null;
 
                 const getScoreColor = (score: number) => {
                   if (score >= 80) return 'text-green-700';
@@ -410,7 +418,7 @@ export default function Dashboard() {
                           </div>
                           <div className="bg-black/5 border-l-2 border-black/30 p-2 ml-3">
                             <p className="text-xs text-black/80 line-clamp-2 font-mono">
-                              > {verdict.summary}
+                              {'>'}  {verdict.summary}
                             </p>
                           </div>
                         </div>
@@ -459,7 +467,8 @@ export default function Dashboard() {
               {(() => {
                 const uploadsWithDarkPatterns = feedback.filter(item => {
                   if (isNewAnalysisFormat(item.analysis)) {
-                    return item.analysis.darkPatterns && item.analysis.darkPatterns.length > 0;
+                    const normalized = normalizeAnalysisData(item.analysis);
+                    return normalized.darkPatterns && normalized.darkPatterns.length > 0;
                   }
                   return false;
                 });
@@ -480,7 +489,8 @@ export default function Dashboard() {
                       Found {uploadsWithDarkPatterns.length} upload{uploadsWithDarkPatterns.length !== 1 ? 's' : ''} with dark patterns
                     </p>
                     {uploadsWithDarkPatterns.map((item) => {
-                      const darkPatterns = item.analysis.darkPatterns;
+                      const normalizedItem = normalizeAnalysisData(item.analysis);
+                      const darkPatterns = normalizedItem.darkPatterns;
                       const highCount = darkPatterns.filter((p: any) => p.severity === 'HIGH').length;
                       const mediumCount = darkPatterns.filter((p: any) => p.severity === 'MEDIUM').length;
                       const lowCount = darkPatterns.filter((p: any) => p.severity === 'LOW').length;
@@ -504,7 +514,7 @@ export default function Dashboard() {
                               </p>
                             </div>
                             <div className="text-right">
-                              <div className="text-2xl font-bold">{item.analysis.gripScore.overall}</div>
+                              <div className="text-2xl font-bold">{normalizedItem.gripScore.overall}</div>
                               <div className="text-xs opacity-60">Grip Score</div>
                             </div>
                           </div>

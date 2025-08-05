@@ -591,7 +591,7 @@ export default function HomePage() {
         <div className="text-center space-y-6 mb-16">
           <div className="max-w-2xl mx-auto space-y-4">
             <p className="text-lg opacity-70 leading-[1.75] font-mono">
-              People are changing. Attention spans are shrinking, critical thinking is fading, and people navigate products on autopilot. Zombify helps designers, builders, and founders stress test their interfaces against this reality by analyzing friction points, misaligned intent, shady patterns, and missed opportunities. It doesn't just simulate user behavior — it gives you the second set of eyes that turns instinct into evidence.
+              People are changing. Attention spans are shrinking, critical thinking is fading, and people navigate products on autopilot. Zombify helps designers, builders, and founders stress test their interfaces against this reality by analyzing friction points, misaligned intent, shady patterns, and missed opportunities. It doesn&apos;t just simulate user behavior — it gives you the second set of eyes that turns instinct into evidence.
             </p>
           </div>
         </div>

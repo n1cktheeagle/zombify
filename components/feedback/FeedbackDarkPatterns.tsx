@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ZombifyAnalysis } from '@/types/analysis';
+import { getModuleConfidence } from '@/utils/analysisCompatibility';
 import GlitchText from '../GlitchText';
 import InfoTooltip from '../InfoTooltip';
 
@@ -21,6 +22,7 @@ export default function FeedbackDarkPatterns({
   const [expandedPattern, setExpandedPattern] = useState<number | null>(null);
 
   const darkPatterns = analysis.darkPatterns || [];
+  const confidence = getModuleConfidence('darkPatterns', analysis);
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -57,7 +59,9 @@ export default function FeedbackDarkPatterns({
 
   return (
     <motion.div 
-      className={`space-y-6 ${className}`}
+      className={`space-y-6 transition-all duration-200 ${
+        confidence === 'low' ? 'opacity-50 bg-gray-50' : ''
+      } ${className}`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6 }}
@@ -209,6 +213,35 @@ export default function FeedbackDarkPatterns({
                       </p>
                     </div>
                   </motion.div>
+
+                  {/* Enhanced Risk Assessment - NEW */}
+                  {(pattern.riskLevel || pattern.fallbackExplanation) && (
+                    <motion.div
+                      className="mb-4"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.55 + index * 0.1 }}
+                    >
+                      <div className="bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-black p-4 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-lg">🎯</span>
+                          <div className="text-sm font-semibold text-purple-800 font-mono">
+                            RISK ANALYSIS
+                          </div>
+                          {pattern.riskLevel && (
+                            <span className={`text-xs px-2 py-1 rounded font-bold font-mono ml-auto ${getSeverityColor(pattern.riskLevel)}`}>
+                              {pattern.riskLevel} RISK
+                            </span>
+                          )}
+                        </div>
+                        {pattern.fallbackExplanation && (
+                          <p className="text-sm text-purple-700 leading-relaxed font-mono">
+                            {pattern.fallbackExplanation}
+                          </p>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
 
                   {/* Ethical Alternative */}
                   <motion.div

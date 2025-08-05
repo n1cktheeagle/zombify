@@ -7,7 +7,7 @@ import { AuthModal } from '@/components/AuthModal';
 
 interface UploadZoneProps {
   onFileSelect?: (file: File) => void;
-  onZombify?: (file: File) => Promise<void>;
+  onZombify?: (file: File, userContext?: string) => Promise<void>;
   isLoggedIn?: boolean;
   disabled?: boolean;
   showCooldown?: boolean;
@@ -34,6 +34,7 @@ export default function UploadZone({
   const [animatedText, setAnimatedText] = useState('Feed Zombify');
   const [typingText, setTypingText] = useState('Feed Zombify');
   const [isTyping, setIsTyping] = useState(false);
+  const [userContext, setUserContext] = useState('');
   const typewriterIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const animationTimersRef = useRef<NodeJS.Timeout[]>([]);
   
@@ -223,7 +224,7 @@ export default function UploadZone({
     setError('');
 
     try {
-      await onZombify(uploadedFile);
+      await onZombify(uploadedFile, userContext.trim() || undefined);
     } catch (err) {
       console.error('Zombify error:', err);
       setError('Analysis failed - try again');
@@ -394,20 +395,45 @@ export default function UploadZone({
           </div>
         </div>
 
-        {/* Action Button */}
+        {/* User Context Input and Action Button */}
         {uploadedFile && onZombify && !shouldShowCooldownComputed && !showAuthMessage && (
-          <div className="mt-6 text-center space-y-4">
-            <button
-              onClick={handleZombify}
-              disabled={isAnalyzing || isDisabledComputed}
-              className={`zombify-primary-button px-8 py-3 text-lg font-bold tracking-wide transition-all duration-200 ${isAnalyzing || isDisabledComputed ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              {isAnalyzing ? 'ANALYZING...' : 'ZOMBIFY'}
-            </button>
+          <div className="mt-6 space-y-4">
+            {/* User Context Input */}
+            <div className="max-w-md mx-auto">
+              <label className="block text-sm font-medium text-gray-700 mb-2 font-mono">
+                Context (Optional)
+              </label>
+              <textarea
+                value={userContext}
+                onChange={(e) => setUserContext(e.target.value)}
+                placeholder="e.g., This is an e-commerce checkout page for a SaaS product targeting developers..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black focus:border-black text-sm font-mono resize-none"
+                rows={3}
+                maxLength={500}
+                disabled={isAnalyzing || isDisabledComputed}
+              />
+              <div className="text-xs text-gray-500 mt-1 text-right font-mono">
+                {userContext.length}/500
+              </div>
+              <p className="text-xs text-gray-600 mt-1">
+                Help Zombify understand your design&apos;s purpose for more targeted analysis
+              </p>
+            </div>
             
-            {error && (
-              <p className="text-red-600 text-sm">{error}</p>
-            )}
+            {/* Action Button */}
+            <div className="text-center">
+              <button
+                onClick={handleZombify}
+                disabled={isAnalyzing || isDisabledComputed}
+                className={`zombify-primary-button px-8 py-3 text-lg font-bold tracking-wide transition-all duration-200 ${isAnalyzing || isDisabledComputed ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                {isAnalyzing ? 'ANALYZING...' : 'ZOMBIFY'}
+              </button>
+              
+              {error && (
+                <p className="text-red-600 text-sm mt-2">{error}</p>
+              )}
+            </div>
           </div>
         )}
 

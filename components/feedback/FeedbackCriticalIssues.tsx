@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ZombifyAnalysis } from '@/types/analysis';
+import { getCriticalIssues, shouldShowModule } from '@/utils/analysisCompatibility';
 import GlitchText from '../GlitchText';
 import IssueCard from '../IssueCard';
 
@@ -23,7 +24,38 @@ export default function FeedbackCriticalIssues({
 }: FeedbackCriticalIssuesProps) {
   const [showImageComparison, setShowImageComparison] = useState(false);
 
-  const totalIssues = ((analysis.criticalIssues || []) || []).length + ((analysis.usabilityIssues || []) || []).length;
+  // Use compatibility layer to get issues from new or old structure
+  const issues = getCriticalIssues(analysis);
+  const usabilityIssues = (analysis as any).usabilityIssues || [];
+  const totalIssues = issues.length + usabilityIssues.length;
+  
+  // Check if module should be shown based on strength
+  const showModule = shouldShowModule('issuesAndFixes', analysis);
+  const isWeak = !showModule && issues.length === 0;
+  
+  if (isWeak) {
+    return (
+      <motion.div 
+        className={`space-y-6 ${className}`}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
+        <div className="p-4 bg-gray-50 border-2 border-gray-200 rounded-lg opacity-75">
+          <div className="flex items-center gap-2 text-gray-500 mb-2">
+            <span>🔧</span>
+            <h3 className="font-medium text-xl font-mono tracking-wider">ISSUES & FIXES</h3>
+            <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded font-mono">
+              Low Confidence
+            </span>
+          </div>
+          <p className="text-sm text-gray-400 font-mono">
+            Not enough signal to identify specific issues. Interface appears to have minimal friction points.
+          </p>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div 
@@ -44,9 +76,13 @@ export default function FeedbackCriticalIssues({
             ISSUES & FIXES
           </div>
           <div className="flex items-center gap-4 text-sm opacity-60 font-mono">
-            <span>{(analysis.criticalIssues || []).length} Critical Issues</span>
-            <span>•</span>
-            <span>{(analysis.usabilityIssues || []).length} Usability Issues</span>
+            <span>{issues.length} Issues & Fixes</span>
+            {usabilityIssues.length > 0 && (
+              <>
+                <span>•</span>
+                <span>{usabilityIssues.length} Usability Issues</span>
+              </>
+            )}
             <span>•</span>
             <span className="text-red-600 font-bold">{totalIssues} Total</span>
           </div>
@@ -93,20 +129,18 @@ export default function FeedbackCriticalIssues({
         
         {/* Issues list */}
         <div className="space-y-8">
-          {/* Critical Issues Section */}
-          {(analysis.criticalIssues || []).length > 0 && (
+          {/* Issues & Fixes Section */}
+          {issues.length > 0 && (
             <motion.div 
               className="space-y-4"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
             >
-
-              
               <div className="space-y-4">
-                {(analysis.criticalIssues || []).map((issue, index) => (
+                {issues.map((issue, index) => (
                   <motion.div
-                    key={`critical-${index}`}
+                    key={`issue-${index}`}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.3 + index * 0.1 }}
@@ -114,7 +148,7 @@ export default function FeedbackCriticalIssues({
                     <IssueCard
                       issue={issue}
                       index={index}
-                      type="critical"
+                      type={issue.severity >= 3 ? "critical" : "usability"}
                       isPro={isPro}
                     />
                   </motion.div>
@@ -123,18 +157,16 @@ export default function FeedbackCriticalIssues({
             </motion.div>
           )}
 
-          {/* Usability Issues Section */}
-          {(analysis.usabilityIssues || []).length > 0 && (
+          {/* Legacy Usability Issues Section (for backward compatibility) */}
+          {usabilityIssues.length > 0 && (
             <motion.div 
               className="space-y-4"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
             >
-
-              
               <div className="space-y-4">
-                {(analysis.usabilityIssues || []).slice(0, isLoggedIn ? undefined : 2).map((issue, index) => (
+                {usabilityIssues.slice(0, isLoggedIn ? undefined : 2).map((issue: any, index: number) => (
                   <motion.div
                     key={`usability-${index}`}
                     initial={{ opacity: 0, x: -20 }}
@@ -143,14 +175,14 @@ export default function FeedbackCriticalIssues({
                   >
                     <IssueCard
                       issue={issue}
-                      index={index + (analysis.criticalIssues || []).length}
+                      index={index + issues.length}
                       type="usability"
                       isPro={isPro}
                     />
                   </motion.div>
                 ))}
                 
-                {!isLoggedIn && (analysis.usabilityIssues || []).length > 2 && (
+                {!isLoggedIn && usabilityIssues.length > 2 && (
                   <motion.div
                     className="text-center py-8 border-2 border-black bg-[#f5f1e6] relative overflow-hidden"
                     initial={{ opacity: 0, scale: 0.95 }}
@@ -159,7 +191,7 @@ export default function FeedbackCriticalIssues({
                   >
                     <div className="text-4xl mb-4">🔒</div>
                     <div className="font-mono text-sm opacity-70 mb-3">
-                      + {(analysis.usabilityIssues || []).length - 2} more issues detected
+                      + {usabilityIssues.length - 2} more issues detected
                     </div>
                     <div className="text-lg font-bold mb-4 font-mono tracking-wider">
                       UNLOCK ALL ISSUES
@@ -174,7 +206,7 @@ export default function FeedbackCriticalIssues({
           )}
 
           {/* No Issues State */}
-          {(analysis.criticalIssues || []).length === 0 && (analysis.usabilityIssues || []).length === 0 && (
+          {issues.length === 0 && usabilityIssues.length === 0 && (
                       <motion.div
             className="text-center py-16 border-2 border-black bg-[#f5f1e6] relative overflow-hidden"
             initial={{ opacity: 0, scale: 0.95 }}
@@ -196,7 +228,7 @@ export default function FeedbackCriticalIssues({
               ✨
             </motion.div>
             <div className="text-3xl font-bold mb-4 font-mono tracking-wider">
-              NO CRITICAL ISSUES DETECTED
+              NO ISSUES DETECTED
             </div>
             <p className="text-lg opacity-70 font-mono mb-4">
               Your design follows excellent UX practices
