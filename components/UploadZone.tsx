@@ -4,10 +4,11 @@ import { useState, useEffect, useRef } from 'react';
 import { Upload } from 'lucide-react';
 import { useAuthModal } from '@/hooks/useAuthModal';
 import { AuthModal } from '@/components/AuthModal';
+import AnalysisProgressBar from '@/components/AnalysisProgressBar';
 
 interface UploadZoneProps {
   onFileSelect?: (file: File) => void;
-  onZombify?: (file: File, userContext?: string) => Promise<void>;
+  onZombify?: (file: File, userContext?: string, onProgress?: (stage: number) => void) => Promise<void>;
   isLoggedIn?: boolean;
   disabled?: boolean;
   showCooldown?: boolean;
@@ -28,6 +29,7 @@ export default function UploadZone({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisStage, setAnalysisStage] = useState(0); // 0 = not started, 1-3 = analysis stages
   const [error, setError] = useState('');
   const [cooldownTime, setCooldownTime] = useState(0);
   const [showAuthMessage, setShowAuthMessage] = useState(false);
@@ -221,15 +223,19 @@ export default function UploadZone({
     if (!uploadedFile || !onZombify) return;
 
     setIsAnalyzing(true);
+    setAnalysisStage(1);
     setError('');
 
     try {
-      await onZombify(uploadedFile, userContext.trim() || undefined);
+      await onZombify(uploadedFile, userContext.trim() || undefined, (stage: number) => {
+        setAnalysisStage(stage);
+      });
     } catch (err) {
       console.error('Zombify error:', err);
       setError('Analysis failed - try again');
     } finally {
       setIsAnalyzing(false);
+      setAnalysisStage(0);
     }
   };
 
@@ -434,6 +440,12 @@ export default function UploadZone({
                 <p className="text-red-600 text-sm mt-2">{error}</p>
               )}
             </div>
+
+            {/* Analysis Progress Bar */}
+            <AnalysisProgressBar 
+              currentStage={analysisStage} 
+              isVisible={isAnalyzing} 
+            />
           </div>
         )}
 

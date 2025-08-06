@@ -3,7 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ZombifyAnalysis } from '@/types/analysis';
-import { getModuleConfidence } from '@/utils/analysisCompatibility';
+import { getModuleConfidence, getVisualDesignData } from '@/utils/analysisCompatibility';
 import GlitchText from '../GlitchText';
 import VisualDesignAnalysisCard from '../VisualDesignAnalysisCard';
 
@@ -16,7 +16,7 @@ export default function FeedbackDetailedAnalysis({
   analysis, 
   className = '' 
 }: FeedbackDetailedAnalysisProps) {
-  const hasVisualAnalysis = analysis.visualDesignAnalysis;
+  const hasVisualAnalysis = getVisualDesignData(analysis);
   const confidence = getModuleConfidence('visualDesign', analysis);
   
   const getQualityBadge = () => {
@@ -75,7 +75,7 @@ export default function FeedbackDetailedAnalysis({
             transition={{ delay: 0.2 }}
             className="max-w-4xl mx-auto"
           >
-            <VisualDesignAnalysisCard visualDesign={analysis.visualDesignAnalysis} />
+            <VisualDesignAnalysisCard visualDesign={hasVisualAnalysis} />
           </motion.div>
         )}
 

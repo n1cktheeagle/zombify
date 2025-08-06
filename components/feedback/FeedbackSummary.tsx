@@ -408,69 +408,124 @@ export default function FeedbackSummary({ analysis, imageUrl, className = '' }: 
         </div>
       </div>
 
-      {/* Module Strength Indicators */}
-      {analysis.moduleStrength && (
-        <motion.div 
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-          className="mb-6"
-        >
-          <div className="text-sm font-bold mb-3 opacity-70 font-mono tracking-wider">ANALYSIS QUALITY</div>
-          
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { key: 'issuesAndFixes', label: 'Issues & Fixes', icon: '🔧' },
-              { key: 'uxCopyInsights', label: 'UX Copy', icon: '📝' },
-              { key: 'visualDesign', label: 'Visual Design', icon: '🎨' },
-              { key: 'darkPatterns', label: 'Dark Patterns', icon: '⚠️' },
-              { key: 'behavioralInsights', label: 'Behavioral', icon: '🧠' },
-              { key: 'accessibility', label: 'Accessibility', icon: '♿' }
-            ].map((module, index) => {
-              const strength = analysis.moduleStrength[module.key as keyof typeof analysis.moduleStrength];
-              if (strength === undefined) return null;
-
-              return (
-                <motion.div
-                  key={module.key}
-                  className="border-2 border-black bg-white p-3 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)] relative"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.9 + index * 0.1 }}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">{module.icon}</span>
-                      <span className="text-xs font-bold font-mono">{module.label}</span>
-                    </div>
-                  </div>
-                  
-                  <ModuleStrengthIndicator 
-                    strength={strength} 
-                    moduleName={module.label}
-                    compact={true} 
-                  />
-                </motion.div>
-              );
-            })}
+      {/* Consolidated Analysis Diagnostics - Single unified section */}
+      <motion.div 
+        className="border-2 border-black bg-[#f5f1e6] p-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.8 }}
+      >
+        <div className="mb-4">
+          <h3 className="text-lg font-bold font-mono tracking-wider mb-2">
+            ANALYSIS DIAGNOSTICS
+          </h3>
+          <div className="text-sm opacity-70 font-mono">
+            Module quality, completion status, and system information
           </div>
-        </motion.div>
-      )}
+        </div>
 
-      {/* Bottom Row: Overview Fields Only */}
-      <div className="grid grid-cols-1 gap-6">
+        {/* Module Quality Grid */}
+        {analysis.moduleStrength && (
+          <div className="mb-6">
+            <div className="text-sm font-bold mb-3 opacity-70 font-mono tracking-wider">MODULE QUALITY</div>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { key: 'issuesAndFixes', label: 'Issues & Fixes', icon: '🔧' },
+                { key: 'uxCopyInsights', label: 'UX Copy', icon: '📝' },
+                { key: 'visualDesign', label: 'Visual Design', icon: '🎨' },
+                { key: 'darkPatterns', label: 'Dark Patterns', icon: '⚠️' },
+                { key: 'behavioralInsights', label: 'Behavioral', icon: '🧠' },
+                { key: 'accessibility', label: 'Accessibility', icon: '♿' }
+              ].map((module, index) => {
+                const strength = analysis.moduleStrength?.[module.key as keyof typeof analysis.moduleStrength];
+                if (strength === undefined) return null;
 
-        
-        {/* Analysis Diagnostics - show enhanced features status */}
-        <motion.div 
-          className="lg:col-span-1"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.1 }}
-        >
-          <AnalysisDiagnostics analysis={analysis} />
-        </motion.div>
-      </div>
+                return (
+                  <motion.div
+                    key={module.key}
+                    className="border-2 border-black bg-white p-3 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)] relative"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.9 + index * 0.1 }}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">{module.icon}</span>
+                        <span className="text-xs font-bold font-mono">{module.label}</span>
+                      </div>
+                    </div>
+                    
+                    <ModuleStrengthIndicator 
+                      strength={strength} 
+                      moduleName={module.label}
+                      compact={true} 
+                    />
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* System Status */}
+        <div className="mb-4">
+          <div className="text-sm font-bold mb-3 opacity-70 font-mono tracking-wider">SYSTEM STATUS</div>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              {
+                label: 'User Context',
+                status: analysis.context && analysis.context !== 'ERROR' ? 'complete' : 'missing',
+                icon: '📝'
+              },
+              {
+                label: 'Vision Analysis',
+                status: 'complete', // Always complete now with GPT-4V
+                icon: '👁️'
+              },
+              {
+                label: 'Module Strength',
+                status: analysis.moduleStrength ? 'complete' : 'missing',
+                icon: '📊'
+              },
+              {
+                label: 'Perception Layer',
+                status: analysis.perceptionLayer ? 'complete' : 'missing',
+                icon: '🧠'
+              }
+            ].map((item, index) => (
+              <motion.div
+                key={item.label}
+                className={`border-2 border-black bg-white p-3 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)] ${
+                  item.status === 'complete' ? 'opacity-100' : 'opacity-60'
+                }`}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: item.status === 'complete' ? 1 : 0.6, scale: 1 }}
+                transition={{ delay: 1.0 + 0.1 * index }}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">{item.icon}</span>
+                    <span className="text-xs font-mono font-bold">{item.label}</span>
+                  </div>
+                  <div className={`w-2 h-2 rounded-full border border-black ${
+                    item.status === 'complete' ? 'bg-green-500' : 'bg-gray-300'
+                  }`} />
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+
+        {/* Analysis Version Info */}
+        <div className="pt-4 border-t border-black/20">
+          <div className="text-xs font-mono opacity-60">
+            <div className="flex justify-between items-center">
+              <span>Analysis Engine: GPT-4V Enhanced</span>
+              <span>Version: v2.1.0</span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
 
       {/* Image Modal using Portal */}
       {mounted && createPortal(

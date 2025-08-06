@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ZombifyAnalysis } from '@/types/analysis';
-import { getModuleConfidence } from '@/utils/analysisCompatibility';
+import { getModuleConfidence, getQualityBadge } from '@/utils/analysisCompatibility';
 import GlitchText from '../GlitchText';
 
 interface FeedbackFrictionPointsProps {
@@ -22,17 +22,7 @@ export default function FeedbackFrictionPoints({
 
   const frictionPoints = analysis.frictionPoints || [];
   const confidence = getModuleConfidence('frictionPoints', analysis);
-  
-  const getQualityBadge = () => {
-    const strength = analysis.moduleStrength?.frictionPoints || 0;
-    const clarityFlag = analysis.perceptionLayer?.clarityFlags?.frictionPoints;
-    
-    if (strength >= 4 && clarityFlag) return { icon: '🟢', label: 'High Quality', color: 'bg-green-100 text-green-700' };
-    if (strength >= 3 || clarityFlag) return { icon: '🟡', label: 'Good Signal', color: 'bg-yellow-100 text-yellow-700' };
-    return { icon: '🔴', label: 'Low Signal', color: 'bg-red-100 text-red-700' };
-  };
-  
-  const qualityBadge = getQualityBadge();
+  const qualityBadge = getQualityBadge('frictionPoints', analysis);
 
   // Group friction points by user journey stage
   const frictionByStage = {
@@ -282,19 +272,20 @@ export default function FeedbackFrictionPoints({
         })}
       </div>
 
-      {/* Summary Insights */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8 }}
-        className="border-2 border-black bg-[#f5f1e6] p-6 relative overflow-hidden"
-      >
-        <div className="flex items-center gap-3 mb-4">
-          <div className="text-3xl">🎯</div>
-          <GlitchText className="text-xl font-bold text-black" trigger="mount">
-            CONVERSION OPTIMIZATION SUMMARY
-          </GlitchText>
-        </div>
+      {/* Summary Insights - Only show when we have good signal, not low signal */}
+      {qualityBadge.label !== 'Low Signal' && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
+          className="border-2 border-black bg-[#f5f1e6] p-6 relative overflow-hidden"
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <div className="text-3xl">🎯</div>
+            <GlitchText className="text-xl font-bold text-black" trigger="mount">
+              UX FRICTION ANALYSIS SUMMARY
+            </GlitchText>
+          </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="text-center p-4 bg-white/50 rounded border border-black/10">
@@ -318,9 +309,10 @@ export default function FeedbackFrictionPoints({
         </div>
 
         <div className="text-sm font-mono text-black/80 bg-white border-2 border-black p-4 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]">
-          <strong>Priority Recommendation:</strong> Focus on eliminating HIGH RISK friction points first, as these have the greatest impact on user dropoff rates. Quick fixes for these barriers can deliver immediate conversion improvements.
+          <strong>Priority Recommendation:</strong> Focus on eliminating HIGH RISK friction points first, as these have the greatest impact on user experience. Quick fixes for these barriers can significantly improve interface usability.
         </div>
       </motion.div>
+      )}
     </motion.div>
   );
 }

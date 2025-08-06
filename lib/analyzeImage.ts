@@ -1,7 +1,6 @@
 // analyzeImage.ts - Enhanced with all new features including PerceptionLayer and ModuleStrength
 import { 
   ZombifyAnalysis, 
-  VisionAnalysisResult, 
   AttentionFlowItem,
   DarkPattern,
   Issue,
@@ -163,327 +162,13 @@ function extractAndParseJSON(content: string): any {
   throw new Error('Could not extract valid JSON from response');
 }
 
-// Keep your existing analyzeImageWithVision function
-async function analyzeImageWithVision(imageUrl: string): Promise<VisionAnalysisResult | null> {
-  try {
-    console.log('[VISION_API] Starting Vision analysis for:', imageUrl);
-    
-    if (!process.env.GOOGLE_CLOUD_VISION_API_KEY) {
-      console.log('[VISION_API] No Vision API key found, skipping Vision analysis');
-      return null;
-    }
+// Vision API removed - now relying solely on GPT-4V for visual analysis
 
-    const { ImageAnnotatorClient } = await import('@google-cloud/vision');
-    
-    const client = new ImageAnnotatorClient({
-      apiKey: process.env.GOOGLE_CLOUD_VISION_API_KEY
-    });
+// Location processing simplified - GPT-4V handles element identification directly
 
-    const [
-      textResult,
-      logoResult,
-      propertiesResult,
-      webResult
-    ] = await Promise.all([
-      client.textDetection({ image: { source: { imageUri: imageUrl } } }),
-      client.logoDetection({ image: { source: { imageUri: imageUrl } } }),
-      client.imageProperties({ image: { source: { imageUri: imageUrl } } }),
-      client.webDetection({ image: { source: { imageUri: imageUrl } } })
-    ]);
+// Analysis enhancement now handled directly by GPT-4V - no separate Vision API processing needed
 
-    console.log('[VISION_API] All detections completed successfully');
-
-    function convertBoundingBox(vertices: any[]): { x: number; y: number; width: number; height: number } {
-      if (!vertices || vertices.length < 4) {
-        return { x: 0, y: 0, width: 0, height: 0 };
-      }
-
-      const xs = vertices.map(v => v.x || 0);
-      const ys = vertices.map(v => v.y || 0);
-      
-      const minX = Math.min(...xs);
-      const maxX = Math.max(...xs);
-      const minY = Math.min(...ys);
-      const maxY = Math.max(...ys);
-
-      return {
-        x: minX,
-        y: minY,
-        width: maxX - minX,
-        height: maxY - minY
-      };
-    }
-
-    const textAnnotations: any[] = [];
-    if (textResult[0].textAnnotations && textResult[0].textAnnotations.length > 1) {
-      for (let i = 1; i < textResult[0].textAnnotations.length; i++) {
-        const annotation = textResult[0].textAnnotations[i];
-        if (annotation.description && annotation.boundingPoly?.vertices) {
-          textAnnotations.push({
-            text: annotation.description,
-            confidence: 0.9,
-            boundingBox: convertBoundingBox(annotation.boundingPoly.vertices)
-          });
-        }
-      }
-    }
-
-    const logoAnnotations = (logoResult[0].logoAnnotations || []).map(logo => ({
-      description: logo.description || '',
-      confidence: logo.score || 0,
-      boundingBox: convertBoundingBox(logo.boundingPoly?.vertices || [])
-    }));
-
-    const dominantColors = (propertiesResult[0].imagePropertiesAnnotation?.dominantColors?.colors || []).map(colorInfo => ({
-      color: {
-        red: Math.round(colorInfo.color?.red || 0),
-        green: Math.round(colorInfo.color?.green || 0),
-        blue: Math.round(colorInfo.color?.blue || 0)
-      },
-      score: colorInfo.score || 0,
-      pixelFraction: colorInfo.pixelFraction || 0
-    }));
-
-    const webDetection = webResult[0].webDetection ? {
-      webEntities: (webResult[0].webDetection.webEntities || []).map(entity => ({
-        entityId: entity.entityId || '',
-        description: entity.description || '',
-        score: entity.score || 0
-      })),
-      bestGuessLabels: (webResult[0].webDetection.bestGuessLabels || []).map(label => ({
-        label: label.label || '',
-        languageCode: label.languageCode || 'en'
-      }))
-    } : undefined;
-
-    const result: VisionAnalysisResult = {
-      textAnnotations,
-      logoAnnotations,
-      imageProperties: {
-        dominantColors
-      },
-      webDetection
-    };
-
-    console.log('[VISION_API] Analysis completed:', {
-      textCount: textAnnotations.length,
-      logoCount: logoAnnotations.length,
-      colorCount: dominantColors.length
-    });
-
-    return result;
-
-  } catch (error) {
-    console.error('[VISION_API] Vision analysis failed:', error);
-    console.log('[VISION_API] Continuing without Vision data...');
-    return null;
-  }
-}
-
-// Enhanced location processing - ChatGPT feedback #5
-function enhanceLocationWithVision(element: string, region: string, visionData: VisionAnalysisResult | null) {
-  if (!visionData) {
-    return {
-      element,
-      region,
-      visualContext: `Look for "${element}" in the ${region.toLowerCase()} area of the interface`
-    };
-  }
-
-  // Try to find matching text elements
-  const matchingText = visionData.textAnnotations?.find((annotation: any) => 
-    annotation.text.toLowerCase().includes(element.toLowerCase()) ||
-    element.toLowerCase().includes(annotation.text.toLowerCase())
-  );
-
-  let visualContext = `Look for "${element}" in the ${region.toLowerCase()}`;
-  
-  if (matchingText) {
-    const { x, y, height } = matchingText.boundingBox;
-    
-    // Add precise position context
-    if (y < 100) visualContext += " at the top of the page";
-    else if (y > 500) visualContext += " towards the bottom";
-    else visualContext += " in the middle section";
-    
-    if (x < 200) visualContext += ", on the left side";
-    else if (x > 600) visualContext += ", on the right side";
-    else visualContext += ", centered horizontally";
-
-    // Add size context for easier finding
-    if (height > 40) visualContext += ". This is large, prominent text that should be easy to spot.";
-    else if (height < 16) visualContext += ". This is small text that may be easy to miss - look carefully.";
-    else visualContext += ". This is medium-sized text.";
-
-    // Add nearby elements for context
-    const nearbyElements = visionData.textAnnotations
-      ?.filter((annotation: any) => 
-        annotation.text !== matchingText.text &&
-        Math.abs(annotation.boundingBox.y - y) < 100
-      )
-      ?.slice(0, 2)
-      ?.map((annotation: any) => `"${annotation.text}"`)
-      ?.join(' and ');
-
-    if (nearbyElements) {
-      visualContext += ` Look for it near ${nearbyElements}.`;
-    }
-  }
-
-  return {
-    element,
-    region,
-    visualContext
-  };
-}
-
-// Enhanced analysis with Vision data
-function enhanceAnalysisWithVision(analysis: any, visionData: VisionAnalysisResult | null): any {
-  if (!visionData) {
-    console.log('[ENHANCE] No vision data available, returning original analysis');
-    return analysis;
-  }
-
-  console.log('[ENHANCE] Enhancing analysis with Vision data...');
-
-  // Enhanced locations for critical issues - ChatGPT feedback #5
-  if (analysis.criticalIssues) {
-    analysis.criticalIssues = analysis.criticalIssues.map((issue: any) => ({
-      ...issue,
-      location: issue.location ? enhanceLocationWithVision(
-        issue.location.element,
-        issue.location.region,
-        visionData
-      ) : undefined
-    }));
-  }
-
-  // Enhanced locations for opportunities
-  if (analysis.opportunities) {
-    analysis.opportunities = analysis.opportunities.map((opp: any) => ({
-      ...opp,
-      location: opp.location ? enhanceLocationWithVision(
-        opp.location.element,
-        opp.location.region,
-        visionData
-      ) : undefined
-    }));
-  }
-
-  // Calculate real contrast ratios for automated accessibility
-  const contrastIssues: any[] = [];
-  const dominantColors = visionData.imageProperties.dominantColors;
-  
-  if (dominantColors.length >= 2) {
-    const color1 = dominantColors[0].color;
-    const color2 = dominantColors[1].color;
-    const contrast = calculateContrast(color1, color2);
-    
-    if (contrast < 4.5) {
-      contrastIssues.push({
-        element: 'Dominant color combination',
-        contrastRatio: contrast,
-        wcagLevel: 'AA' as const,
-        passes: false,
-        fix: contrast < 3 
-          ? 'Increase contrast significantly - current ratio is too low for any WCAG standard'
-          : 'Increase contrast slightly to meet WCAG AA standard (4.5:1 minimum)'
-      });
-    }
-  }
-
-  // Detect small text that might be hard to read
-  const smallTextElements = visionData.textAnnotations.filter(text => {
-    return text.boundingBox.height < 14; // Approximately 16px or smaller
-  });
-
-  // Enhanced accessibility audit with automated checks
-  const enhancedAccessibilityAudit = {
-    ...analysis.accessibilityAudit,
-    automated: true,
-    colorContrast: {
-      issues: contrastIssues
-    },
-    textSize: smallTextElements.length > 0 ? {
-      smallTextCount: smallTextElements.length,
-      minimumSize: `${Math.min(...smallTextElements.map(t => t.boundingBox.height))}px estimated`,
-      recommendation: `Consider increasing size of ${smallTextElements.length} small text elements for better readability`
-    } : {
-      smallTextCount: 0,
-      minimumSize: 'All text appears adequately sized',
-      recommendation: 'Text sizes appear appropriate for readability'
-    },
-    overallRecommendation: contrastIssues.length > 0 || smallTextElements.length > 0
-      ? 'Improve color contrast and increase small text sizes for better accessibility'
-      : 'Visual accessibility appears good based on automated analysis'
-  };
-
-  // Enhanced visual design analysis with Vision data - check if visualDesign exists
-  const enhancedVisualDesign = analysis.visualDesign ? {
-    ...analysis.visualDesign,
-    colorAndContrast: {
-      ...analysis.visualDesign.colorAndContrast,
-      measuredContrasts: contrastIssues.map(issue => ({
-        severity: issue.contrastRatio < 3 ? 'HIGH' : 'MEDIUM',
-        colors: [dominantColors[0].color, dominantColors[1].color],
-        ratio: issue.contrastRatio.toFixed(2),
-        recommendation: issue.fix
-      })),
-      dominantColorPalette: dominantColors.slice(0, 5).map(c => ({
-        hex: rgbToHex(c.color),
-        percentage: (c.pixelFraction * 100).toFixed(1) + '%'
-      }))
-    },
-    typography: {
-      ...analysis.visualDesign.typography,
-      smallTextWarnings: smallTextElements.length > 0 ? {
-        count: smallTextElements.length,
-        message: `${smallTextElements.length} text elements may be too small for comfortable reading`
-      } : null
-    }
-  } : null;
-
-  return {
-    ...analysis,
-    accessibilityAudit: enhancedAccessibilityAudit,
-    ...(enhancedVisualDesign && { visualDesign: enhancedVisualDesign }),
-    visionData: {
-      textCount: visionData.textAnnotations.length,
-      hasLogos: visionData.logoAnnotations.length > 0,
-      dominantColors: dominantColors,
-      hasCTAs: visionData.textAnnotations.some(t => 
-        ['buy', 'start', 'sign', 'get', 'download', 'submit', 'continue', 'next'].some(cta => 
-          t.text.toLowerCase().includes(cta)
-        )
-      ),
-      detectedText: visionData.textAnnotations.slice(0, 20).map(t => t.text)
-    }
-  };
-}
-
-// Helper functions
-function calculateContrast(color1: any, color2: any): number {
-  const l1 = relativeLuminance(color1);
-  const l2 = relativeLuminance(color2);
-  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
-}
-
-function relativeLuminance(color: any): number {
-  const rsRGB = color.red / 255;
-  const gsRGB = color.green / 255;
-  const bsRGB = color.blue / 255;
-
-  const r = rsRGB <= 0.03928 ? rsRGB / 12.92 : Math.pow((rsRGB + 0.055) / 1.055, 2.4);
-  const g = gsRGB <= 0.03928 ? gsRGB / 12.92 : Math.pow((gsRGB + 0.055) / 1.055, 2.4);
-  const b = bsRGB <= 0.03928 ? bsRGB / 12.92 : Math.pow((bsRGB + 0.055) / 1.055, 2.4);
-
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-function rgbToHex(color: any): string {
-  const toHex = (n: number) => n.toString(16).padStart(2, '0');
-  return '#' + toHex(color.red) + toHex(color.green) + toHex(color.blue);
-}
+// Helper functions for contrast calculation removed - GPT-4V now handles color analysis directly
 
 // NEW: Calculate string similarity (simple Levenshtein-based approach)
 function calculateSimilarity(str1: string, str2: string): number {
@@ -506,7 +191,7 @@ function calculateSimilarity(str1: string, str2: string): number {
   return intersection.size / union.size;
 }
 
-// NEW: Check if two insights are similar (>60% threshold for more aggressive deduplication)
+// ENHANCED: Check if two insights are similar with improved pattern detection
 function isSimilarInsight(insightA: string, insightB: string): boolean {
   const similarity = calculateSimilarity(insightA, insightB);
   
@@ -514,14 +199,39 @@ function isSimilarInsight(insightA: string, insightB: string): boolean {
   const a = insightA.toLowerCase();
   const b = insightB.toLowerCase();
   
-  // Check if they're talking about the same UI element
-  const commonElements = ['button', 'cta', 'form', 'header', 'navigation', 'text', 'color', 'contrast'];
+  // Check if they're talking about the same UI element (expanded list)
+  const commonElements = ['button', 'cta', 'form', 'header', 'navigation', 'text', 'color', 'contrast', 'input', 'field', 'menu', 'link', 'icon'];
   const sharedElement = commonElements.some(elem => 
     a.includes(elem) && b.includes(elem)
   );
   
-  // If they share an element and have >60% similarity, they're duplicates
-  return similarity > 0.6 || (sharedElement && similarity > 0.5);
+  // Check for common action patterns
+  const commonActions = ['improve', 'add', 'remove', 'optimize', 'enhance', 'fix', 'change', 'make', 'increase', 'reduce'];
+  const sharedAction = commonActions.some(action => 
+    a.includes(action) && b.includes(action)
+  );
+  
+  // Check for generic phrasing patterns that indicate bullshit duplication
+  const genericPatterns = [
+    /trust.*without/,
+    /value.*prop/,
+    /conversion.*funnel/,
+    /user.*don't.*understand/,
+    /improve.*clarity/,
+    /add.*social.*proof/
+  ];
+  
+  const bothGeneric = genericPatterns.some(pattern => 
+    pattern.test(a) && pattern.test(b)
+  );
+  
+  // More aggressive deduplication for common patterns
+  if (bothGeneric && similarity > 0.4) return true;
+  if (sharedElement && sharedAction && similarity > 0.45) return true;
+  if (similarity > 0.65) return true;
+  if (sharedElement && similarity > 0.5) return true;
+  
+  return false;
 }
 
 // ENHANCED: Cross-reference checker with similarity detection
@@ -674,7 +384,8 @@ function calculateModuleStrength(moduleData: any, moduleName: string): number {
 export async function analyzeImage(
   imageUrl: string, 
   userContext?: string,
-  previousAnalysis?: ZombifyAnalysis // For future multi-upload comparison
+  previousAnalysis?: ZombifyAnalysis, // For future multi-upload comparison
+  onProgress?: (stage: number) => void // Progress callback for UI updates
 ): Promise<ZombifyAnalysis> {
   console.log('[ANALYZE_IMAGE] Starting enhanced 3-stage prompt chain analysis for:', imageUrl);
   if (userContext) {
@@ -690,25 +401,8 @@ export async function analyzeImage(
   }
   
   try {
-    // Step 1: Run Vision API FIRST to get element data
-    console.log('[ANALYZE_IMAGE] Starting Vision API analysis...');
-    const visionData = await analyzeImageWithVision(imageUrl);
-    
-    // Step 2: Prepare Vision context
-    let visionContext = '';
-    if (visionData) {
-      visionContext = `
-VISION API DATA AVAILABLE - YOU MUST USE THIS DATA:
-- Detected ${visionData.textAnnotations.length} text elements
-- Found ${visionData.logoAnnotations.length} logos/brand elements
-- Dominant colors: ${visionData.imageProperties.dominantColors.slice(0, 3).map(c => 
-  `rgb(${c.color.red},${c.color.green},${c.color.blue})`
-).join(', ')}
-- Text elements: ${visionData.textAnnotations.slice(0, 15).map(t => `"${t.text}"`).join(', ')}${visionData.textAnnotations.length > 15 ? '...' : ''}
-
-CRITICAL: Reference this actual text and color data in your analysis. Do not make up elements you cannot see.
-`;
-    }
+    // Vision API removed - now using GPT-4V native vision capabilities only
+    console.log('[ANALYZE_IMAGE] Starting GPT-4V analysis...');
     
     const { OpenAI } = await import('openai');
     
@@ -739,9 +433,9 @@ Let this context guide your analysis to be more relevant and actionable.
 
     // STAGE 1: OBSERVATION WITH FIXED ATTENTION FLOW
     console.log('[ANALYZE_IMAGE] Stage 1: Observation');
+    onProgress?.(1);
     const observationPrompt = `You are a glitchy oracle who's seen 10,000 failed startups. Your job is to decode interface psychology with brutal honesty.
 
-${visionContext}
 ${contextPrompt}
 
 STAGE 1 - OBSERVE: Examine this interface with surgical precision.
@@ -762,14 +456,14 @@ Then observe:
 2. ${userContext ? 'How does your observation align with the user\'s description?' : ''}
 3. Visual hierarchy - map the EXACT attention flow (3-6 elements minimum)
 4. What emotions does the design trigger?
-5. What text/CTAs can you see from Vision data?
+5. What specific text and CTAs can you actually read in the image?
 6. Is this modern or dated? Why?
 
 CRITICAL FOR ATTENTION FLOW:
 - List 3-6 elements in order of visual dominance
 - Consider: size, color contrast, position, whitespace
 - First element = what eyes land on immediately
-- Include actual element names from Vision data
+- Use EXACT element names/text you can see - no assumptions
 
 Return this JSON:
 
@@ -784,7 +478,7 @@ Return this JSON:
     "attentionFlow": [
       {
         "priority": 1,
-        "element": "Exact element name from Vision data",
+        "element": "Exact element name/text you can see",
         "reasoning": "Large size + high contrast + center position",
         "timeSpent": "2-3 seconds",
         "focusWeight": "HIGH"
@@ -804,7 +498,7 @@ Return this JSON:
         "focusWeight": "LOW"
       }
     ],
-    "textElements": ["exact text from Vision data only"],
+    "textElements": ["exact text you can read in the image"],
     "ctaElements": ["actual CTA text if present"],
     "dominantColors": ["primary", "secondary", "accent"],
     "designStyle": "modern|outdated|professional|amateur",
@@ -843,6 +537,7 @@ Return this JSON:
 
     // STAGE 2: INTERPRETATION WITH DARK PATTERN DETECTION
     console.log('[ANALYZE_IMAGE] Stage 2: Interpretation');
+    onProgress?.(2);
     const interpretationResponse = await openai.chat.completions.create({
       model: 'gpt-4o',
       temperature: 0.4,
@@ -857,8 +552,6 @@ Return this JSON:
 
 OBSERVATION DATA:
 ${JSON.stringify(observationData, null, 2)}
-
-${visionContext}
 
 STAGE 2 - INTERPRET: Decode the psychological warfare.
 
@@ -886,7 +579,7 @@ Return JSON:
   "psychologicalAnalysis": {
     "primaryEmotion": "trust|anxiety|excitement|confusion|frustration|delight|anticipation|skepticism",
     "intensity": 7,
-    "reasoning": "Specific elements from Vision data causing this emotion",
+    "reasoning": "Specific visual elements you can see causing this emotion",
     "behavioralPrediction": "Users will likely... vs business wants them to..."
   },
   "generationalBreakdown": {
@@ -961,6 +654,7 @@ Return JSON:
 
     // STAGE 3: RECOMMENDATIONS WITH DEDUPLICATION
     console.log('[ANALYZE_IMAGE] Stage 3: Recommendations');
+    onProgress?.(3);
     const recommendationsResponse = await openai.chat.completions.create({
       model: 'gpt-4o',
       temperature: 0.2,
@@ -979,7 +673,6 @@ ${JSON.stringify(observationData, null, 2)}
 INTERPRETATION DATA:
 ${JSON.stringify(interpretationData, null, 2)}
 
-${visionContext}
 ${contextPrompt}
 
 STAGE 3 - RECOMMEND: Provide actionable fixes with NO DUPLICATION.
@@ -1026,7 +719,7 @@ Journey stages should match what you actually see:
 - COMPLETION: Barriers to finishing the workflow
 
 ONLY suggest improvements for what you can SEE in the interface.
-Every suggestion must reference a specific UI element from the Vision data.
+Every suggestion must reference a specific UI element you can observe in the image.
 
 Return JSON:
 
@@ -1056,7 +749,7 @@ Return JSON:
     }
   },
   "verdict": {
-    "summary": "${observationData.punchline} The ${interpretationData.psychologicalAnalysis?.primaryEmotion || 'confused'} user faces ${interpretationData.darkPatterns?.length || 0} manipulation tactics while trying to ${interpretationData.intentAnalysis?.perceivedPurpose || 'complete their task'}.",
+    "summary": "${observationData.punchline}${interpretationData.darkPatterns?.length > 0 ? ' Users encounter ' + interpretationData.darkPatterns.length + ' dark patterns that may impact their experience' : ' The interface generally follows good UX practices'}${interpretationData.intentAnalysis?.perceivedPurpose ? ' while trying to ' + interpretationData.intentAnalysis.perceivedPurpose : ''}. ${interpretationData.psychologicalAnalysis?.primaryEmotion === 'delight' || interpretationData.psychologicalAnalysis?.primaryEmotion === 'trust' || interpretationData.psychologicalAnalysis?.primaryEmotion === 'excitement' ? 'The design effectively creates a positive user experience.' : interpretationData.psychologicalAnalysis?.primaryEmotion === 'confusion' || interpretationData.psychologicalAnalysis?.primaryEmotion === 'frustration' ? 'There are opportunities to improve clarity and user experience.' : 'The interface has mixed emotional impact that could be optimized.'}",
     "attentionSpan": "Power users: 3-5 minutes. Casual visitors: 15-30 seconds before bounce.",
     "likelyAction": "Most will ${interpretationData.psychologicalAnalysis?.behavioralPrediction || 'leave confused'}",
     "dropoffPoint": "Primary abandonment at ${observationData.visualObservations?.attentionFlow?.[2]?.element || 'third element'}",
@@ -1070,7 +763,7 @@ Return JSON:
       "issue": "Most critical usability/hierarchy problem (not copy or visual style)",
       "area": "Specific interface section",
       "location": {
-        "element": "Exact element name from Vision data",
+        "element": "Exact element name you can see",
         "region": "Top header|Main content|etc"
       },
       "impact": "Quantified business impact",
@@ -1093,7 +786,7 @@ Return JSON:
     "issues": [
       {
         "severity": "HIGH",
-        "element": "Exact text from Vision data",
+        "element": "Exact text you can read in the image",
         "location": "Where this appears",
         "issue": "Why this copy fails (focus on messaging, not visuals)",
         "psychologicalImpact": "How this affects user emotions",
@@ -1137,12 +830,12 @@ Return JSON:
       "colorHarmony": {"scheme": "Complementary", "brandColors": ["#actual colors"], "accentSuggestion": "Add warmer accent"}
     },
     "spacing": {"score": 75, "gridSystem": "CSS Grid", "consistency": 80, "issues": []},
-    "modernPatterns": {"detected": ["Cards", "Gradients"], "implementation": {}, "trendAlignment": {"2025Relevance": 70, "suggestions": ["Add glassmorphism"]}},
+    "modernPatterns": {"detected": ["Cards", "Gradients"], "implementation": {}, "trendAlignment": {"2025Relevance": 70, "suggestions": ["Consider subtle shadow variations"]}},
     "visualHierarchy": {"scanPattern": "F-pattern", "focalPoints": [{"element": "Hero", "weight": 9}], "improvements": []},
     "tileFeedback": [
       {
         "area": "Navigation bar",
-        "feedback": "Items spaced inconsistently - standardize to 24px gaps for cleaner look",
+        "feedback": "Items spaced inconsistently - consider standardizing gaps for cleaner visual alignment",
         "confidence": 0.9
       },
       {
@@ -1170,7 +863,7 @@ Return JSON:
       "implementation": "Step-by-step changes to existing UI elements",
       "reasoning": "Based on what I can see: [specific element] could be improved because...",
       "location": {
-        "element": "EXACT element name from Vision data that needs improvement",
+        "element": "EXACT element name you can see that needs improvement",
         "region": "EXACT region where this element exists"
       }
     }
@@ -1202,7 +895,7 @@ Return JSON:
     {
       "type": "URGENCY_MANIPULATION",
       "severity": "HIGH", 
-      "element": "Exact element from Vision data",
+      "element": "Exact element you can see in the image",
       "location": "Where this appears",
       "evidence": "What makes this manipulative",
       "impact": "How this affects users",
@@ -1356,8 +1049,8 @@ Return JSON:
       }
     }
 
-    // Step 4: Enhance with Vision data
-    const finalAnalysis = enhanceAnalysisWithVision(combinedAnalysis, visionData);
+    // Analysis complete - no Vision API enhancement needed
+    const finalAnalysis = combinedAnalysis;
 
     // Calculate diagnostics for debugging and transparency
     const totalInsights = 
@@ -1392,7 +1085,7 @@ Return JSON:
       duplicateInsightCount: duplicatesByModule.size,
       activeModules,
       weakModules,
-      visionDataUsed: !!visionData,
+      visionDataUsed: false, // Vision API removed
       userContextProvided: !!userContext,
       analysisComplete: true
     };
@@ -1427,11 +1120,12 @@ Return JSON:
       attentionFlowCount: finalAnalysis.perceptionLayer?.attentionFlow?.length || 0,
       darkPatternsFound: finalAnalysis.darkPatterns?.length || 0,
       duplicatesFound: duplicatesByModule.size,
-      visionEnhanced: !!visionData,
+      visionEnhanced: false, // Vision API removed
       userContextProvided: !!userContext,
       gptVersion: GPT_VERSION
     });
 
+    onProgress?.(4); // Analysis complete
     return finalAnalysis;
 
   } catch (error) {

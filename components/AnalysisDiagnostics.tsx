@@ -29,7 +29,7 @@ export default function AnalysisDiagnostics({ analysis, className = '' }: Analys
     },
     userContext: {
       label: 'User Context',
-      status: analysis.context && analysis.context !== 'LEGACY' ? 'complete' : 'missing',
+      status: analysis.context && analysis.context !== 'ERROR' ? 'complete' : 'missing',
       icon: '📝'
     },
     darkPatterns: {

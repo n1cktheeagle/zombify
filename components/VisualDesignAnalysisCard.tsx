@@ -130,22 +130,7 @@ export default function VisualDesignAnalysisCard({ visualDesign }: VisualDesignA
             </div>
           )}
           
-          {/* Vision API Enhanced Colors */}
-          {visualDesign.colorAndContrast.detectedColors && visualDesign.colorAndContrast.detectedColors.length > 0 && (
-            <div>
-              <div className="text-xs font-semibold mb-1 font-mono">Detected Colors:</div>
-              <div className="flex gap-1 flex-wrap">
-                {visualDesign.colorAndContrast.detectedColors.slice(0, 8).map((color: string, i: number) => (
-                  <div 
-                    key={i} 
-                    className="w-6 h-6 border border-black rounded"
-                    style={{ backgroundColor: color }}
-                    title={color}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Vision API removed - color detection now handled by GPT-4V */}
         </div>
       </motion.div>
 
@@ -191,73 +176,23 @@ export default function VisualDesignAnalysisCard({ visualDesign }: VisualDesignA
         </div>
       </motion.div>
 
-      {/* Modern Patterns Card */}
-      <motion.div
-        className="bg-white border-2 border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)] p-4"
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.4 }}
-      >
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-sm">✨</span>
-          <div className="font-semibold text-sm font-mono tracking-wider">MODERN PATTERNS</div>
-          <div className={`ml-auto text-sm font-bold ${getScoreColor(visualDesign.modernPatterns.score || 0)} font-mono`}>
-            {visualDesign.modernPatterns.score || 0}/100
-          </div>
-        </div>
-        
-        <div className="space-y-3">
-          <div>
-            <div className="text-xs font-semibold mb-1 font-mono">2025 Relevance:</div>
-            <div className="text-xs mb-2 font-mono">
-              Score: {visualDesign.modernPatterns.trendAlignment?.['2025Relevance'] || 0}/100
-            </div>
-          </div>
-          
-          {visualDesign.modernPatterns.detected && visualDesign.modernPatterns.detected.length > 0 && (
-            <div>
-              <div className="text-xs font-semibold mb-1 font-mono">Detected Patterns:</div>
-              <div className="text-xs space-y-1">
-                {visualDesign.modernPatterns.detected.slice(0, 3).map((pattern: string, i: number) => (
-                  <div key={i} className="flex items-center gap-2 font-mono">
-                    <span className="text-green-600">✓</span>
-                    <span>{pattern}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {visualDesign.modernPatterns.trendAlignment?.suggestions && visualDesign.modernPatterns.trendAlignment.suggestions.length > 0 && (
-            <div>
-              <div className="text-xs font-semibold mb-1 font-mono">Suggestions:</div>
-              <div className="text-xs space-y-1">
-                {visualDesign.modernPatterns.trendAlignment.suggestions.slice(0, 2).map((suggestion: string, i: number) => (
-                  <div key={i} className="flex items-start gap-2 font-mono">
-                    <span className="text-blue-600 mt-0.5">•</span>
-                    <span>{suggestion}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </motion.div>
+      {/* Modern Patterns section removed - was providing generic/scammy design advice */}
 
-      {/* Visual Hierarchy Card */}
-      <motion.div
-        className="bg-white border-2 border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)] p-4"
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.5 }}
-      >
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-sm">👁️</span>
-          <div className="font-semibold text-sm font-mono tracking-wider">VISUAL HIERARCHY</div>
-          <div className={`ml-auto text-sm font-bold ${getScoreColor(visualDesign.visualHierarchy.score || 0)} font-mono`}>
-            {visualDesign.visualHierarchy.score || 0}/100
+      {/* Visual Hierarchy Card - Only show if we have real data, not fake 0/100 scores */}
+      {visualDesign.visualHierarchy && visualDesign.visualHierarchy.score > 0 && (
+        <motion.div
+          className="bg-white border-2 border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)] p-4"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.5 }}
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-sm">👁️</span>
+            <div className="font-semibold text-sm font-mono tracking-wider">VISUAL HIERARCHY</div>
+            <div className={`ml-auto text-sm font-bold ${getScoreColor(visualDesign.visualHierarchy.score)} font-mono`}>
+              {visualDesign.visualHierarchy.score}/100
+            </div>
           </div>
-        </div>
         
         <div className="space-y-3">
           <div>
@@ -319,59 +254,9 @@ export default function VisualDesignAnalysisCard({ visualDesign }: VisualDesignA
           )}
         </div>
       </motion.div>
-
-      {/* Vision API Enhanced Data Card */}
-      {(visualDesign.detectedText || visualDesign.detectedLogos) && (
-        <motion.div
-          className="bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)] p-4"
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.6 }}
-        >
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-sm">🤖</span>
-            <div className="font-semibold text-sm font-mono tracking-wider">AI VISION DETECTION</div>
-            <div className="ml-auto text-xs bg-purple-600 text-white px-2 py-1 rounded font-mono">ENHANCED</div>
-          </div>
-          
-          <div className="space-y-3">
-            {/* Detected Text */}
-            {visualDesign.detectedText && visualDesign.detectedText.length > 0 && (
-              <div>
-                <div className="text-xs font-semibold mb-1 font-mono">Detected Text Elements:</div>
-                <div className="text-xs space-y-1">
-                  {visualDesign.detectedText.slice(0, 5).map((text: string, i: number) => (
-                    <div key={i} className="flex items-start gap-2 font-mono bg-white/50 p-1 rounded">
-                      <span className="text-purple-600">📝</span>
-                      <span className="truncate">{text}</span>
-                    </div>
-                  ))}
-                  {visualDesign.detectedText.length > 5 && (
-                    <div className="text-xs opacity-60 font-mono text-center">
-                      +{visualDesign.detectedText.length - 5} more text elements
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-            
-            {/* Detected Logos */}
-            {visualDesign.detectedLogos && visualDesign.detectedLogos.length > 0 && (
-              <div>
-                <div className="text-xs font-semibold mb-1 font-mono">Detected Brand Elements:</div>
-                <div className="text-xs space-y-1">
-                  {visualDesign.detectedLogos.map((logo: string, i: number) => (
-                    <div key={i} className="flex items-center gap-2 font-mono bg-white/50 p-1 rounded">
-                      <span className="text-blue-600">🏷️</span>
-                      <span>{logo}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </motion.div>
       )}
+
+      {/* Vision API removed - text and logo detection now handled by GPT-4V */}
     </div>
   );
 }

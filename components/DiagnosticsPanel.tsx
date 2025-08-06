@@ -71,7 +71,7 @@ export default function DiagnosticsPanel({ analysis, className = '' }: Diagnosti
     analysisComplete: !!(analysis.perceptionLayer && analysis.gripScore),
     perceptionLayerActive: !!analysis.perceptionLayer,
     moduleStrengthCalculated: !!analysis.moduleStrength,
-    userContextProvided: analysis.context && analysis.context !== 'LEGACY',
+    userContextProvided: analysis.context && analysis.context !== 'ERROR',
     hiddenModules,
     bullshitContentDetected: bullshitOpportunities.length > 0
   };

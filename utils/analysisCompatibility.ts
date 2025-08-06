@@ -127,7 +127,43 @@ const BULLSHIT_KEYWORDS = [
   'improve trust without',
   'add social proof',
   'value prop confusion',
-  'users don\'t understand'
+  'users don\'t understand',
+  // Additional commonly seen generic terms
+  'conversion optimization',
+  'user journey mapping',
+  'customer lifecycle',
+  'engagement metrics',
+  'retention strategy',
+  'growth funnel',
+  'brand awareness',
+  'market positioning',
+  'competitive advantage',
+  'customer acquisition',
+  'user personas',
+  'behavioral targeting',
+  'omnichannel experience',
+  'customer touchpoints',
+  'marketing automation',
+  'drip campaigns',
+  'retargeting ads',
+  'lookalike audiences',
+  'organic growth',
+  'virality coefficient',
+  'product-market fit',
+  'churn reduction',
+  'lifetime value',
+  'customer success',
+  'upselling strategy',
+  'cross-selling opportunities',
+  'freemium model',
+  'subscription optimization',
+  'pricing strategy',
+  'value-based pricing',
+  // Vague accessibility issues
+  'dominant color combination',
+  'increase contrast significantly',
+  'current ratio is too low',
+  'wcag standard'
 ];
 
 /**
@@ -164,10 +200,10 @@ export function shouldShowModule(
   switch (moduleName) {
     case 'visualDesign':
       // Show if clarity flag OR has actual insights
-      const visualData = analysis.visualDesign;
-      const hasVisualInsights = visualData?.tileFeedback?.length > 0 || 
-                               visualData?.typography?.issues?.length > 0 ||
-                               visualData?.colorAndContrast?.contrastFailures?.length > 0;
+      const visualData = getVisualDesignData(analysis);
+      const hasVisualInsights = (visualData?.tileFeedback?.length || 0) > 0 || 
+                               (visualData?.typography?.issues?.length || 0) > 0 ||
+                               (visualData?.colorAndContrast?.contrastFailures?.length || 0) > 0;
       return clarityFlag === true || hasVisualInsights || strength >= 3;
       
     case 'uxCopyInsights':
@@ -176,37 +212,64 @@ export function shouldShowModule(
       return clarityFlag === true || copyIssues.length >= 1 || strength >= 3;
       
     case 'accessibility':
-      // Similar logic - show if has insights or good strength
-      const hasAccessibilityIssues = analysis.accessibilityAudit && 
-                                    ('criticalFailures' in analysis.accessibilityAudit ? 
-                                     analysis.accessibilityAudit.criticalFailures?.length > 0 : false);
-      return clarityFlag === true || hasAccessibilityIssues || strength >= 3;
+      // Show if accessibility audit exists - much more lenient
+      if (!analysis.accessibilityAudit) return false;
+      
+      const hasAccessibilityIssues = 'criticalFailures' in analysis.accessibilityAudit ? 
+                                     (analysis.accessibilityAudit.criticalFailures?.length || 0) > 0 : false;
+      const hasAccessibilityData = analysis.accessibilityAudit.score !== undefined || 
+                                   (analysis.accessibilityAudit as any).strengths?.length > 0 ||
+                                   (analysis.accessibilityAudit as any).weaknesses?.length > 0 ||
+                                   (analysis.accessibilityAudit as any).recommendations?.length > 0;
+      
+      // Show if: clarity flag is true OR has any accessibility data OR decent strength OR audit simply exists
+      return clarityFlag === true || hasAccessibilityIssues || hasAccessibilityData || strength >= 2;
       
     case 'frictionPoints':
-      // Show only if friction points are UI-grounded with specific evidence
+      // Show if friction points exist with reasonable evidence - more balanced approach
       const frictionPoints = analysis.frictionPoints || [];
       const hasRealFriction = frictionPoints.some(fp => {
-        // Check for generic phrases we want to filter out
-        const hasGenericFriction = /don't understand.*value prop|improve trust|optimize.*funnel|add social proof/i.test(fp.friction || '');
-        const hasGenericEvidence = /uses jargon|technical terms|improve trust/i.test(fp.evidence || '');
+        // Basic quality checks - more lenient
+        if (!fp.friction || !fp.evidence) return false;
         
-        // Must have specific evidence and not be generic
-        return !isBullshitContent(fp.friction) && 
-               fp.evidence && 
-               fp.evidence.length > 20 && // Substantial evidence
-               !hasGenericFriction && 
-               !hasGenericEvidence;
+        // Check for completely generic phrases (only the worst ones)
+        const hasVeryGenericFriction = /don't understand.*value prop|add social proof/i.test(fp.friction || '');
+        const hasVeryGenericEvidence = /improve trust without/i.test(fp.evidence || '');
+        
+        // More lenient requirements:
+        // - Either not bullshit content OR has good evidence (20+ chars)
+        // - Not extremely generic
+        const hasDecentEvidence = fp.evidence.length >= 20; // Reduced from 25
+        const notTotalBullshit = !isBullshitContent(fp.friction) || hasDecentEvidence;
+        
+        return notTotalBullshit && !hasVeryGenericFriction && !hasVeryGenericEvidence;
       });
-      return hasRealFriction;
+      
+      // Fallback: show if we have friction points and decent strength
+      return hasRealFriction || (frictionPoints.length > 0 && strength >= 3);
       
     case 'opportunities':
-      // STRICT: Only show if opportunities are specific and UI-grounded
+      // VERY STRICT: Only show if opportunities are specific and UI-grounded
       const opportunities = analysis.opportunities || [];
-      const hasRealOpportunities = opportunities.some(opp => 
-        !isBullshitContent(opp.opportunity) && 
-        opp.location?.element && 
-        opp.location?.element !== 'Where to add this'
-      );
+      const hasRealOpportunities = opportunities.some(opp => {
+        // Basic bullshit filtering
+        if (isBullshitContent(opp.opportunity)) return false;
+        if (!opp.location?.element || opp.location.element === 'Where to add this') return false;
+        
+        // Check for contradictory suggestions (suggesting to add what already exists)
+        const oppText = opp.opportunity.toLowerCase();
+        const hasContradictoryPhrases = [
+          /add.*label.*already/i,
+          /label.*button.*visible/i,
+          /increase.*contrast.*already/i,
+          /add.*that.*exist/i
+        ].some(pattern => pattern.test(oppText));
+        
+        if (hasContradictoryPhrases) return false;
+        
+        // Require very high strength for opportunities to reduce false positives
+        return strength >= 4 && opp.location.element.length > 15;
+      });
       return hasRealOpportunities;
       
     case 'behavioralInsights':
@@ -217,7 +280,8 @@ export function shouldShowModule(
         !isBullshitContent(insight.observation) &&
         /button|form|cta|element|text|section/.test(insight.observation.toLowerCase())
       );
-      return hasRealInsights && (strength >= 3 || clarityFlag === true);
+      // TIGHTENED: Require higher strength AND UI element references
+      return hasRealInsights && (strength >= 4 || clarityFlag === true);
       
     case 'darkPatterns':
       // Always show if any patterns detected
@@ -244,6 +308,35 @@ export function getModuleConfidence(
   if (strength >= 4) return 'high';
   if (strength >= 3) return 'medium';
   return 'low';
+}
+
+/**
+ * Enhanced quality badge calculation with content quality consideration
+ */
+export function getQualityBadge(
+  moduleName: keyof ModuleStrength,
+  analysis: ZombifyAnalysis
+): { icon: string; label: string; color: string } {
+  const strength = analysis.moduleStrength?.[moduleName] || 0;
+  const clarityFlag = analysis.perceptionLayer?.clarityFlags?.[moduleName];
+  
+  // Check if module would actually be shown (indicates real content)
+  const wouldShow = shouldShowModule(moduleName, analysis);
+  
+  // Weight clarity flags more heavily and consider actual content
+  if (strength >= 4 && clarityFlag && wouldShow) {
+    return { icon: '🟢', label: 'High Quality', color: 'bg-green-100 text-green-700' };
+  }
+  
+  if ((strength >= 3 && clarityFlag) || (strength >= 4 && wouldShow)) {
+    return { icon: '🟡', label: 'Good Signal', color: 'bg-yellow-100 text-yellow-700' };
+  }
+  
+  if (strength >= 3 || (clarityFlag && wouldShow)) {
+    return { icon: '🟡', label: 'Good Signal', color: 'bg-yellow-100 text-yellow-700' };
+  }
+  
+  return { icon: '🔴', label: 'Low Signal', color: 'bg-red-100 text-red-700' };
 }
 
 /**

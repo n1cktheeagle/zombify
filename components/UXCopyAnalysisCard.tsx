@@ -187,7 +187,7 @@ export default function UXCopyAnalysisCard({ uxCopy, analysis }: UXCopyAnalysisC
 
         {/* Issues List */}
         <div className="space-y-2 max-h-60 overflow-y-auto">
-          {filteredIssues.slice(0, 5).map((issue, i) => (
+          {filteredIssues.slice(0, 5).map((issue: any, i: number) => (
             <div key={i} className="text-xs border border-black/20 p-2 bg-white rounded">
               <div className="flex justify-between items-start mb-1">
                 <span className="font-semibold">{issue.element}</span>

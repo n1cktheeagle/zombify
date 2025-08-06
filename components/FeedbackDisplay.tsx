@@ -41,7 +41,7 @@ export type FeedbackTabId = 'overview' | 'issues' | 'opportunities' | 'insights'
 
 export const feedbackTabs = [
   { id: 'overview', label: 'OVERVIEW', getCount: () => 0 },
-  { id: 'issues', label: 'ISSUES & FIXES', getCount: (a: ZombifyAnalysis) => a.criticalIssues.length + a.usabilityIssues.length },
+  { id: 'issues', label: 'ISSUES & FIXES', getCount: (a: ZombifyAnalysis) => (a.criticalIssues?.length || 0) + (a.usabilityIssues?.length || 0) },
   { id: 'opportunities', label: 'OPPORTUNITIES', getCount: (a: ZombifyAnalysis) => a.opportunities?.length || 0, pro: true },
   { id: 'insights', label: 'BEHAVIORAL INSIGHTS', getCount: (a: ZombifyAnalysis) => a.behavioralInsights?.length || 0, pro: true },
   { id: 'accessibility', label: 'ACCESSIBILITY', getCount: (a: ZombifyAnalysis) => {
@@ -238,7 +238,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                         {/* Issues list */}
         <div className="space-y-4">
           {/* Critical Issues */}
-          {analysis.criticalIssues.map((issue, index) => (
+          {(analysis.criticalIssues || []).map((issue, index) => (
             <IssueCard
               key={`critical-${index}`}
               issue={issue}
@@ -249,24 +249,24 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
           ))}
 
           {/* Usability Issues */}
-          {analysis.usabilityIssues.slice(0, isLoggedIn ? undefined : 2).map((issue, index) => (
+          {(analysis.usabilityIssues || []).slice(0, isLoggedIn ? undefined : 2).map((issue, index) => (
             <IssueCard
               key={`usability-${index}`}
               issue={issue}
-              index={index + analysis.criticalIssues.length}
+              index={index + (analysis.criticalIssues?.length || 0)}
               type="usability"
               isPro={isPro}
             />
           ))}
           
-          {!isLoggedIn && analysis.usabilityIssues.length > 2 && (
+          {!isLoggedIn && (analysis.usabilityIssues?.length || 0) > 2 && (
             <motion.div
               className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             >
               <div className="font-mono text-sm opacity-70 mb-2">
-                + {analysis.usabilityIssues.length - 2} more issues detected
+                + {(analysis.usabilityIssues?.length || 0) - 2} more issues detected
               </div>
               <button className="zombify-primary-button px-6 py-2 text-sm">
                 SIGN UP TO VIEW ALL
@@ -275,7 +275,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
           )}
 
                   {/* No Issues State */}
-                  {analysis.criticalIssues.length === 0 && analysis.usabilityIssues.length === 0 && (
+                  {(analysis.criticalIssues?.length || 0) === 0 && (analysis.usabilityIssues?.length || 0) === 0 && (
                     <motion.div
                       className="text-center py-12 bg-green-50 border border-green-200 rounded-lg"
                       initial={{ opacity: 0, scale: 0.95 }}
