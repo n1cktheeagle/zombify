@@ -8,7 +8,7 @@ import AnalysisProgressBar from '@/components/AnalysisProgressBar';
 
 interface UploadZoneProps {
   onFileSelect?: (file: File) => void;
-  onZombify?: (file: File, userContext?: string, onProgress?: (stage: number) => void) => Promise<void>;
+  onZombify?: (file: File, userContext?: string, onProgress?: (stage: number, extractionProgress?: number, extractionStage?: string) => void) => Promise<void>;
   isLoggedIn?: boolean;
   disabled?: boolean;
   showCooldown?: boolean;
@@ -29,7 +29,9 @@ export default function UploadZone({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisStage, setAnalysisStage] = useState(0); // 0 = not started, 1-3 = analysis stages
+  const [analysisStage, setAnalysisStage] = useState(0); // 0 = not started, 1-2 = extraction, 3-5 = analysis
+  const [extractionProgress, setExtractionProgress] = useState(0);
+  const [extractionStageText, setExtractionStageText] = useState('');
   const [error, setError] = useState('');
   const [cooldownTime, setCooldownTime] = useState(0);
   const [showAuthMessage, setShowAuthMessage] = useState(false);
@@ -224,11 +226,18 @@ export default function UploadZone({
 
     setIsAnalyzing(true);
     setAnalysisStage(1);
+    setExtractionProgress(0);
     setError('');
 
     try {
-      await onZombify(uploadedFile, userContext.trim() || undefined, (stage: number) => {
+      await onZombify(uploadedFile, userContext.trim() || undefined, (stage: number, extractProgress?: number, extractStage?: string) => {
         setAnalysisStage(stage);
+        if (extractProgress !== undefined) {
+          setExtractionProgress(extractProgress);
+        }
+        if (extractStage) {
+          setExtractionStageText(extractStage);
+        }
       });
     } catch (err) {
       console.error('Zombify error:', err);
@@ -236,6 +245,8 @@ export default function UploadZone({
     } finally {
       setIsAnalyzing(false);
       setAnalysisStage(0);
+      setExtractionProgress(0);
+      setExtractionStageText('');
     }
   };
 
@@ -444,7 +455,9 @@ export default function UploadZone({
             {/* Analysis Progress Bar */}
             <AnalysisProgressBar 
               currentStage={analysisStage} 
-              isVisible={isAnalyzing} 
+              isVisible={isAnalyzing}
+              extractionProgress={extractionProgress}
+              extractionStage={extractionStageText}
             />
           </div>
         )}

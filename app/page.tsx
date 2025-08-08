@@ -163,8 +163,17 @@ export default function HomePage() {
     return () => clearInterval(typeInterval);
   }, [showContent]);
 
+  // Fallback: if auth is slow, show landing after a short timeout
+  useEffect(() => {
+    if (showContent || user || hasRedirected) return;
+    const t = setTimeout(() => {
+      setShowContent(true);
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [showContent, user, hasRedirected]);
+
   // Show loading state while auth is initializing OR if we're redirecting OR haven't decided what to show
-  if (!initialized || (user && !hasRedirected) || !showContent) {
+  if ((user && !hasRedirected) || (!showContent && !initialized)) {
     // If we have a user, don't show anything - just redirect silently
     if (user && !hasRedirected) {
       return null; // Render nothing while redirecting

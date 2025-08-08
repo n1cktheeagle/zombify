@@ -2,8 +2,8 @@ import { motion } from 'framer-motion';
 import GlitchText from './GlitchText';
 import { ZombifyAnalysis } from '@/types/analysis';
 
-// Updated 10-tab structure including perception layer
-export type FeedbackSectionId = 'summary' | 'perception' | 'dark-patterns' | 'issues' | 'copy' | 'design' | 'friction' | 'intent' | 'growth' | 'behavior' | 'access';
+// Updated 11-tab structure including perception layer and accessibility
+export type FeedbackSectionId = 'summary' | 'perception' | 'dark-patterns' | 'issues' | 'copy' | 'design' | 'accessibility' | 'friction' | 'intent' | 'growth' | 'behavior';
 
 export const feedbackSections = [
   { 
@@ -44,6 +44,12 @@ export const feedbackSections = [
     description: 'Visual design analysis'
   },
   { 
+    id: 'accessibility', 
+    label: 'ACCESSIBILITY', 
+    getCount: (a: ZombifyAnalysis) => a.accessibilityAudit ? 1 : 0,
+    description: 'WCAG compliance & inclusive design'
+  },
+  { 
     id: 'friction', 
     label: 'FRICTION', 
     getCount: (a: ZombifyAnalysis) => a.frictionPoints?.length || 0,
@@ -68,17 +74,6 @@ export const feedbackSections = [
     getCount: (a: ZombifyAnalysis) => a.behavioralInsights?.length || 0, 
     pro: true,
     description: 'Psychological insights'
-  },
-  { 
-    id: 'access', 
-    label: 'ACCESS', 
-    getCount: (a: ZombifyAnalysis) => {
-      const audit = a.accessibilityAudit;
-      if (!audit) return 0;
-      if ('automated' in audit) return 0; // AutomatedAccessibilityAudit doesn't have criticalFailures
-      return (audit as import('@/types/analysis').AccessibilityAudit).criticalFailures?.length || 0;
-    },
-    description: 'Accessibility analysis'
   }
 ];
 

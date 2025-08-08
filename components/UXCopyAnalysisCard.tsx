@@ -6,7 +6,7 @@ import { EnhancedUXCopyAnalysis, ZombifyAnalysis } from '@/types/analysis';
 import { getUXCopyIssues, shouldShowModule, getModuleConfidence } from '@/utils/analysisCompatibility';
 
 interface UXCopyAnalysisCardProps {
-  uxCopy?: EnhancedUXCopyAnalysis;
+  uxCopy?: EnhancedUXCopyAnalysis & { extractedData?: any };
   analysis?: ZombifyAnalysis; // Add full analysis for compatibility checking
 }
 
@@ -84,6 +84,29 @@ export default function UXCopyAnalysisCard({ uxCopy, analysis }: UXCopyAnalysisC
 
   return (
     <div className="space-y-4">
+      {/* Real Extracted Text Display */}
+      {uxCopy?.extractedData?.text && (
+        <motion.div className="bg-blue-50 border-2 border-blue-200 p-4 mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <span>📝</span>
+              <div className="font-semibold text-sm font-mono">EXTRACTED TEXT (OCR)</div>
+            </div>
+            <div className="text-xs font-mono text-blue-600">
+              {uxCopy.extractedData.text.confidence}% confidence
+            </div>
+          </div>
+          <div className="text-sm font-mono text-black/80 max-h-40 overflow-y-auto whitespace-pre-wrap">
+            {uxCopy.extractedData.text.extracted}
+          </div>
+          {uxCopy.extractedData.text.confidence < 70 && (
+            <div className="text-xs text-orange-600 mt-2">
+              ⚠️ Low OCR confidence - upload a higher resolution image for better results
+            </div>
+          )}
+        </motion.div>
+      )}
+
       {/* Main Score Card */}
       <motion.div 
         className="border-2 border-black bg-[#f5f1e6] p-4 relative overflow-hidden"

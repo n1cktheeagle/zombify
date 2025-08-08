@@ -11,6 +11,8 @@ import VisualDesignAnalysisCard from './VisualDesignAnalysisCard';
 import UXCopyAnalysisCard from './UXCopyAnalysisCard';
 import VerdictCard from './VerdictCard';
 import FeedbackSummary from './feedback/FeedbackSummary';
+import ExtractedDataDisplay from './ExtractedDataDisplay';
+import FeedbackAccessibility from './feedback/FeedbackAccessibility';
 
 // Keep backward compatibility with old props
 type LegacyFeedbackDisplayProps = {
@@ -37,19 +39,14 @@ function isNewFormat(props: FeedbackDisplayProps): props is NewFeedbackDisplayPr
 }
 
 // Export tab types and tab array for use in parent - UPDATED WITH NEW STRUCTURE
-export type FeedbackTabId = 'overview' | 'issues' | 'opportunities' | 'insights' | 'accessibility';
+export type FeedbackTabId = 'overview' | 'issues' | 'accessibility' | 'opportunities' | 'insights';
 
 export const feedbackTabs = [
   { id: 'overview', label: 'OVERVIEW', getCount: () => 0 },
   { id: 'issues', label: 'ISSUES & FIXES', getCount: (a: ZombifyAnalysis) => (a.criticalIssues?.length || 0) + (a.usabilityIssues?.length || 0) },
+  { id: 'accessibility', label: 'ACCESSIBILITY', getCount: (a: ZombifyAnalysis) => a.accessibilityAudit ? 1 : 0 },
   { id: 'opportunities', label: 'OPPORTUNITIES', getCount: (a: ZombifyAnalysis) => a.opportunities?.length || 0, pro: true },
   { id: 'insights', label: 'BEHAVIORAL INSIGHTS', getCount: (a: ZombifyAnalysis) => a.behavioralInsights?.length || 0, pro: true },
-  { id: 'accessibility', label: 'ACCESSIBILITY', getCount: (a: ZombifyAnalysis) => {
-    const audit = a.accessibilityAudit;
-    if (!audit) return 0;
-    if ('automated' in audit) return 0; // AutomatedAccessibilityAudit doesn't have criticalFailures
-    return (audit as import('@/types/analysis').AccessibilityAudit).criticalFailures?.length || 0;
-  }}
 ];
 
 export default function FeedbackDisplay(props: FeedbackDisplayProps) {
@@ -78,10 +75,6 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
   }
   const { analysis, isLoggedIn = false, isPro = false, activeTab, setActiveTab, imageUrl } = props;
   
-  // Type guard to check if it's a manual AccessibilityAudit
-  const isManualAudit = (audit: any): audit is import('@/types/analysis').AccessibilityAudit => {
-    return audit && !('automated' in audit);
-  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -154,6 +147,18 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                 </motion.div>
               )}
 
+              {/* Extracted Data Display - Show ALL real data */}
+              {(analysis as any).extractedData && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="mb-6"
+                >
+                  <ExtractedDataDisplay extractedData={(analysis as any).extractedData} />
+                </motion.div>
+              )}
+
               {/* Analysis Cards Row */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Visual Design Analysis */}
@@ -163,7 +168,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.5 }}
                   >
-                    <VisualDesignAnalysisCard visualDesign={analysis.visualDesignAnalysis} />
+                    <VisualDesignAnalysisCard visualDesign={{...analysis.visualDesignAnalysis, extractedData: (analysis as any).extractedData}} />
                   </motion.div>
                 )}
 
@@ -174,7 +179,7 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.6 }}
                   >
-                    <UXCopyAnalysisCard uxCopy={analysis.uxCopyAnalysis} />
+                    <UXCopyAnalysisCard uxCopy={{...analysis.uxCopyAnalysis, extractedData: (analysis as any).extractedData}} />
                   </motion.div>
                 )}
               </div>
@@ -402,6 +407,14 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
             </div>
           )}
 
+          {/* Accessibility Tab */}
+          {activeTab === 'accessibility' && (
+            <FeedbackAccessibility 
+              analysis={analysis}
+              className="space-y-6"
+            />
+          )}
+
           {/* Behavioral Insights */}
           {activeTab === 'insights' && (
             <div className="space-y-4">
@@ -467,258 +480,6 @@ export default function FeedbackDisplay(props: FeedbackDisplayProps) {
             </div>
           )}
 
-          {/* Accessibility Audit - CLEANED UP, NO FAKE FEATURES */}
-          {activeTab === 'accessibility' && (
-            <div className="space-y-6">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mb-6"
-              >
-                <GlitchText className="text-2xl font-bold mb-2" trigger="mount">
-                  ACCESSIBILITY
-                </GlitchText>
-                <div className="text-sm opacity-70 font-mono">
-                  Visual accessibility analysis for static images
-                </div>
-              </motion.div>
-
-              {analysis.accessibilityAudit ? (
-                <>
-                  {/* Accessibility Score Matrix */}
-                  <motion.div 
-                    className="zombify-card p-6 relative overflow-hidden"
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                  >
-
-                    
-                    <div className="relative z-10">
-                      <div className="text-center mb-6">
-                        <GlitchText className="text-xl font-bold mb-2" trigger="hover">
-                          VISUAL ACCESSIBILITY ANALYSIS
-                        </GlitchText>
-                        <div className="font-mono text-sm opacity-70">Visual elements only - no alt text, keyboard nav, or screen reader analysis</div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <div className="text-center p-4 bg-white/50 rounded border border-black/10">
-                          <div className="text-3xl font-bold text-black mb-1">{analysis.accessibilityAudit.score}</div>
-                          <div className="text-xs font-mono opacity-70">ACCESSIBILITY SCORE</div>
-                        </div>
-                        <div className="text-center p-4 bg-white/50 rounded border border-black/10">
-                          <div className="text-3xl font-bold text-black mb-1">VISUAL</div>
-                          <div className="text-xs font-mono opacity-70">ANALYSIS TYPE</div>
-                        </div>
-                        <div className="text-center p-4 bg-white/50 rounded border border-black/10">
-                          <div className="text-3xl font-bold text-black mb-1">{isManualAudit(analysis.accessibilityAudit) ? (analysis.accessibilityAudit.criticalFailures?.length || 0) : 0}</div>
-                          <div className="text-xs font-mono opacity-70">VISUAL ISSUES</div>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-
-                  {/* Strengths and Weaknesses */}
-                  {isManualAudit(analysis.accessibilityAudit) && (analysis.accessibilityAudit.strengths || analysis.accessibilityAudit.weaknesses) && (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {isManualAudit(analysis.accessibilityAudit) && analysis.accessibilityAudit.strengths && analysis.accessibilityAudit.strengths.length > 0 && (
-                        <motion.div 
-                          className="zombify-card p-6 relative overflow-hidden"
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                        >
-                          <div className="flex items-center gap-3 mb-4">
-                            <div className="text-2xl">✅</div>
-                            <GlitchText className="text-lg font-bold text-black" trigger="hover">
-                              ACCESSIBILITY STRENGTHS
-                            </GlitchText>
-                          </div>
-                          <div className="space-y-2">
-                            {analysis.accessibilityAudit.strengths!.map((strength: string, i: number) => (
-                              <motion.div 
-                                key={i} 
-                                className="flex items-start gap-3 p-3 bg-white/50 rounded border border-black/10"
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: i * 0.1 }}
-                              >
-                                <div className="text-green-600 text-sm">▶</div>
-                                <div className="text-sm font-mono opacity-80">{strength}</div>
-                              </motion.div>
-                            ))}
-                          </div>
-                        </motion.div>
-                      )}
-                      
-                      {isManualAudit(analysis.accessibilityAudit) && analysis.accessibilityAudit.weaknesses && analysis.accessibilityAudit.weaknesses.length > 0 && (
-                        <motion.div 
-                          className="zombify-card p-6 relative overflow-hidden"
-                          initial={{ opacity: 0, x: 20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                        >
-                          <div className="flex items-center gap-3 mb-4">
-                            <div className="text-2xl">⚠️</div>
-                            <GlitchText className="text-lg font-bold text-black" trigger="hover">
-                              AREAS FOR IMPROVEMENT
-                            </GlitchText>
-                          </div>
-                          <div className="space-y-2">
-                            {analysis.accessibilityAudit.weaknesses!.map((weakness: string, i: number) => (
-                              <motion.div 
-                                key={i} 
-                                className="flex items-start gap-3 p-3 bg-white/50 rounded border border-black/10"
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: i * 0.1 }}
-                              >
-                                <div className="text-red-600 text-sm">▶</div>
-                                <div className="text-sm font-mono opacity-80">{weakness}</div>
-                              </motion.div>
-                            ))}
-                          </div>
-                        </motion.div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Critical Failures - VISUAL ONLY */}
-                  {isManualAudit(analysis.accessibilityAudit) && analysis.accessibilityAudit.criticalFailures && analysis.accessibilityAudit.criticalFailures.length > 0 && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="space-y-4"
-                    >
-                      <div className="flex items-center gap-3 mb-6">
-                        <div className="text-3xl">🎯</div>
-                        <GlitchText className="text-2xl font-bold text-red-400" trigger="mount">
-                          VISUAL ACCESSIBILITY ISSUES
-                        </GlitchText>
-                      </div>
-
-                      {analysis.accessibilityAudit.criticalFailures!.map((failure: import('@/types/analysis').AccessibilityFailure, i: number) => (
-                        <motion.div 
-                          key={i} 
-                          className="zombify-card p-6 relative overflow-hidden"
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: i * 0.1 }}
-                        >
-                          <div className="relative z-10">
-                            <div className="flex justify-between items-start mb-4">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-3 mb-2">
-                                  <div className="text-xl">🚨</div>
-                                  <div className="font-bold text-lg text-black">{failure.criterion}</div>
-                                </div>
-                                <div className="text-black mb-2 font-mono text-sm opacity-80">{failure.issue}</div>
-                                <div className="text-xs font-mono opacity-60">
-                                  📍 {failure.location?.selector || failure.location?.element}
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                              <div className="bg-red-50 border border-red-200 p-4 rounded">
-                                <div className="text-xs text-red-600 font-bold mb-1">CURRENT VALUE</div>
-                                <div className="text-sm font-mono text-red-700">{failure.currentValue}</div>
-                              </div>
-                              <div className="bg-green-50 border border-green-200 p-4 rounded">
-                                <div className="text-xs text-green-600 font-bold mb-1">REQUIRED VALUE</div>
-                                <div className="text-sm font-mono text-green-700">{failure.requiredValue}</div>
-                              </div>
-                            </div>
-
-                            <div className="bg-blue-50 border border-blue-200 p-4 rounded">
-                              <div className="text-xs text-blue-600 font-bold mb-2">🔧 REMEDIATION</div>
-                              <div className="text-sm font-mono text-blue-700">{failure.fix}</div>
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </motion.div>
-                  )}
-
-                  {/* Priority Recommendations */}
-                  {isManualAudit(analysis.accessibilityAudit) && analysis.accessibilityAudit.recommendations && analysis.accessibilityAudit.recommendations.length > 0 && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="space-y-4"
-                    >
-                      <div className="flex items-center gap-3 mb-6">
-                        <div className="text-3xl">🎛️</div>
-                        <GlitchText className="text-2xl font-bold text-cyan-400" trigger="mount">
-                          PRIORITY RECOMMENDATIONS
-                        </GlitchText>
-                      </div>
-
-                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                        {['HIGH', 'MEDIUM', 'LOW'].map(priority => {
-                          const priorityRecs = isManualAudit(analysis.accessibilityAudit) ? analysis.accessibilityAudit.recommendations!.filter((rec: any) => rec.priority === priority) : [];
-                          if (priorityRecs.length === 0) return null;
-
-                          const priorityColors = {
-                            HIGH: { bg: 'from-red-900/30 to-red-800/20', border: 'border-red-500/40', text: 'text-red-400', accent: 'bg-red-600' },
-                            MEDIUM: { bg: 'from-orange-900/30 to-orange-800/20', border: 'border-orange-500/40', text: 'text-orange-400', accent: 'bg-orange-600' },
-                            LOW: { bg: 'from-blue-900/30 to-blue-800/20', border: 'border-blue-500/40', text: 'text-blue-400', accent: 'bg-blue-600' }
-                          };
-
-                          const colors = priorityColors[priority as keyof typeof priorityColors];
-
-                          return (
-                            <motion.div
-                              key={priority}
-                              className={`bg-gradient-to-br ${colors.bg} border-2 ${colors.border} rounded-lg p-4 relative overflow-hidden`}
-                              initial={{ opacity: 0, y: 20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: Object.keys(priorityColors).indexOf(priority) * 0.2 }}
-                            >
-                              <div className={`text-center mb-4 ${colors.text}`}>
-                                <div className="text-lg font-bold font-mono">{priority} PRIORITY</div>
-                                <div className="text-sm opacity-70">{priorityRecs.length} action{priorityRecs.length !== 1 ? '&apos;s' : ''}</div>
-                              </div>
-
-                              <div className="space-y-3">
-                                {priorityRecs.map((rec: any, i: number) => (
-                                  <motion.div
-                                    key={i}
-                                    className={`p-3 rounded border-l-4 ${colors.border} bg-black/20`}
-                                    initial={{ opacity: 0, x: -10 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: i * 0.1 }}
-                                  >
-                                    <div className="text-sm font-medium mb-2">{rec.action}</div>
-                                    <div className="flex justify-between items-center text-xs">
-                                      <span className={`${colors.accent} text-white px-2 py-1 rounded font-mono`}>
-                                        {rec.effort} EFFORT
-                                      </span>
-                                      <span className="opacity-70 font-mono">#{i + 1}</span>
-                                    </div>
-                                  </motion.div>
-                                ))}
-                              </div>
-                            </motion.div>
-                          );
-                        })}
-                      </div>
-                    </motion.div>
-                  )}
-                </>
-              ) : (
-                <motion.div
-                  className="text-center py-12 bg-gradient-to-br from-gray-900/20 to-gray-800/20 border-2 border-gray-500/30 rounded-lg"
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                >
-                  <div className="text-6xl mb-4">♿</div>
-                  <GlitchText className="text-xl font-bold mb-2" trigger="mount">
-                    NO ACCESSIBILITY DATA
-                  </GlitchText>
-                  <div className="font-mono text-sm opacity-60">Accessibility analysis not available</div>
-                </motion.div>
-              )}
-            </div>
-          )}
         </motion.div>
       </AnimatePresence>
     </motion.div>

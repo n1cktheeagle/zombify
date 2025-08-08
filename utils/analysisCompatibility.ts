@@ -68,17 +68,24 @@ function generateDefaultClarityFlags(data: any): Record<string, boolean> {
  * Generates default module strength scores based on content presence and quality
  */
 function generateDefaultModuleStrengths(data: any): ModuleStrength {
+  // Visual design strength calculation
+  let visualDesignStrength = 2; // Default
+  const visualData = data.visualDesign || data.visualDesignAnalysis;
+  if (visualData) {
+    visualDesignStrength = visualData.score > 70 ? 4 : 2;
+  }
+  
   // Generate reasonable defaults based on content
   return {
     issuesAndFixes: calculateContentStrength(data.issuesAndFixes || data.criticalIssues, 2),
     uxCopyInsights: calculateContentStrength(data.uxCopyInsights?.issues || data.uxCopyAnalysis?.issues, 2),
-    visualDesign: data.visualDesign?.score > 70 || data.visualDesignAnalysis?.score > 70 ? 4 : 2,
+    visualDesign: visualDesignStrength,
     darkPatterns: data.darkPatterns?.length > 0 ? Math.min(5, data.darkPatterns.length + 2) : 0,
-    accessibility: data.accessibilityAudit?.score > 60 ? 3 : 2,
     opportunities: calculateContentStrength(data.opportunities, 2),
     frictionPoints: calculateContentStrength(data.frictionPoints, 2),
     behavioralInsights: calculateContentStrength(data.behavioralInsights || (data.behavioralInsight ? [data.behavioralInsight] : []), 2),
-    generationalAnalysis: 2 // Default medium strength
+    generationalAnalysis: 2, // Default medium strength
+    accessibility: data.accessibilityAudit ? 3 : 0 // Default medium strength if audit exists
   };
 }
 
@@ -210,20 +217,6 @@ export function shouldShowModule(
       // Show if clarity flag OR has insights
       const copyIssues = analysis.uxCopyInsights?.issues || [];
       return clarityFlag === true || copyIssues.length >= 1 || strength >= 3;
-      
-    case 'accessibility':
-      // Show if accessibility audit exists - much more lenient
-      if (!analysis.accessibilityAudit) return false;
-      
-      const hasAccessibilityIssues = 'criticalFailures' in analysis.accessibilityAudit ? 
-                                     (analysis.accessibilityAudit.criticalFailures?.length || 0) > 0 : false;
-      const hasAccessibilityData = analysis.accessibilityAudit.score !== undefined || 
-                                   (analysis.accessibilityAudit as any).strengths?.length > 0 ||
-                                   (analysis.accessibilityAudit as any).weaknesses?.length > 0 ||
-                                   (analysis.accessibilityAudit as any).recommendations?.length > 0;
-      
-      // Show if: clarity flag is true OR has any accessibility data OR decent strength OR audit simply exists
-      return clarityFlag === true || hasAccessibilityIssues || hasAccessibilityData || strength >= 2;
       
     case 'frictionPoints':
       // Show if friction points exist with reasonable evidence - more balanced approach
@@ -403,6 +396,7 @@ export function getVisualDesignData(analysis: ZombifyAnalysis) {
          (analysis as any).visualDesignAnalysis || 
          null;
 }
+
 
 /**
  * Helper to safely access issues from either new or old structure

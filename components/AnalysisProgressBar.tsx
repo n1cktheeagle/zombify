@@ -4,32 +4,51 @@ import React from 'react';
 import { motion } from 'framer-motion';
 
 interface AnalysisProgressBarProps {
-  currentStage: number; // 0-3 (0 = not started, 1 = observing, 2 = interpreting, 3 = recommending)
+  currentStage: number; // 0-6 (0 = not started, 1-2 = extraction, 3-5 = analysis, 6 = complete)
   isVisible: boolean;
+  extractionProgress?: number; // 0-100 for extraction phase
+  extractionStage?: string; // Current extraction operation
 }
 
 const STAGES = [
   {
     id: 1,
-    name: 'Observing Interface',
-    description: 'Analyzing visual hierarchy and first impressions',
-    duration: '~30s'
+    name: 'Extracting Colors',
+    description: 'Reading real color palette from image',
+    duration: '~2s',
+    phase: 'extraction'
   },
   {
     id: 2,
-    name: 'Interpreting Psychology',
-    description: 'Detecting dark patterns and user behavior',
-    duration: '~25s'  
+    name: 'Extracting Text (OCR)',
+    description: 'Detecting and reading visible text content',
+    duration: '~5s',
+    phase: 'extraction'
   },
   {
     id: 3,
+    name: 'Observing Interface',
+    description: 'Analyzing visual hierarchy with real data',
+    duration: '~25s',
+    phase: 'analysis'
+  },
+  {
+    id: 4,
+    name: 'Interpreting Psychology',
+    description: 'Detecting patterns using extracted colors & text',
+    duration: '~20s',
+    phase: 'analysis'
+  },
+  {
+    id: 5,
     name: 'Generating Recommendations',
-    description: 'Creating actionable fixes and opportunities',
-    duration: '~35s'
+    description: 'Creating fixes based on real extracted data',
+    duration: '~30s',
+    phase: 'analysis'
   }
 ];
 
-export default function AnalysisProgressBar({ currentStage, isVisible }: AnalysisProgressBarProps) {
+export default function AnalysisProgressBar({ currentStage, isVisible, extractionProgress = 0, extractionStage }: AnalysisProgressBarProps) {
   if (!isVisible) return null;
 
   const getStageStatus = (stageId: number) => {
@@ -40,10 +59,19 @@ export default function AnalysisProgressBar({ currentStage, isVisible }: Analysi
 
   const getProgressPercentage = () => {
     if (currentStage === 0) return 0;
-    if (currentStage === 1) return 33;
-    if (currentStage === 2) return 66;
-    if (currentStage === 3) return 100;
+    if (currentStage === 1) return 10 + (extractionProgress * 0.1); // 10-20%
+    if (currentStage === 2) return 20 + (extractionProgress * 0.2); // 20-40%
+    if (currentStage === 3) return 40;
+    if (currentStage === 4) return 60;
+    if (currentStage === 5) return 85;
+    if (currentStage >= 6) return 100;
     return 100;
+  };
+  
+  const getCurrentPhase = () => {
+    if (currentStage <= 2) return 'extraction';
+    if (currentStage <= 5) return 'analysis';
+    return 'complete';
   };
 
   return (
@@ -56,10 +84,12 @@ export default function AnalysisProgressBar({ currentStage, isVisible }: Analysi
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="font-mono font-bold text-sm tracking-wide">
-          ANALYSIS IN PROGRESS
+          {getCurrentPhase() === 'extraction' ? '🔍 EXTRACTING DATA' : 
+           getCurrentPhase() === 'analysis' ? '🧠 ANALYZING' : 
+           '✅ COMPLETE'}
         </div>
         <div className="font-mono text-xs opacity-60">
-          STAGE {Math.max(1, currentStage)}/3
+          STAGE {Math.max(1, currentStage)}/5
         </div>
       </div>
 
@@ -170,12 +200,19 @@ export default function AnalysisProgressBar({ currentStage, isVisible }: Analysi
       {/* Footer */}
       <div className="mt-4 pt-3 border-t border-gray-200">
         <div className="text-xs font-mono text-center opacity-60">
-          {currentStage === 0 && 'Initializing analysis...'}
-          {currentStage === 1 && 'Reading visual hierarchy and attention patterns...'}
-          {currentStage === 2 && 'Analyzing user psychology and dark patterns...'}
-          {currentStage === 3 && 'Finalizing recommendations and insights...'}
-          {currentStage > 3 && 'Analysis complete! Processing results...'}
+          {currentStage === 0 && 'Initializing extraction...'}
+          {currentStage === 1 && `Extracting colors from image... ${extractionProgress}%`}
+          {currentStage === 2 && `Running OCR to extract text... ${extractionProgress}%`}
+          {currentStage === 3 && 'Analyzing interface with extracted data...'}
+          {currentStage === 4 && 'Interpreting psychology using real colors & text...'}
+          {currentStage === 5 && 'Generating recommendations based on extracted data...'}
+          {currentStage >= 6 && 'Analysis complete! No hallucinations, just real data.'}
         </div>
+        {extractionStage && currentStage <= 2 && (
+          <div className="text-xs font-mono text-center text-blue-600 mt-1">
+            {extractionStage}
+          </div>
+        )}
       </div>
     </motion.div>
   );

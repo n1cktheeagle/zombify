@@ -3,14 +3,19 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { PerceptionLayer, AttentionFlowItem } from '@/types/analysis';
+import AttentionHeatmapDisplay from './AttentionHeatmapDisplay';
 
 interface PerceptionDisplayProps {
   perceptionLayer?: PerceptionLayer;
+  heatmapData?: any;
+  imageUrl?: string;
   className?: string;
 }
 
 export default function PerceptionDisplay({ 
   perceptionLayer,
+  heatmapData,
+  imageUrl,
   className = ''
 }: PerceptionDisplayProps) {
   if (!perceptionLayer) return null;
@@ -58,7 +63,77 @@ export default function PerceptionDisplay({
 
   return (
     <div className={`space-y-4 ${className}`}>
-      {/* Primary Emotion Card */}
+      {/* Grid layout for heatmap and attention flow */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Left Column: Heatmap */}
+        {heatmapData && (
+          <div className="lg:col-span-1">
+            <AttentionHeatmapDisplay 
+              heatmapData={heatmapData}
+              imageUrl={imageUrl}
+            />
+          </div>
+        )}
+        
+        {/* Right Column or Full Width: Attention Flow */}
+        <div className={heatmapData ? "lg:col-span-1" : "lg:col-span-2"}>
+          {/* Attention Flow Card */}
+          {attentionFlow && attentionFlow.length > 0 && (
+            <motion.div 
+              className="bg-white border-2 border-black p-4 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)] h-full"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.6 }}
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-lg">👁️</span>
+                <h3 className="font-bold font-mono tracking-wider text-lg">
+                  {heatmapData ? 'AI PREDICTED FLOW' : 'ATTENTION FLOW'}
+                </h3>
+              </div>
+              
+              <div className="space-y-3">
+                {attentionFlow.slice(0, 5).map((item: AttentionFlowItem, index: number) => (
+                  <motion.div
+                    key={index}
+                    className="flex items-start gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.4 + index * 0.1 }}
+                  >
+                    <div className="flex-shrink-0 flex items-center gap-2">
+                      <div className="w-6 h-6 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold font-mono">
+                        {item.priority}
+                      </div>
+                      <div className={`w-2 h-2 rounded-full ${getFocusWeightColor(item.conversionImpact)}`} />
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm font-mono mb-1">
+                        {item.element}
+                      </div>
+                      <div className="text-xs text-gray-600 mb-1">
+                        {item.reasoning}
+                      </div>
+                      <div className="flex items-center gap-4 text-xs font-mono">
+                        <span className="text-blue-600">Time: {item.timeSpent}</span>
+                        <span className={`font-bold ${
+                          item.conversionImpact === 'HIGH' ? 'text-red-600' :
+                          item.conversionImpact === 'MEDIUM' ? 'text-yellow-600' : 'text-blue-600'
+                        }`}>
+                          Impact: {item.conversionImpact}
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </div>
+      </div>
+
+      {/* Primary Emotion Card - Full Width Below */}
       <motion.div 
         className="bg-white border-2 border-black p-4 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]"
         initial={{ opacity: 0, y: 20 }}
@@ -96,100 +171,6 @@ export default function PerceptionDisplay({
         </div>
       </motion.div>
 
-      {/* Attention Flow Card */}
-      {attentionFlow && attentionFlow.length > 0 && (
-        <motion.div 
-          className="bg-white border-2 border-black p-4 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.6 }}
-        >
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-lg">👁️</span>
-            <h3 className="font-bold font-mono tracking-wider text-lg">ATTENTION FLOW</h3>
-          </div>
-          
-          <div className="space-y-3">
-            {attentionFlow.slice(0, 5).map((item: AttentionFlowItem, index: number) => (
-              <motion.div
-                key={index}
-                className="flex items-start gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4 + index * 0.1 }}
-              >
-                <div className="flex-shrink-0 flex items-center gap-2">
-                  <div className="w-6 h-6 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold font-mono">
-                    {item.priority}
-                  </div>
-                  <div className={`w-2 h-2 rounded-full ${getFocusWeightColor(item.conversionImpact)}`} />
-                </div>
-                
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-sm font-mono mb-1">
-                    {item.element}
-                  </div>
-                  <div className="text-xs text-gray-600 mb-1">
-                    {item.reasoning}
-                  </div>
-                  <div className="flex items-center gap-4 text-xs font-mono">
-                    <span className="text-blue-600">Time: {item.timeSpent}</span>
-                    <span className={`font-bold ${
-                      item.conversionImpact === 'HIGH' ? 'text-red-600' :
-                      item.conversionImpact === 'MEDIUM' ? 'text-yellow-600' : 'text-blue-600'
-                    }`}>
-                      Impact: {item.conversionImpact}
-                    </span>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-      )}
-
-      {/* Analysis Clarity Flags */}
-      <motion.div 
-        className="bg-white border-2 border-black p-4 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4, duration: 0.6 }}
-      >
-        <div className="flex items-center gap-2 mb-4">
-          <span className="text-lg">🎯</span>
-          <h3 className="font-bold font-mono tracking-wider text-lg">ANALYSIS CLARITY</h3>
-        </div>
-        
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {Object.entries(clarityFlags).map(([key, clear]) => (
-            <motion.div 
-              key={key}
-              className="flex items-center gap-2 p-2 rounded-lg border"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.6 + Object.keys(clarityFlags).indexOf(key) * 0.05 }}
-            >
-              <div className={`w-3 h-3 rounded-full ${
-                clear ? 'bg-green-500' : 'bg-yellow-500'
-              }`} />
-              <span className="text-xs font-mono capitalize">
-                {key.replace(/([A-Z])/g, ' $1').trim()}
-              </span>
-            </motion.div>
-          ))}
-        </div>
-        
-        <div className="mt-3 text-xs text-gray-600 font-mono">
-          <span className="inline-flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-green-500" />
-            High confidence
-          </span>
-          <span className="inline-flex items-center gap-1 ml-4">
-            <div className="w-2 h-2 rounded-full bg-yellow-500" />
-            Moderate confidence
-          </span>
-        </div>
-      </motion.div>
     </div>
   );
 }

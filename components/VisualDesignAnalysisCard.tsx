@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { VisualDesignAnalysis } from '@/types/analysis';
 
 interface VisualDesignAnalysisCardProps {
-  visualDesign: VisualDesignAnalysis;
+  visualDesign: VisualDesignAnalysis & { extractedData?: any };
 }
 
 export default function VisualDesignAnalysisCard({ visualDesign }: VisualDesignAnalysisCardProps) {
@@ -22,6 +22,29 @@ export default function VisualDesignAnalysisCard({ visualDesign }: VisualDesignA
 
   return (
     <div className="space-y-4">
+      {/* Real Extracted Colors Display */}
+      {visualDesign.extractedData?.colors && (
+        <motion.div className="bg-white border-2 border-black p-4 mb-4 shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)]">
+          <div className="flex items-center gap-2 mb-3">
+            <span>🎨</span>
+            <div className="font-semibold text-sm font-mono">ACTUAL COLORS (EXTRACTED)</div>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {visualDesign.extractedData.colors.palette.slice(0, 8).map((color: any, i: number) => (
+              <div key={i} className="text-center">
+                <div 
+                  className="w-12 h-12 border-2 border-black rounded"
+                  style={{ backgroundColor: color.hex }}
+                />
+                <div className="text-xs font-mono mt-1">{color.hex}</div>
+                {i === 0 && <div className="text-xs opacity-60">Primary</div>}
+                {i === 1 && <div className="text-xs opacity-60">Secondary</div>}
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
       {/* Main Score Card */}
       <motion.div 
         className="border-2 border-black bg-[#f5f1e6] p-4 relative overflow-hidden"
@@ -46,19 +69,25 @@ export default function VisualDesignAnalysisCard({ visualDesign }: VisualDesignA
         </div>
       </motion.div>
 
-      {/* Typography Card */}
+      {/* Typography Card - Only show if we have meaningful typography data */}
+      {visualDesign.typography && 
+       ((visualDesign.typography.score && visualDesign.typography.score > 0 && visualDesign.typography.score !== 100) ||
+        visualDesign.typography.hierarchy || 
+        visualDesign.typography.readability) && (
       <motion.div
         className="bg-white border-2 border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)] p-4"
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.1 }}
+        transition={{ delay: 0.15 }}
       >
         <div className="flex items-center gap-2 mb-3">
           <span className="text-sm">🔤</span>
           <div className="font-semibold text-sm font-mono tracking-wider">TYPOGRAPHY</div>
-          <div className={`ml-auto text-sm font-bold ${getScoreColor(visualDesign.typography.score || 0)} font-mono`}>
-            {visualDesign.typography.score || 0}/100
-          </div>
+          {visualDesign.typography.score && visualDesign.typography.score > 0 && (
+            <div className={`ml-auto text-sm font-bold ${getScoreColor(visualDesign.typography.score)} font-mono`}>
+              {visualDesign.typography.score}/100
+            </div>
+          )}
         </div>
         
         <div className="space-y-3">
@@ -89,20 +118,27 @@ export default function VisualDesignAnalysisCard({ visualDesign }: VisualDesignA
           </div>
         </div>
       </motion.div>
+      )}
 
-      {/* Color & Contrast Card */}
+      {/* Color & Contrast Card - Only show if we have real color insights */}
+      {visualDesign.colorAndContrast && 
+       ((visualDesign.colorAndContrast.score && visualDesign.colorAndContrast.score > 0 && visualDesign.colorAndContrast.score !== 100) ||
+        (visualDesign.colorAndContrast.contrastFailures && visualDesign.colorAndContrast.contrastFailures.length > 0) ||
+        visualDesign.colorAndContrast.colorHarmony) && (
       <motion.div
         className="bg-white border-2 border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)] p-4"
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.2 }}
+        transition={{ delay: 0.3 }}
       >
         <div className="flex items-center gap-2 mb-3">
-          <span className="text-sm">🎨</span>
-          <div className="font-semibold text-sm font-mono tracking-wider">COLOR & CONTRAST</div>
-          <div className={`ml-auto text-sm font-bold ${getScoreColor(visualDesign.colorAndContrast.score || 0)} font-mono`}>
-            {visualDesign.colorAndContrast.score || 0}/100
-          </div>
+          <span className="text-sm">⚡</span>
+          <div className="font-semibold text-sm font-mono tracking-wider">CONTRAST & HARMONY</div>
+          {visualDesign.colorAndContrast.score && visualDesign.colorAndContrast.score > 0 && (
+            <div className={`ml-auto text-sm font-bold ${getScoreColor(visualDesign.colorAndContrast.score)} font-mono`}>
+              {visualDesign.colorAndContrast.score}/100
+            </div>
+          )}
         </div>
         
         <div className="space-y-3">
@@ -116,7 +152,23 @@ export default function VisualDesignAnalysisCard({ visualDesign }: VisualDesignA
             </div>
           </div>
           
-          {visualDesign.colorAndContrast.contrastFailures && visualDesign.colorAndContrast.contrastFailures.length > 0 && (
+          {/* Show extracted contrast issues if available, otherwise show AI-detected ones */}
+          {visualDesign.extractedData?.contrast?.issues && visualDesign.extractedData.contrast.issues.length > 0 ? (
+            <div>
+              <div className="text-xs font-semibold mb-1 font-mono">REAL Contrast Issues:</div>
+              {visualDesign.extractedData.contrast.issues.slice(0, 5).map((issue: any, i: number) => (
+                <div key={i} className="text-xs border border-red-200 bg-red-50 p-2 mb-1 rounded">
+                  <div className="flex justify-between font-mono">
+                    <span>{issue.location}</span>
+                    <span className="font-bold">{issue.ratio}:1</span>
+                  </div>
+                  <div className="text-red-600">
+                    {issue.foreground} on {issue.background} - {issue.wcagLevel}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : visualDesign.colorAndContrast.contrastFailures && visualDesign.colorAndContrast.contrastFailures.length > 0 && (
             <div>
               <div className="text-xs font-semibold mb-1 font-mono">Contrast Issues:</div>
               <div className="text-xs space-y-1">
@@ -129,24 +181,29 @@ export default function VisualDesignAnalysisCard({ visualDesign }: VisualDesignA
               </div>
             </div>
           )}
-          
-          {/* Vision API removed - color detection now handled by GPT-4V */}
         </div>
       </motion.div>
+      )}
 
-      {/* Spacing Card */}
+      {/* Spacing Card - Only show if we have real spacing insights */}
+      {visualDesign.spacing && 
+       ((visualDesign.spacing.score && visualDesign.spacing.score > 0 && visualDesign.spacing.score !== 100) ||
+        visualDesign.spacing.gridSystem ||
+        (visualDesign.spacing.issues && visualDesign.spacing.issues.length > 0)) && (
       <motion.div
         className="bg-white border-2 border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)] p-4"
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.3 }}
+        transition={{ delay: 0.45 }}
       >
         <div className="flex items-center gap-2 mb-3">
           <span className="text-sm">📏</span>
-          <div className="font-semibold text-sm font-mono tracking-wider">SPACING</div>
-          <div className={`ml-auto text-sm font-bold ${getScoreColor(visualDesign.spacing.score || 0)} font-mono`}>
-            {visualDesign.spacing.score || 0}/100
-          </div>
+          <div className="font-semibold text-sm font-mono tracking-wider">GRID & SPACING</div>
+          {visualDesign.spacing.score && visualDesign.spacing.score > 0 && (
+            <div className={`ml-auto text-sm font-bold ${getScoreColor(visualDesign.spacing.score)} font-mono`}>
+              {visualDesign.spacing.score}/100
+            </div>
+          )}
         </div>
         
         <div className="space-y-3">
@@ -175,11 +232,15 @@ export default function VisualDesignAnalysisCard({ visualDesign }: VisualDesignA
           )}
         </div>
       </motion.div>
+      )}
 
       {/* Modern Patterns section removed - was providing generic/scammy design advice */}
 
-      {/* Visual Hierarchy Card - Only show if we have real data, not fake 0/100 scores */}
-      {visualDesign.visualHierarchy && visualDesign.visualHierarchy.score > 0 && (
+      {/* Visual Hierarchy Card - Only show if we have real data with meaningful scores */}
+      {visualDesign.visualHierarchy && 
+       visualDesign.visualHierarchy.score && 
+       visualDesign.visualHierarchy.score > 0 && 
+       visualDesign.visualHierarchy.score !== 100 && (
         <motion.div
           className="bg-white border-2 border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,0.4)] p-4"
           initial={{ opacity: 0, x: -20 }}

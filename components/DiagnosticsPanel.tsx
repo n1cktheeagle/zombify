@@ -11,6 +11,7 @@ interface DiagnosticsPanelProps {
 
 export default function DiagnosticsPanel({ analysis, className = '' }: DiagnosticsPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [showAllModules, setShowAllModules] = useState(false);
   
   // Calculate which modules are hidden and why
@@ -22,7 +23,6 @@ export default function DiagnosticsPanel({ analysis, className = '' }: Diagnosti
     frictionPoints: shouldShowModule('frictionPoints', analysis),
     darkPatterns: shouldShowModule('darkPatterns', analysis),
     issuesAndFixes: shouldShowModule('issuesAndFixes', analysis),
-    accessibility: shouldShowModule('accessibility', analysis),
   };
   
   const hiddenModules = Object.entries(moduleVisibility)
@@ -50,8 +50,6 @@ export default function DiagnosticsPanel({ analysis, className = '' }: Diagnosti
         return `No copy issues detected (strength: ${strength}/5)`;
       case 'frictionPoints':
         return 'No specific UI friction identified';
-      case 'accessibility':
-        return `Accessibility score too low or unclear (strength: ${strength}/5)`;
       default:
         return `Low quality signal (strength: ${strength}/5, clarity: ${clarityFlag ? 'true' : 'false'})`;
     }
@@ -67,7 +65,7 @@ export default function DiagnosticsPanel({ analysis, className = '' }: Diagnosti
     weakModules: Object.entries(analysis.moduleStrength || {})
       .filter(([_, strength]) => strength < 3)
       .map(([module, _]) => module),
-    gptVersion: 'gpt-4o-2025-08-04', // This would come from analysis metadata
+    gptVersion: (analysis as any).gptVersion || (analysis as any).modelConfig?.version || process.env.NEXT_PUBLIC_OPENAI_VISION_MODEL_VERSION || 'gpt-5-vision',
     analysisComplete: !!(analysis.perceptionLayer && analysis.gripScore),
     perceptionLayerActive: !!analysis.perceptionLayer,
     moduleStrengthCalculated: !!analysis.moduleStrength,
@@ -84,130 +82,126 @@ export default function DiagnosticsPanel({ analysis, className = '' }: Diagnosti
     >
       <summary className="cursor-pointer font-medium text-gray-700 hover:text-gray-900 transition-colors">
         <span className="inline-flex items-center gap-2">
-          <span className="text-xs">🔧</span>
-          System Diagnostics 
+          <span className="text-xs">🔍</span>
+          Analysis Quality 
           {!isOpen && <span className="text-gray-400">→</span>}
           <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded ml-2">
-            {diagnostics.activeModules.length}/{Object.keys(analysis.moduleStrength || {}).length} modules
+            {diagnostics.activeModules.length} strong modules
           </span>
+          {diagnostics.hiddenModules.length > 0 && (
+            <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded">
+              {diagnostics.hiddenModules.length} low-quality hidden
+            </span>
+          )}
         </span>
       </summary>
       
-      <div className="mt-4 grid grid-cols-2 gap-4 text-xs">
-        <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <span className="text-gray-500">Duplicate Insights:</span>
-            <span className="font-mono bg-white px-2 py-1 rounded border">
-              {diagnostics.duplicateInsightCount}
-            </span>
+      {/* Simplified primary diagnostics */}
+      <div className="mt-4 space-y-3">
+        {/* Quality Summary */}
+        <div className="p-3 bg-white border border-gray-200 rounded">
+          <div className="text-xs font-medium text-gray-700 mb-2">Analysis Quality Summary</div>
+          <div className="grid grid-cols-3 gap-2 text-xs">
+            <div className="text-center">
+              <div className="text-lg font-bold">{diagnostics.activeModules.length}</div>
+              <div className="text-gray-500">Strong Modules</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-bold">{diagnostics.weakModules.length}</div>
+              <div className="text-gray-500">Weak Modules</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-bold">{diagnostics.hiddenModules.length}</div>
+              <div className="text-gray-500">Hidden</div>
+            </div>
           </div>
-          
-          <div className="flex justify-between items-center">
-            <span className="text-gray-500">Vision Data:</span>
+        </div>
+        
+        {/* Key Indicators */}
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="flex justify-between items-center p-2 bg-white border border-gray-200 rounded">
+            <span className="text-gray-600">User Context:</span>
             <span className={`font-mono px-2 py-1 rounded ${
               diagnostics.visionDataUsed 
                 ? 'bg-green-100 text-green-700' 
                 : 'bg-red-100 text-red-700'
             }`}>
-              {diagnostics.visionDataUsed ? '✅ Enhanced' : '❌ Basic'}
+              {diagnostics.userContextProvided ? '✅ Provided' : '⚫ None'}
             </span>
           </div>
-          
-          <div className="flex justify-between items-center">
-            <span className="text-gray-500">User Context:</span>
-            <span className={`font-mono px-2 py-1 rounded ${
-              diagnostics.userContextProvided 
-                ? 'bg-green-100 text-green-700' 
-                : 'bg-gray-100 text-gray-700'
-            }`}>
-              {diagnostics.userContextProvided ? '✅ Provided' : '❌ None'}
-            </span>
-          </div>
-          
-          <div className="flex justify-between items-center">
-            <span className="text-gray-500">Perception Layer:</span>
-            <span className={`font-mono px-2 py-1 rounded ${
-              diagnostics.perceptionLayerActive 
-                ? 'bg-green-100 text-green-700' 
-                : 'bg-red-100 text-red-700'
-            }`}>
-              {diagnostics.perceptionLayerActive ? '✅ Active' : '❌ Missing'}
-            </span>
-          </div>
-        </div>
-        
-        <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <span className="text-gray-500">Active Modules:</span>
-            <span className="font-mono bg-white px-2 py-1 rounded border">
-              {diagnostics.activeModules.length}
-            </span>
-          </div>
-          
-          <div className="flex justify-between items-center">
-            <span className="text-gray-500">Weak Modules:</span>
-            <span className={`font-mono px-2 py-1 rounded ${
-              diagnostics.weakModules.length > 0 
-                ? 'bg-yellow-100 text-yellow-700' 
-                : 'bg-green-100 text-green-700'
-            }`}>
-              {diagnostics.weakModules.length > 0 ? diagnostics.weakModules.length : 'None'}
-            </span>
-          </div>
-          
-          <div className="flex justify-between items-center">
-            <span className="text-gray-500">GPT Version:</span>
-            <span className="font-mono bg-white px-2 py-1 rounded border text-xs">
-              {diagnostics.gptVersion}
-            </span>
-          </div>
-          
-          <div className="flex justify-between items-center">
-            <span className="text-gray-500">Analysis Complete:</span>
+          <div className="flex justify-between items-center p-2 bg-white border border-gray-200 rounded">
+            <span className="text-gray-600">Analysis Complete:</span>
             <span className={`font-mono px-2 py-1 rounded ${
               diagnostics.analysisComplete 
                 ? 'bg-green-100 text-green-700' 
                 : 'bg-yellow-100 text-yellow-700'
             }`}>
-              {diagnostics.analysisComplete ? '✅ Complete' : '⚠️ Partial'}
-            </span>
-          </div>
-          
-          <div className="flex justify-between items-center">
-            <span className="text-gray-500">Hidden Modules:</span>
-            <span className="font-mono bg-red-100 text-red-700 px-2 py-1 rounded">
-              {diagnostics.hiddenModules.length}
-            </span>
-          </div>
-          
-          <div className="flex justify-between items-center">
-            <span className="text-gray-500">Bullshit Content:</span>
-            <span className={`font-mono px-2 py-1 rounded ${
-              diagnostics.bullshitContentDetected 
-                ? 'bg-red-100 text-red-700' 
-                : 'bg-green-100 text-green-700'
-            }`}>
-              {diagnostics.bullshitContentDetected ? '⚠️ Detected' : '✅ Clean'}
+              {diagnostics.analysisComplete ? '✅ Yes' : '⚠️ Partial'}
             </span>
           </div>
         </div>
       </div>
       
-      {/* Power User Toggle */}
-      <div className="mt-4 pt-4 border-t border-gray-200">
-        <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={showAllModules}
-            onChange={(e) => setShowAllModules(e.target.checked)}
-            className="w-3 h-3"
-          />
-          <span>Show all modules (including low-confidence)</span>
-        </label>
-        <div className="text-xs text-gray-400 mt-1">
-          Advanced option: Display hidden modules with quality warnings
+      {/* Advanced diagnostics - hidden by default */}
+      {showAdvanced && (
+        <div className="mt-4 pt-4 border-t border-gray-200 space-y-3 text-xs">
+          <div className="text-gray-600 font-medium mb-2">Advanced Diagnostics</div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex justify-between items-center p-2 bg-white border border-gray-200 rounded">
+              <span className="text-gray-500">Perception Layer:</span>
+              <span className={`font-mono px-2 py-1 rounded ${
+                diagnostics.perceptionLayerActive 
+                  ? 'bg-green-100 text-green-700' 
+                  : 'bg-red-100 text-red-700'
+              }`}>
+                {diagnostics.perceptionLayerActive ? '✅ Active' : '❌ Missing'}
+              </span>
+            </div>
+            <div className="flex justify-between items-center p-2 bg-white border border-gray-200 rounded">
+              <span className="text-gray-500">Duplicate Insights:</span>
+              <span className="font-mono">
+                {diagnostics.duplicateInsightCount}
+              </span>
+            </div>
+            <div className="flex justify-between items-center p-2 bg-white border border-gray-200 rounded">
+              <span className="text-gray-500">Bullshit Content:</span>
+              <span className={`font-mono px-2 py-1 rounded ${
+                diagnostics.bullshitContentDetected 
+                  ? 'bg-red-100 text-red-700' 
+                  : 'bg-green-100 text-green-700'
+              }`}>
+                {diagnostics.bullshitContentDetected ? '⚠️ Detected' : '✅ Clean'}
+              </span>
+            </div>
+            <div className="flex justify-between items-center p-2 bg-white border border-gray-200 rounded">
+              <span className="text-gray-500">GPT Version:</span>
+              <span className="font-mono text-xs">
+                {diagnostics.gptVersion}
+              </span>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+      
+      {/* Toggle for advanced view */}
+      {!showAdvanced && (
+        <button
+          onClick={() => setShowAdvanced(true)}
+          className="mt-3 text-xs text-blue-600 hover:text-blue-700 font-mono"
+        >
+          Show advanced diagnostics →
+        </button>
+      )}
+      {showAdvanced && (
+        <button
+          onClick={() => setShowAdvanced(false)}
+          className="mt-3 text-xs text-gray-600 hover:text-gray-700 font-mono"
+        >
+          Hide advanced diagnostics ↑
+        </button>
+      )}
+      
+      {/* Hidden modules section */}
 
       {/* Hidden Modules Details */}
       {diagnostics.hiddenModules.length > 0 && (
@@ -259,17 +253,24 @@ export default function DiagnosticsPanel({ analysis, className = '' }: Diagnosti
         </div>
       )}
       
-      {/* Weak modules list */}
-      {diagnostics.weakModules.length > 0 && isOpen && (
-        <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
-          <div className="text-xs text-yellow-800 font-medium mb-1">
-            Weak Modules ({diagnostics.weakModules.length}):
+      
+      {/* Power User Toggle */}
+      <div className="mt-4 pt-4 border-t border-gray-200">
+        <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={showAllModules}
+            onChange={(e) => setShowAllModules(e.target.checked)}
+            className="w-3 h-3"
+          />
+          <span>Show all modules (including low-confidence)</span>
+        </label>
+        {showAllModules && (
+          <div className="text-xs text-blue-600 mt-2">
+            ℹ️ Low-confidence modules will display with quality warnings
           </div>
-          <div className="text-xs text-yellow-700">
-            {diagnostics.weakModules.join(', ')} - Limited analysis confidence
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </details>
   );
 }

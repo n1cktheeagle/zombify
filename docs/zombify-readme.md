@@ -102,7 +102,24 @@ To **Zombify** a design means:
 
 ---
 
-## 🧠 Who It’s For
+## 🔒 Coding Guidelines
+
+### 🔒 No Mock Data Policy — Real Features Only
+
+Zombify does not implement fake, simulated, or placeholder features.
+
+All functionality must be:
+• **Technically achievable** with current, reliable tools (OpenAI, Vision APIs, etc.)
+• **Grounded in actual user input** — static images, real data, or meaningful UI artifacts
+• **Trustworthy and valuable** to the end user
+
+This is a core product principle. We don't "pretend" to analyze things we can't. If a feature can't be supported with real signals from the interface, it doesn't ship. Zombify earns trust by delivering insights that are visibly and logically grounded, not imagined.
+
+Any contribution that proposes mock interactions, speculative metrics, or faked intelligence should be refactored or rejected.
+
+---
+
+## 🧠 Who It's For
 
 - 🎨 Designers seeking fast, meaningful UI/UX feedback
 - 🧑‍💻 Founders trying to increase retention and trust

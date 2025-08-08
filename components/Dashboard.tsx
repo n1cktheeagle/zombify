@@ -8,6 +8,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { ZombifyAnalysis } from '@/types/analysis';
 import { normalizeAnalysisData } from '@/utils/analysisCompatibility';
 import EthicsScore from '@/components/EthicsScore';
+import { BrowserExtractor } from '@/lib/extractors/browserExtractor';
+import { AttentionInsightAPI } from '@/lib/heatmap/attentionInsight';
 
 interface FeedbackItem {
   id: string;
@@ -38,6 +40,9 @@ export default function Dashboard() {
   const [latestDarkPatterns, setLatestDarkPatterns] = useState<any>(undefined);
   const [latestFeedbackId, setLatestFeedbackId] = useState<string | undefined>(undefined);
   const [showDarkPatternsModal, setShowDarkPatternsModal] = useState(false);
+  const [extractionProgress, setExtractionProgress] = useState(0);
+  const [extractionStage, setExtractionStage] = useState('');
+  const [selectedEngine, setSelectedEngine] = useState<'classic' | 'clarity'>('classic');
   
   const router = useRouter();
   const supabase = createClientComponentClient();
@@ -106,38 +111,103 @@ export default function Dashboard() {
   }, [initialized, user, supabase]);
 
   // Handle file upload
-  const handleUpload = async (file: File, userContext?: string) => {
+  const handleUpload = async (file: File, userContext?: string, onProgress?: (stage: number, extractionProgress?: number, extractionStage?: string) => void) => {
     if (!user) {
       console.error('❌ Cannot upload: user not authenticated');
       return;
     }
 
     try {
+      // Stage 1: Extract colors
+      console.log('Extracting colors and text...');
+      onProgress?.(1, 0, 'Initializing extraction...');
+      
+      const extractor = new BrowserExtractor();
+      const extractedData = await extractor.extractAll(file, (stage, progress) => {
+        console.log(`Extraction ${stage}: ${progress}%`);
+        
+        // Map extraction stages to progress bar stages
+        if (stage.includes('color') || stage.includes('Color')) {
+          onProgress?.(1, progress, stage);
+        } else if (stage.includes('text') || stage.includes('OCR')) {
+          onProgress?.(2, progress, stage);
+        } else {
+          onProgress?.(2, progress, stage);
+        }
+      });
+      
+      console.log('Extraction complete:', extractedData);
+      
+      // Generate heatmap if pro user (optional)
+      let heatmapData = null;
+      if (profile?.plan_type === 'pro') {
+        try {
+          onProgress?.(2, 50, 'Generating attention heatmap...');
+          const heatmapAPI = new AttentionInsightAPI();
+          heatmapData = await heatmapAPI.generateHeatmap(file);
+          console.log('Heatmap generated:', heatmapData);
+        } catch (error) {
+          console.error('Heatmap generation failed:', error);
+          // Continue without heatmap
+        }
+      }
+      
+      onProgress?.(3, 0, 'Uploading to server...');
+      
       const formData = new FormData();
       formData.append('file', file);
       formData.append('project_name', 'Untitled');
       formData.append('user_id', user.id);
       formData.append('is_guest', 'false');
+      formData.append('extractedData', JSON.stringify(extractedData));
+      formData.append('engine', selectedEngine);
+      
+      if (heatmapData) {
+        formData.append('heatmapData', JSON.stringify(heatmapData));
+      }
       
       // Add user context if provided
       if (userContext) {
         formData.append('user_context', userContext);
       }
 
+      // Start analysis stages
+      onProgress?.(3, 0, selectedEngine === 'clarity' ? 'Running clarity engine...' : 'Starting analysis...');
+      
       const res = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
       });
 
-      if (!res.ok) throw new Error('Upload failed');
+      // Simulate analysis progress (since we can't track server-side progress easily)
+      onProgress?.(4, 0, selectedEngine === 'clarity' ? 'Scoring clarity and alignment...' : 'Interpreting psychology...');
+      
+      if (!res.ok) {
+        let serverMsg = '';
+        try {
+          serverMsg = await res.text();
+        } catch {}
+        console.error('Upload failed. Status:', res.status, 'Body:', serverMsg);
+        throw new Error(serverMsg || 'Upload failed');
+      }
       
       const result = await res.json();
+      
+      onProgress?.(5, 0, selectedEngine === 'clarity' ? 'Packaging findings...' : 'Generating recommendations...');
+      
       if (result.success && result.feedbackId) {
-        router.push(`/feedback/${result.feedbackId}`);
+        onProgress?.(6, 100, 'Complete!');
+        // Small delay to show completion
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const to = result.redirectUrl || `/feedback/${result.feedbackId}`;
+        router.push(to);
+      } else if (result?.error) {
+        console.error('Server returned error:', result);
+        throw new Error(result.error + (result.details ? ` — ${result.details}` : ''));
       }
     } catch (err) {
       console.error('Upload error:', err);
-      alert('Upload failed. Please try again.');
+      alert(`Upload failed. ${err instanceof Error ? err.message : ''}`.trim());
     }
   };
 
@@ -270,6 +340,31 @@ export default function Dashboard() {
         <div className="mb-8">
           <h2 className="text-2xl font-bold mb-6 font-heading">NEW ANALYSIS</h2>
           
+          {/* Engine selector */}
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-xs font-mono text-black/60">ENGINE</span>
+            <label className="inline-flex items-center gap-2 text-sm font-mono">
+              <input
+                type="radio"
+                name="engine"
+                value="classic"
+                checked={selectedEngine === 'classic'}
+                onChange={() => setSelectedEngine('classic')}
+              />
+              Classic
+            </label>
+            <label className="inline-flex items-center gap-2 text-sm font-mono">
+              <input
+                type="radio"
+                name="engine"
+                value="clarity"
+                checked={selectedEngine === 'clarity'}
+                onChange={() => setSelectedEngine('clarity')}
+              />
+              Clarity (v2)
+            </label>
+          </div>
+          
           {!isAtUploadLimit ? (
             <UploadZone 
               isLoggedIn={true}
@@ -327,13 +422,18 @@ export default function Dashboard() {
                 const unixTime = Math.floor(timestamp.getTime() / 1000);
                 const retroDate = timestamp.toISOString().slice(0, 19).replace('T', ' ');
 
+                const targetPath = (() => {
+                  if (item?.analysis?.engineVersion === 'clarity-v2') return `/feedback-v2/${item.id}`;
+                  return `/feedback/${item.id}`;
+                })();
+
                 return (
                   <div 
                     key={item.id} 
                     className={`bg-[#f5f1e6] cursor-pointer transition-all duration-200 relative font-mono text-xs border border-black/30 hover:bg-[#ebe7dc] hover:border-black/50 ${
                       navigating === item.id ? 'opacity-50 pointer-events-none' : ''
                     }`}
-                    onClick={() => handleNavigate(item.id)}
+                    onClick={() => router.push(targetPath)}
                   >
                     {/* Retro scanlines */}
                     <div className="absolute inset-0 pointer-events-none" 
@@ -356,7 +456,7 @@ export default function Dashboard() {
                             {item.original_filename || `analysis_${item.id.slice(0, 8)}.ui`}
                           </div>
                           <div className={`font-bold text-sm ${getScoreColor(score)}`}>
-                            GRIP:{score.toString().padStart(3, '0')}
+                            {item?.analysis?.engineVersion === 'clarity-v2' ? 'CLR:' : 'GRIP:'}{score.toString().padStart(3, '0')}
                           </div>
                         </div>
                       </div>

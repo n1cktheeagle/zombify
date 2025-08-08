@@ -3,22 +3,24 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { v4 as uuidv4 } from 'uuid';
 import { analyzeImage } from '@/lib/analyzeImage';
+import { analyzeImageClarity } from '@/lib/analyzeImageClarity';
 import { ZombifyAnalysis } from '@/types/analysis';
 
 export async function POST(req: NextRequest) {
   try {
-    // Create authenticated Supabase client
     const supabase = createRouteHandlerClient({ cookies });
-    
-    // Get current user session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    console.log('Session check:', { session: !!session, user: session?.user?.id, sessionError });
-    
+    const { data: { session } } = await supabase.auth.getSession();
+
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
-    const userId = formData.get('user_id') as string | null;
     const isGuest = formData.get('is_guest') === 'true';
     const userContext = formData.get('user_context') as string | null;
+    const engine = (formData.get('engine') as string | null) || 'classic';
+
+    const extractedDataStr = formData.get('extractedData') as string | null;
+    const extractedData = extractedDataStr ? JSON.parse(extractedDataStr) : null;
+    const heatmapDataStr = formData.get('heatmapData') as string | null;
+    const heatmapData = heatmapDataStr ? JSON.parse(heatmapDataStr) : null;
 
     if (!file) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
@@ -27,7 +29,13 @@ export async function POST(req: NextRequest) {
     const id = uuidv4();
     const filename = `${id}.png`;
 
-    // Upload file to Supabase storage
+    // Validate env for storage URL
+    const publicUrlBase = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!publicUrlBase) {
+      console.error('Missing NEXT_PUBLIC_SUPABASE_URL');
+      return NextResponse.json({ error: 'Server misconfigured: storage URL missing' }, { status: 500 });
+    }
+
     const { error: uploadError } = await supabase.storage
       .from('screenshots')
       .upload(filename, file, {
@@ -38,129 +46,179 @@ export async function POST(req: NextRequest) {
 
     if (uploadError) {
       console.error('Storage upload error:', uploadError);
-      return NextResponse.json({ error: 'Upload to storage failed' }, { status: 500 });
+      return NextResponse.json({ error: 'Upload to storage failed', details: uploadError.message }, { status: 500 });
     }
 
-    // Get the public URL for the uploaded image
-    const imageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/screenshots/${filename}`;
+    const imageUrl = `${publicUrlBase}/storage/v1/object/public/screenshots/${filename}`;
 
-    // Get real OpenAI analysis
-    console.log('Getting OpenAI analysis for:', imageUrl, 'with user context:', userContext?.substring(0, 50));
-    const analysis: ZombifyAnalysis = await analyzeImage(imageUrl, userContext || undefined);
-    console.log('OpenAI analysis result:', {
-      context: analysis.context,
-      industry: analysis.industry,
-      gripScore: analysis.gripScore?.overall || 0,
-      issueCount: (analysis.issuesAndFixes || analysis.criticalIssues || []).length + (analysis.usabilityIssues || []).length,
-      userContext: analysis.userContext
-    });
+    console.log('Getting analysis for:', imageUrl, 'engine:', engine, 'user context:', userContext?.substring(0, 50));
+    console.log('Using extracted data:', extractedData ? 'YES' : 'NO');
+    if (extractedData) {
+      const blockCount = extractedData?.text?.blocks?.length || 0;
+      const paletteCount = extractedData?.colors?.palette?.length || 0;
+      const dims = extractedData?.metadata?.dimensions || {};
+      console.log(`[EXTRACTED] blocks=${blockCount}, palette=${paletteCount}, dims=${dims.width}x${dims.height}`);
+    }
+    console.log('Using heatmap data:', heatmapData ? 'YES' : 'NO');
 
-    // Determine user information for database insert
+    let analysis: any;
+    if (engine === 'clarity') {
+      analysis = await analyzeImageClarity(imageUrl, userContext || undefined, extractedData, heatmapData || undefined);
+    } else {
+      analysis = await analyzeImage(imageUrl, userContext || undefined, extractedData, heatmapData);
+    }
+
+    // Diagnostic: extensions summary
+    try {
+      const ext = analysis?.extensions;
+      if (ext) {
+        console.log('[EXTENSIONS] inventory elements:', Array.isArray(ext?.inventory?.elements) ? ext.inventory.elements.length : 0);
+        console.log('[EXTENSIONS] contrast_checks:', Array.isArray(ext?.accessibility?.contrast_checks) ? ext.accessibility.contrast_checks.length : 0);
+        console.log('[EXTENSIONS] attention anchors:', Array.isArray(ext?.perception?.attention_anchors) ? ext.perception.attention_anchors.length : 0);
+      } else {
+        console.warn('[EXTENSIONS] extensions missing on analysis');
+      }
+    } catch (e) {
+      console.warn('[EXTENSIONS] diagnostics failed:', e);
+    }
+
+    // Attach precise boxes from OCR if available (maps evidence → text blocks)
+    try {
+      const blocks: Array<{ text: string; confidence: number; location?: { x: number; y: number; w: number; h: number } }>
+        = extractedData?.text?.blocks || [];
+      const dims = extractedData?.metadata?.dimensions;
+      const widthPx: number | undefined = dims?.width;
+      const heightPx: number | undefined = dims?.height;
+      if (blocks.length > 0 && widthPx && heightPx) {
+        const toPercentBox = (loc: { x: number; y: number; w: number; h: number }) => {
+          const cx = ((loc.x + loc.w / 2) / widthPx) * 100;
+          const cy = ((loc.y + loc.h / 2) / heightPx) * 100;
+          const pw = (loc.w / widthPx) * 100;
+          const ph = (loc.h / heightPx) * 100;
+          return {
+            x: Math.max(0, Math.min(100, cx)),
+            y: Math.max(0, Math.min(100, cy)),
+            width: Math.max(0, Math.min(100, pw)),
+            height: Math.max(0, Math.min(100, ph))
+          };
+        };
+        const findBestBlock = (evidenceList: any[]): { box?: { x: number; y: number; width: number; height: number }, confidence?: number } | null => {
+          if (!Array.isArray(evidenceList) || evidenceList.length === 0) return null;
+          let best: { score: number; block: any } | null = null;
+          for (const evRaw of evidenceList) {
+            const ev = typeof evRaw === 'string' ? evRaw.toLowerCase() : '';
+            if (!ev) continue;
+            for (const b of blocks) {
+              const t = (b.text || '').toLowerCase();
+              if (!t) continue;
+              if (t.includes(ev) || ev.includes(t)) {
+                const score = (ev.length / Math.max(1, t.length)) * (b.confidence || 1);
+                if (!best || score > best.score) best = { score, block: b };
+              }
+            }
+          }
+          if (best && best.block?.location) {
+            return { box: toPercentBox({ x: best.block.location.x, y: best.block.location.y, w: best.block.location.w, h: best.block.location.h }), confidence: best.block.confidence };
+          }
+          return null;
+        };
+
+        const applyBoxes = (items?: any[]) => {
+          if (!Array.isArray(items)) return;
+          for (const it of items) {
+            if (it?.box && typeof it.box.x === 'number') continue; // keep GPT box if present
+            const mapped = findBestBlock(it?.evidence || []);
+            if (mapped?.box) {
+              it.box = mapped.box;
+              if (typeof mapped.confidence === 'number') {
+                it.confidence = Math.max(it.confidence || 0, Math.min(1, mapped.confidence / 100));
+              }
+            }
+          }
+        };
+
+        applyBoxes(analysis?.confusionFindings);
+        applyBoxes(analysis?.misalignments);
+      }
+    } catch (e) {
+      console.warn('Box refinement from OCR failed (non-fatal):', e);
+    }
+
     const authenticatedUser = session?.user;
     const finalUserId = authenticatedUser?.id || null;
     const finalIsGuest = !authenticatedUser || isGuest;
 
-    // Extract top issues for backward compatibility - use new field names first, fallback to old
-    const topIssues = [
-      ...(analysis.issuesAndFixes || analysis.criticalIssues || []).map(issue => issue.issue),
-      ...(analysis.usabilityIssues || []).map(issue => issue.issue)
-    ].slice(0, 5); // Keep top 5 issues for the legacy 'issues' column
+    const topIssues = (() => {
+      if (analysis?.issuesAndFixes || analysis?.usabilityIssues) {
+        return [
+          ...(analysis.issuesAndFixes || []).map((i: any) => i.issue),
+          ...(analysis.usabilityIssues || []).map((i: any) => i.issue)
+        ].slice(0, 5);
+      }
+      if (analysis?.confusionFindings) {
+        return (analysis.confusionFindings as any[]).slice(0, 5).map((f: any) => f.issue);
+      }
+      return [];
+    })();
 
-    // Prepare the data for insertion
+    // Normalize score to integer 0–100
+    const rawScore = (analysis?.gripScore?.overall ?? analysis?.clarityScore?.overall ?? 0);
+    let numericScore = typeof rawScore === 'string' ? parseFloat(rawScore) : Number(rawScore);
+    if (!isFinite(numericScore)) numericScore = 0;
+    // If model returns 0..1, scale up
+    if (numericScore > 0 && numericScore <= 1) numericScore = numericScore * 100;
+    // Clamp and round
+    const safeScore = Math.max(0, Math.min(100, Math.round(numericScore)));
+
     const feedbackData = {
       id,
       image_url: imageUrl,
-      score: analysis.gripScore?.overall || 0, 
+      score: safeScore,
       issues: topIssues,
-      analysis: analysis, // Store full analysis as JSONB
+      analysis: analysis,
       user_id: finalUserId,
       is_guest: finalIsGuest,
       chain_id: uuidv4(),
       created_at: new Date().toISOString(),
-      original_filename: file.name, // Store original uploaded filename for better UX
+      original_filename: file.name,
     };
 
-    console.log('About to insert to database:', {
-      id: feedbackData.id,
-      score: feedbackData.score,
-      issueCount: topIssues.length,
-      context: analysis.context,
-      industry: analysis.industry
-    });
-
-    // Insert feedback record to database
-    const { error: insertError, data: insertData } = await supabase
+    const { error: insertError } = await supabase
       .from('feedback')
       .insert([feedbackData])
-      .select('*'); // Return the inserted data
-
-    console.log('Insert result:', { insertError, insertData });
+      .select('*');
 
     if (insertError) {
       console.error('DB insert error:', insertError);
-      
-      // Check if it's a policy/permission error
-      if (insertError.code === '42501' || insertError.message.includes('permission')) {
-        console.error('RLS Policy blocking insert. User:', finalUserId, 'IsGuest:', finalIsGuest);
-        
-        // Try to debug RLS by temporarily disabling it for this table
-        console.log('Attempting to check RLS policies...');
-        
-        return NextResponse.json({ 
-          error: 'Database permission denied', 
-          details: insertError.message,
-          debug: { finalUserId, finalIsGuest, authenticatedUser: !!authenticatedUser }
-        }, { status: 500 });
-      }
-      
-      return NextResponse.json({ 
-        error: 'Database insert failed', 
-        details: insertError.message 
-      }, { status: 500 });
+      return NextResponse.json({ error: 'Database insert failed', details: insertError.message }, { status: 500 });
     }
 
-    // Verify the record was actually inserted
     const { data: verifyData, error: verifyError } = await supabase
       .from('feedback')
-      .select('id, user_id, is_guest')
+      .select('id')
       .eq('id', id)
       .single();
 
-    console.log('Verification query:', { verifyData, verifyError });
-
     if (verifyError || !verifyData) {
       console.error('Record not found after insert:', { verifyError, verifyData });
-      return NextResponse.json({ 
-        error: 'Record insert verification failed',
-        details: verifyError?.message 
-      }, { status: 500 });
+      return NextResponse.json({ error: 'Record insert verification failed', details: verifyError?.message }, { status: 500 });
     }
 
-    // If user is authenticated, increment their feedback count
     if (authenticatedUser && !finalIsGuest) {
-      const { error: incrementError } = await supabase.rpc('increment_feedback_count', {
-        user_uuid: authenticatedUser.id
-      });
-      
-      if (incrementError) {
-        console.error('Error incrementing feedback count:', incrementError);
-        // Don't fail the request if this fails
-      }
+      const { error: incrementError } = await supabase.rpc('increment_feedback_count', { user_uuid: authenticatedUser.id });
+      if (incrementError) console.error('Error incrementing feedback count:', incrementError);
     }
 
-    console.log('Upload successful! Record created:', id);
+    const redirectUrl = engine === 'clarity' ? `/feedback-v2/${id}` : `/feedback/${id}`;
 
-    // Return success with the feedback ID for frontend to handle redirect
     return NextResponse.json({ 
       success: true, 
       feedbackId: id,
-      redirectUrl: `/feedback/${id}`,
+      redirectUrl,
       analysisPreview: {
-        context: analysis.context || 'UNKNOWN',
-        industry: analysis.industry || 'UNKNOWN',
-        gripScore: analysis.gripScore?.overall || 0,
-        criticalIssueCount: (analysis.issuesAndFixes || analysis.criticalIssues || []).length,
-        totalIssueCount: (analysis.issuesAndFixes || analysis.criticalIssues || []).length + (analysis.usabilityIssues || []).length
+        engine,
+        score: analysis?.gripScore?.overall || analysis?.clarityScore?.overall || 0,
+        topIssueCount: topIssues.length
       }
     }, { status: 200 });
   } catch (err) {

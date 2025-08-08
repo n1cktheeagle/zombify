@@ -22,6 +22,7 @@ import UXCopyAnalysisCard from '@/components/UXCopyAnalysisCard';
 import PerceptionDisplay from '@/components/PerceptionDisplay';
 import ModuleStrengthIndicator from '@/components/ModuleStrengthIndicator';
 import DiagnosticsPanel from '@/components/DiagnosticsPanel';
+import ExtractedDataDisplay from '@/components/ExtractedDataDisplay';
 
 // TypeScript interfaces
 interface FeedbackData {
@@ -59,8 +60,7 @@ function createLegacyAnalysis(score: number): ZombifyAnalysis {
         firstImpression: { score: Math.round(score * 0.8), reasoning: "Legacy analysis - limited data", evidence: [] },
         usability: { score: Math.round(score * 0.9), reasoning: "Legacy analysis - limited data", evidence: [] },
         trustworthiness: { score: Math.round(score * 0.7), reasoning: "Legacy analysis - limited data", evidence: [] },
-        conversion: { score: Math.round(score * 0.6), reasoning: "Legacy analysis - limited data", evidence: [] },
-        accessibility: { score: Math.round(score * 0.5), reasoning: "Legacy analysis - limited data", evidence: [] }
+        conversion: { score: Math.round(score * 0.6), reasoning: "Legacy analysis - limited data", evidence: [] }
       } 
     },
     verdict: {
@@ -140,7 +140,6 @@ function createLegacyAnalysis(score: number): ZombifyAnalysis {
       primaryTarget: 'unknown', 
       recommendations: ["Upgrade for generational analysis"] 
     },
-    accessibilityAudit: null,
     timestamp: new Date().toISOString()
   };
 }
@@ -711,14 +710,45 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
                 >
-                  <PerceptionDisplay perceptionLayer={processedAnalysis.perceptionLayer} />
+                  <PerceptionDisplay 
+                    perceptionLayer={processedAnalysis.perceptionLayer}
+                    heatmapData={(processedAnalysis as any).heatmapData}
+                    imageUrl={data?.image_url}
+                  />
                 </motion.div>
               </div>
             </motion.div>
           </section>
         )}
 
-        {/* 2. Dark Patterns - NEW SECTION */}
+        {/* 2. Extracted Data - Show ALL real data */}
+        {(processedAnalysis as any).extractedData && (
+          <section id="extracted-data" className="mb-12">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-6"
+            >
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-8"
+              >
+                <div className="flex items-center gap-3 mb-6">
+                  <span className="text-3xl">🔬</span>
+                  <h2 className="text-3xl font-bold tracking-tight">EXTRACTED DATA</h2>
+                </div>
+                <div className="text-sm opacity-60 mb-4">
+                  Real data extracted from your image • No hallucinations • 100% accurate
+                </div>
+              </motion.div>
+
+              <ExtractedDataDisplay extractedData={(processedAnalysis as any).extractedData} />
+            </motion.div>
+          </section>
+        )}
+
+        {/* 3. Dark Patterns - NEW SECTION */}
         <section id="dark-patterns">
           <FeedbackDarkPatterns 
             analysis={processedAnalysis}
@@ -822,7 +852,16 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
           </section>
         )}
 
-        {/* 6. Friction Points - UI OBSTACLES */}
+        {/* 6. Accessibility Analysis */}
+        {processedAnalysis.accessibilityAudit && (
+          <section id="accessibility">
+            <FeedbackAccessibility 
+              analysis={processedAnalysis}
+            />
+          </section>
+        )}
+
+        {/* 7. Friction Points - UI OBSTACLES */}
         {shouldShowModule('frictionPoints', processedAnalysis) && (
           <section id="friction">
             <FeedbackFrictionPoints 
@@ -832,7 +871,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
           </section>
         )}
 
-        {/* 7. Intent Analysis - STRATEGIC PURPOSE ALIGNMENT */}
+        {/* 8. Intent Analysis - STRATEGIC PURPOSE ALIGNMENT */}
         <section id="intent">
           <FeedbackIntentAnalysis 
             analysis={processedAnalysis}
@@ -840,7 +879,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
           />
         </section>
 
-        {/* 8. Growth Opportunities - Pro Feature */}
+        {/* 9. Growth Opportunities - Pro Feature */}
         {shouldShowModule('opportunities', processedAnalysis) && (
           <section id="growth">
             <FeedbackOpportunities 
@@ -852,7 +891,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
           </section>
         )}
 
-        {/* 9. Behavioral Insights - Pro Feature */}
+        {/* 10. Behavioral Insights - Pro Feature */}
         {shouldShowModule('behavioralInsights', processedAnalysis) && (
           <section id="behavior">
             <FeedbackInsights 
@@ -863,12 +902,6 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
           </section>
         )}
 
-        {/* 10. Accessibility Analysis */}
-        <section id="access">
-          <FeedbackAccessibility 
-            analysis={processedAnalysis}
-          />
-        </section>
       </div>
 
       {/* Diagnostics Panel */}

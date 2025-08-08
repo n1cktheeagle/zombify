@@ -49,6 +49,45 @@ export interface VisionAnalysisResult {
   };
 }
 
+// === ACCESSIBILITY AUDIT TYPES ===
+
+export interface AccessibilityFailure {
+  criterion: string; // e.g., "Color Contrast", "Text Size"
+  issue: string; // Description of the issue
+  location: {
+    selector?: string;
+    element?: string;
+  };
+  currentValue: string; // e.g., "2.1:1"
+  requiredValue: string; // e.g., "4.5:1"
+  fix: string; // How to fix it
+}
+
+export interface AccessibilityAudit {
+  score: number; // 0-100
+  criticalFailures?: AccessibilityFailure[];
+  strengths?: string[];
+  weaknesses?: string[];
+  recommendations?: Array<{
+    action: string;
+    priority: 'HIGH' | 'MEDIUM' | 'LOW';
+    effort: 'HIGH' | 'MEDIUM' | 'LOW';
+  }>;
+  automated?: boolean; // Whether this was automated analysis
+  colorContrast?: {
+    issues: Array<{
+      element: string;
+      contrastRatio: string;
+      fix: string;
+    }>;
+  };
+  textSize?: {
+    smallTextCount: number;
+    minimumSize: string;
+    recommendation: string;
+  };
+}
+
 // === NEW PERCEPTION LAYER AND MODULE STRENGTH TYPES ===
 
 // Enhanced Attention Flow Item with structured data
@@ -72,8 +111,8 @@ export interface PerceptionLayer {
     visual: boolean;
     darkPattern: boolean;
     behavioral: boolean;
-    accessibility: boolean;
     strategicIntent: boolean;
+    accessibility: boolean;
     [key: string]: boolean; // Allow future expansion
   };
 }
@@ -84,11 +123,11 @@ export interface ModuleStrength {
   visualDesign: number;
   behavioralInsights: number; // Changed from behavioralInsight to match new structure
   darkPatterns: number;
-  accessibility: number;
   issuesAndFixes: number;
   opportunities: number;
   frictionPoints: number;
   generationalAnalysis: number;
+  accessibility: number;
   [key: string]: number; // Allow future module additions
 }
 
@@ -231,7 +270,6 @@ export interface GripScoreBreakdown {
   usability: GripScoreBreakdownItem;
   trustworthiness: GripScoreBreakdownItem;
   conversion: GripScoreBreakdownItem;
-  accessibility: GripScoreBreakdownItem;
 }
 
 // Updated Grip Score with detailed breakdown
@@ -268,20 +306,6 @@ export interface Opportunity {
   location?: Location;
 }
 
-// Unified Accessibility Audit - FIXED TYPE CONFLICTS
-export interface AccessibilityColorIssue {
-  element: string;
-  contrastRatio: number;
-  wcagLevel: 'A' | 'AA' | 'AAA';
-  passes: boolean;
-  fix: string;
-}
-
-export interface AccessibilityTextSize {
-  smallTextCount: number;
-  minimumSize: string;
-  recommendation: string;
-}
 
 // === EXISTING TYPES (KEPT FOR COMPATIBILITY) ===
 
@@ -330,7 +354,6 @@ export interface GripScoreBreakdown {
   usability: GripScoreBreakdownItem;
   trustworthiness: GripScoreBreakdownItem;
   conversion: GripScoreBreakdownItem;
-  accessibility: GripScoreBreakdownItem;
 }
 
 // Updated Grip Score with detailed breakdown
@@ -384,14 +407,14 @@ export interface TypographyAnalysis {
   score: number;
   issues: TypographyIssue[];
   hierarchy: {
-    h1ToH2Ratio: number;
-    consistencyScore: number;
     recommendation: string;
+    h1ToH2Ratio?: number;
+    consistencyScore?: number;
   };
   readability: {
-    fleschScore: number;
-    avgLineLength: number;
     recommendation: string;
+    fleschScore?: number;
+    avgLineLength?: number;
   };
   // ENHANCED: Add Vision API small text detection
   smallTextWarnings?: {
@@ -401,13 +424,10 @@ export interface TypographyAnalysis {
 }
 
 export interface ContrastFailure {
-  foreground: string;
-  background: string;
-  ratio: number;
   location: string;
   fix: {
     suggestion: string;
-    css: string;
+    css?: string;
   };
 }
 
@@ -441,9 +461,9 @@ export interface SpacingIssue {
 
 export interface SpacingAnalysis {
   score: number;
-  gridSystem: string;
-  consistency: number;
   issues: SpacingIssue[];
+  gridSystem?: string;
+  consistency?: number;
 }
 
 export interface ModernPatternsAnalysis {
@@ -461,7 +481,6 @@ export interface VisualHierarchyAnalysis {
   scanPattern: string;
   focalPoints: Array<{
     element: string;
-    weight: number;
   }>;
   improvements: Array<{
     issue: string;
@@ -493,45 +512,6 @@ export interface EnhancedUXCopyAnalysis {
   };
 }
 
-// Clean accessibility failure without visual coordinates
-export interface AccessibilityFailure {
-  criterion: string;
-  issue: string;
-  location: {
-    element: string;
-    selector: string;
-  };
-  currentValue: string;
-  requiredValue: string;
-  fix: string;
-}
-
-// UNIFIED ACCESSIBILITY AUDIT - FIXED TO HANDLE BOTH AUTOMATED AND MANUAL
-export interface AccessibilityAudit {
-  automated?: boolean; // Flag to indicate if it's automated
-  score: number;
-  wcagLevel?: 'A' | 'AA' | 'AAA';
-  
-  // Automated analysis properties
-  colorContrast?: {
-    issues: AccessibilityColorIssue[];
-  };
-  textSize?: AccessibilityTextSize;
-  overallRecommendation?: string;
-  
-  // Manual analysis properties  
-  strengths?: string[];
-  weaknesses?: string[];
-  criticalFailures?: AccessibilityFailure[];
-  keyboardNav?: string;
-  screenReaderCompat?: string;
-  mobileAccessibility?: string;
-  recommendations?: Array<{
-    priority: "HIGH" | "MEDIUM" | "LOW";
-    action: string;
-    effort: "LOW" | "MEDIUM" | "HIGH";
-  }>;
-}
 
 // Clean generational analysis
 export interface GenerationalAnalysis {
@@ -576,9 +556,11 @@ export interface ZombifyAnalysis {
   visualDesign: VisualDesignAnalysis; // Renamed from visualDesignAnalysis
   uxCopyInsights: EnhancedUXCopyAnalysis; // Renamed from uxCopyAnalysis
   
-  // Behavioral and accessibility
+  // Behavioral insights
   behavioralInsights: EnhancedBehavioralInsight[]; // Now singular to match new structure
-  accessibilityAudit: AccessibilityAudit | null;
+  
+  // Accessibility analysis
+  accessibilityAudit?: AccessibilityAudit;
   
   // Audience analysis
   generationalAnalysis: GenerationalAnalysis;
