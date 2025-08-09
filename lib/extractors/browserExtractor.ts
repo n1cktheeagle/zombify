@@ -83,7 +83,9 @@ export class BrowserExtractor {
       
       // Extract text (slower)
       onProgress?.('text', 50);
-      const text = await this.extractText(file);
+      // Downscale large images for more reliable OCR and lower memory usage
+      const ocrBlob = await this.downscaleImageToBlob(img, 1600);
+      const text = await this.extractText(ocrBlob);
       
       // Analyze contrast
       onProgress?.('contrast', 75);
@@ -194,21 +196,10 @@ export class BrowserExtractor {
   /**
    * Extract text using Tesseract.js OCR
    */
-  private async extractText(file: File): Promise<ExtractedData['text']> {
+  private async extractText(source: Blob | File): Promise<ExtractedData['text']> {
     try {
       console.log('[OCR] Starting text extraction...');
-      
-      const result = await Tesseract.recognize(file, 'eng', {
-        logger: (m: any) => {
-          if (m?.status === 'recognizing text') {
-            console.log(`[OCR] Progress: ${Math.round((m.progress || 0) * 100)}%`);
-          }
-        },
-        // Improve detection on UI screenshots
-        tessedit_pageseg_mode: 3 as any, // Fully automatic page segmentation
-        preserve_interword_spaces: '1' as any,
-        user_defined_dpi: '300' as any,
-      } as any);
+      const result = await Tesseract.recognize(source, 'eng', this.getTesseractOptions());
       
       const page: any = result?.data as any;
       
@@ -223,6 +214,26 @@ export class BrowserExtractor {
           h: block.bbox.y1 - block.bbox.y0
         } : undefined
       })).filter((b: TextBlock) => b.text.length > 0);
+
+      // If no blocks, retry with alternate OCR settings (PSM 6)
+      if (!blocks || blocks.length === 0) {
+        console.log('[OCR] No blocks, retrying with alternate settings (psm 6)');
+        const retry = await Tesseract.recognize(source, 'eng', { ...this.getTesseractOptions(), tessedit_pageseg_mode: 6 as any, user_defined_dpi: '220' as any } as any);
+        const rpage: any = retry?.data as any;
+        blocks = ((rpage?.blocks || []) as any[]).map((block: any) => ({
+          text: (block?.text || '').trim(),
+          confidence: block?.confidence,
+          location: block?.bbox ? {
+            x: block.bbox.x0,
+            y: block.bbox.y0,
+            w: block.bbox.x1 - block.bbox.x0,
+            h: block.bbox.y1 - block.bbox.y0
+          } : undefined
+        })).filter((b: TextBlock) => b.text.length > 0);
+        if (blocks && blocks.length > 0) {
+          console.log('[OCR] Retry succeeded with blocks');
+        }
+      }
 
       // If no blocks, synthesize from lines
       if (!blocks || blocks.length === 0) {
@@ -298,6 +309,47 @@ export class BrowserExtractor {
         confidence: 0
       };
     }
+  }
+
+  /**
+   * Build robust tesseract options with explicit asset paths.
+   * Uses env overrides, otherwise falls back to trusted CDNs.
+   */
+  private getTesseractOptions(): any {
+    const workerPath = process.env.NEXT_PUBLIC_TESSERACT_WORKER_PATH || 'https://cdn.jsdelivr.net/npm/tesseract.js@6.0.1/dist/worker.min.js';
+    const corePath = process.env.NEXT_PUBLIC_TESSERACT_CORE_PATH || 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.0.0/tesseract-core.wasm.js';
+    const langPath = process.env.NEXT_PUBLIC_TESSERACT_LANG_PATH || 'https://tessdata.projectnaptha.com/4.0.0';
+    return {
+      workerPath,
+      corePath,
+      langPath,
+      // Improve detection on UI screenshots
+      tessedit_pageseg_mode: 3 as any, // Fully automatic page segmentation
+      preserve_interword_spaces: '1' as any,
+      user_defined_dpi: '300' as any,
+      logger: (m: any) => {
+        if (m?.status === 'recognizing text') {
+          console.log(`[OCR] Progress: ${Math.round((m.progress || 0) * 100)}%`);
+        }
+      }
+    } as any;
+  }
+
+  /**
+   * Downscale image to a reasonable size for OCR and return as Blob (PNG)
+   */
+  private async downscaleImageToBlob(img: HTMLImageElement, maxSide: number = 1600): Promise<Blob> {
+    const ratio = Math.min(1, maxSide / Math.max(img.width, img.height));
+    const w = Math.max(1, Math.round(img.width * ratio));
+    const h = Math.max(1, Math.round(img.height * ratio));
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    const ctx = c.getContext('2d', { alpha: false })!;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, w, h);
+    return await new Promise<Blob>((resolve) => c.toBlob(b => resolve(b || new Blob()), 'image/png', 0.92));
   }
 
   /**

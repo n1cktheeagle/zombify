@@ -58,6 +58,32 @@ export default function FeedbackV2Client({ params }: { params: { id: string } })
     setActiveBox({ x: x + w / 2, y: y + h / 2, width: w, height: h });
   };
 
+  const highlightByRef = (ref: string) => {
+    if (!ref) return;
+    const trimmed = String(ref).trim();
+    // 1) If ref is an element id, use it directly
+    if (extElements.has(trimmed)) {
+      highlightExtElement(trimmed);
+      return;
+    }
+    // 2) Otherwise try to find an inventory element whose text matches the ref
+    const lowerRef = trimmed.toLowerCase();
+    let bestMatch: any = null;
+    for (const el of Array.from(extElements.values())) {
+      const t = (el?.text || '').toLowerCase();
+      if (!t) continue;
+      if (t.includes(lowerRef) || lowerRef.includes(t)) {
+        if (!bestMatch || (el.text?.length || 0) > (bestMatch.text?.length || 0)) {
+          bestMatch = el;
+        }
+      }
+    }
+    if (bestMatch && Array.isArray(bestMatch.bbox)) {
+      const [x, y, w, h] = bestMatch.bbox;
+      setActiveBox({ x: x + w / 2, y: y + h / 2, width: w, height: h });
+    }
+  };
+
   const score: number = a?.clarityScore?.overall ?? a?.gripScore?.overall ?? 0;
   const breakdown = a?.clarityScore?.breakdown || { firstImpression: 0, visualClarity: 0, informationScent: 0, alignment: 0 };
   const confusion = Array.isArray(a?.confusionFindings) ? a.confusionFindings : [];
@@ -167,23 +193,7 @@ export default function FeedbackV2Client({ params }: { params: { id: string } })
         {/* Extensions (additive) */}
         {ext && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="border border-black/20 p-3 bg-white">
-              <div className="text-xs text-black/60 font-mono mb-1">INVENTORY (EXT)</div>
-              <div className="text-xs font-mono">Groups: {ext?.inventory?.groups?.length ?? 0} • Elements: {ext?.inventory?.elements?.length ?? 0}</div>
-              {Array.isArray(ext?.inventory?.elements) && ext.inventory.elements.length > 0 && (
-                <ul className="text-sm space-y-1 mt-2">
-                  {ext.inventory.elements.slice(0, 15).map((el: any) => (
-                    <li key={el.id} className="flex items-center justify-between">
-                      <div>
-                        <span className="font-semibold">{el.type}</span> <span className="text-black/60 font-mono">#{el.id}</span>
-                        {el.text ? <span className="ml-1 text-black/70 font-mono">“{el.text.slice(0, 60)}”</span> : null}
-                      </div>
-                      <button className="text-[11px] underline font-mono" onClick={() => highlightExtElement(el.id)}>Highlight</button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+            
             <div className="border border-black/20 p-3 bg-white">
               <div className="text-xs text-black/60 font-mono mb-1">PERCEPTION (EXT)</div>
               {Array.isArray(ext?.perception?.attention_anchors) && ext.perception.attention_anchors.length > 0 ? (
@@ -260,7 +270,7 @@ export default function FeedbackV2Client({ params }: { params: { id: string } })
                       <div className="font-semibold">{r.issue}</div>
                       {Array.isArray(r.evidence) && r.evidence.length > 0 && (
                         <div className="text-xs font-mono mt-1">Evidence: {r.evidence.slice(0, 6).map((ref: string, j: number) => (
-                          <button key={j} className="underline mr-1" onClick={() => highlightExtElement(ref)}>{ref}</button>
+                          <button key={j} className="underline mr-1" onClick={() => highlightByRef(ref)}>{ref}</button>
                         ))}</div>
                       )}
                       {r.action && <div className="text-xs mt-1 font-mono">Action: {r.action}</div>}
@@ -305,7 +315,11 @@ export default function FeedbackV2Client({ params }: { params: { id: string } })
                     <div className="text-xs text-black/60">Impact: {f.impact}</div>
                     {Array.isArray(f.evidence) && f.evidence.length > 0 && (
                       <ul className="list-disc pl-5 text-xs mt-1">
-                        {f.evidence.slice(0, 5).map((e: string, i: number) => <li key={i} className="font-mono">{e}</li>)}
+                        {f.evidence.slice(0, 5).map((e: string, i: number) => (
+                          <li key={i} className="font-mono">
+                            <button className="underline" onClick={() => highlightByRef(e)}>{e}</button>
+                          </li>
+                        ))}
                       </ul>
                     )}
                     {f.fix && <div className="text-xs mt-1 font-mono">Fix: {f.fix}</div>}
@@ -348,7 +362,11 @@ export default function FeedbackV2Client({ params }: { params: { id: string } })
                     </div>
                     {Array.isArray(m.evidence) && m.evidence.length > 0 && (
                       <ul className="list-disc pl-5 text-xs mt-1">
-                        {m.evidence.slice(0, 5).map((e: string, j: number) => <li key={j} className="font-mono">{e}</li>)}
+                        {m.evidence.slice(0, 5).map((e: string, j: number) => (
+                          <li key={j} className="font-mono">
+                            <button className="underline" onClick={() => highlightByRef(e)}>{e}</button>
+                          </li>
+                        ))}
                       </ul>
                     )}
                     {m.fix && <div className="text-xs mt-1 font-mono">Fix: {m.fix}</div>}
