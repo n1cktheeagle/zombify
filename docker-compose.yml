@@ -1,0 +1,16 @@
+version: "3.9"
+services:
+  perception:
+    build:
+      context: ./perception
+    ports:
+      - "8080:8080"
+    environment:
+      - OCR_BACKEND=gcv
+      - PERCEPTION_MAX_WIDTH=1440
+      - CACHE_DIR=/.cache
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
+      - GCP_CLIENT_EMAIL=${GCP_CLIENT_EMAIL}
+      - GCP_PRIVATE_KEY=${GCP_PRIVATE_KEY}
+    volumes:
+      - ./.perception_cache:/.cache

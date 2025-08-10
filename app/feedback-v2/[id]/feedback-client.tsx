@@ -41,6 +41,9 @@ export default function FeedbackV2Client({ params }: { params: { id: string } })
 
   const a = row?.analysis || {};
   const isClarity = a?.engineVersion === 'clarity-v2';
+  const isGrounded = a?.engineVersion === 'grounded-v1';
+  const modelName: string = (a?.model || a?.modelConfig?.model || '').toString();
+  const isGpt5Model = modelName.toLowerCase().includes('gpt-5');
   const ext = a?.extensions || null;
   const extElements = useMemo(() => {
     const map = new Map<string, any>();
@@ -127,9 +130,16 @@ export default function FeedbackV2Client({ params }: { params: { id: string } })
     <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <div className="text-xs text-black/60 font-mono">{isClarity ? 'ENGINE: CLARITY-V2' : 'ENGINE: UNKNOWN'}</div>
-          <h1 className="text-2xl font-bold">Clarity Report</h1>
+          <div className="text-xs text-black/60 font-mono">
+            {isClarity ? 'ENGINE: CLARITY-V2' : isGrounded ? 'ENGINE: GROUNDED-V1' : 'ENGINE: UNKNOWN'}
+          </div>
+          <h1 className="text-2xl font-bold">{isGrounded ? 'Grounded Report' : 'Clarity Report'}</h1>
           <div className="text-sm text-black/60 font-mono">ID {row.id} • {new Date(row.created_at).toLocaleString()}</div>
+          <div className="mt-1">
+            <span className={`text-[11px] font-mono px-2 py-0.5 rounded border ${isGpt5Model ? 'bg-green-100 text-green-800 border-green-300' : 'bg-red-100 text-red-800 border-red-300'}`}>
+              Model: {modelName || 'unknown'}{isGpt5Model ? '' : ' (not GPT-5)'}
+            </span>
+          </div>
         </div>
         <Link href="/dashboard" className="text-sm underline font-mono">Back</Link>
       </div>

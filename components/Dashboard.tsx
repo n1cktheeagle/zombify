@@ -42,7 +42,7 @@ export default function Dashboard() {
   const [showDarkPatternsModal, setShowDarkPatternsModal] = useState(false);
   const [extractionProgress, setExtractionProgress] = useState(0);
   const [extractionStage, setExtractionStage] = useState('');
-  const [selectedEngine, setSelectedEngine] = useState<'classic' | 'clarity'>('classic');
+  const [selectedEngine, setSelectedEngine] = useState<'classic' | 'clarity' | 'grounded'>('classic');
   
   const router = useRouter();
   const supabase = createClientComponentClient();
@@ -172,7 +172,13 @@ export default function Dashboard() {
       }
 
       // Start analysis stages
-      onProgress?.(3, 0, selectedEngine === 'clarity' ? 'Running clarity engine...' : 'Starting analysis...');
+      onProgress?.(3, 0,
+        selectedEngine === 'clarity'
+          ? 'Running clarity engine...'
+          : selectedEngine === 'grounded'
+            ? 'Running grounded engine...'
+            : 'Starting analysis...'
+      );
       
       const res = await fetch('/api/upload', {
         method: 'POST',
@@ -180,7 +186,13 @@ export default function Dashboard() {
       });
 
       // Simulate analysis progress (since we can't track server-side progress easily)
-      onProgress?.(4, 0, selectedEngine === 'clarity' ? 'Scoring clarity and alignment...' : 'Interpreting psychology...');
+      onProgress?.(4, 0,
+        selectedEngine === 'clarity'
+          ? 'Scoring clarity and alignment...'
+          : selectedEngine === 'grounded'
+            ? 'Synthesizing grounded findings...'
+            : 'Interpreting psychology...'
+      );
       
       if (!res.ok) {
         let serverMsg = '';
@@ -193,7 +205,13 @@ export default function Dashboard() {
       
       const result = await res.json();
       
-      onProgress?.(5, 0, selectedEngine === 'clarity' ? 'Packaging findings...' : 'Generating recommendations...');
+      onProgress?.(5, 0,
+        selectedEngine === 'clarity'
+          ? 'Packaging findings...'
+          : selectedEngine === 'grounded'
+            ? 'Validating evidence IDs...'
+            : 'Generating recommendations...'
+      );
       
       if (result.success && result.feedbackId) {
         onProgress?.(6, 100, 'Complete!');
@@ -362,6 +380,16 @@ export default function Dashboard() {
                 onChange={() => setSelectedEngine('clarity')}
               />
               Clarity (v2)
+            </label>
+            <label className="inline-flex items-center gap-2 text-sm font-mono">
+              <input
+                type="radio"
+                name="engine"
+                value="grounded"
+                checked={selectedEngine === 'grounded'}
+                onChange={() => setSelectedEngine('grounded')}
+              />
+              Grounded (MVP)
             </label>
           </div>
           

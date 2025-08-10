@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { v4 as uuidv4 } from 'uuid';
 import { analyzeImage } from '@/lib/analyzeImage';
 import { analyzeImageClarity } from '@/lib/analyzeImageClarity';
+import { analyzeImageGrounded } from '@/lib/analyzeImageGrounded';
 import { ZombifyAnalysis } from '@/types/analysis';
 
 export async function POST(req: NextRequest) {
@@ -64,6 +65,12 @@ export async function POST(req: NextRequest) {
     let analysis: any;
     if (engine === 'clarity') {
       analysis = await analyzeImageClarity(imageUrl, userContext || undefined, extractedData, heatmapData || undefined);
+    } else if (engine === 'grounded') {
+      analysis = await analyzeImageGrounded(imageUrl, userContext || undefined, extractedData || undefined, {
+        uiType: 'unknown',
+        goalTag: 'unknown',
+        promptVersion: new Date().toISOString().slice(0, 10) + '-v1'
+      });
     } else {
       analysis = await analyzeImage(imageUrl, userContext || undefined, extractedData, heatmapData);
     }
@@ -209,7 +216,7 @@ export async function POST(req: NextRequest) {
       if (incrementError) console.error('Error incrementing feedback count:', incrementError);
     }
 
-    const redirectUrl = engine === 'clarity' ? `/feedback-v2/${id}` : `/feedback/${id}`;
+    const redirectUrl = engine === 'clarity' || engine === 'grounded' ? `/feedback-v2/${id}` : `/feedback/${id}`;
 
     return NextResponse.json({ 
       success: true, 

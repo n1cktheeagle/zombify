@@ -31,3 +31,35 @@ node_modules 2/
 
 # documentation
 /docs/
+
+# node / next / build
+node_modules/
+.next/
+out/
+dist/
+.turbo/
+.vercel/
+coverage/
+*.log
+
+# OS/editor
+.DS_Store
+.vscode/
+
+# Node / Next
+node_modules/
+.next/
+out/
+dist/
+
+# Python
+.venv/
+venv/
+**/__pycache__/
+*.py[cod]
+*.so
+
+# OS / editor
+.DS_Store
+.vscode/
+*.log

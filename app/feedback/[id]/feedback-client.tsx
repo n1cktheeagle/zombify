@@ -159,6 +159,8 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
   const analysis = data?.analysis || {};
   const isNewFormat = data ? isNewAnalysisFormat(analysis) : false;
   const score = isNewFormat ? analysis.gripScore?.overall || 0 : (data?.score || 0);
+  const modelName: string = (analysis?.model || analysis?.modelConfig?.model || '').toString();
+  const isGpt5Model = modelName.toLowerCase().includes('gpt-5');
   
   // Create proper analysis object for components
   const processedAnalysis = isNewFormat ? normalizeAnalysisData(analysis) : createLegacyAnalysis(score);
@@ -618,6 +620,16 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
                   transition={{ delay: 1 }}
                 >
                   {analysis.context.replace('_', ' ')}
+                </motion.span>
+                <span>•</span>
+                <motion.span
+                  className={`text-xs px-3 py-1 border font-mono font-bold tracking-wider shadow-sm ${isGpt5Model ? 'bg-green-100 text-green-800 border-green-300' : 'bg-red-100 text-red-800 border-red-300'}`}
+                  whileHover={{ boxShadow: '0 0 8px rgba(0,0,0,0.1)' }}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 1.1 }}
+                >
+                  Model: {modelName || 'unknown'}{isGpt5Model ? '' : ' (not GPT-5)'}
                 </motion.span>
                 {analysis.industry !== 'UNKNOWN' && (
                   <motion.span 
