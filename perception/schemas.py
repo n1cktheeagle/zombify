@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, Dict, Any
 from pydantic import BaseModel, Field, ConfigDict
 
 
@@ -69,6 +69,9 @@ class MetricsInfo(BaseModel):
 class SourceInfo(BaseModel):
     ocr: str
     cv: str
+    google: Optional[Dict[str, Any]] = None
+    debug: Optional[Dict[str, Any]] = None
+    ocr_exception: Optional[str] = None
 
 
 class AnalyzeResponse(BaseModel):
@@ -78,6 +81,7 @@ class AnalyzeResponse(BaseModel):
     contrast: List[ContrastItem]
     blocks: List[BlockItem]
     grid: GridInfo | None
+    gridCandidates: List[GridInfo] | None = None
     buttons: List[ButtonItem]
     palette: PaletteInfo | None
     metrics: MetricsInfo | None

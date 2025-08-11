@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict
 
 import cv2
 import numpy as np
@@ -37,85 +37,107 @@ def _preprocess_gray(image_rgb: np.ndarray) -> np.ndarray:
     return edges
 
 
-def detect_blocks(image_rgb: np.ndarray) -> List[Tuple[List[int], str]]:
-    h, w, _ = image_rgb.shape
-    area = h * w
-    edges = _preprocess_gray(image_rgb)
-    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    rects: List[Rect] = []
-    for c in contours:
-        x, y, ww, hh = cv2.boundingRect(c)
-        if ww * hh < area * CV_THRESHOLDS.min_block_area_ratio:
-            continue
-        rects.append(Rect(x, y, ww, hh))
-
-    # Deduplicate overlapping rectangles by IoU threshold
-    def iou(a: Rect, b: Rect) -> float:
-        xa1, ya1, xa2, ya2 = a.x, a.y, a.x + a.w, a.y + a.h
-        xb1, yb1, xb2, yb2 = b.x, b.y, b.x + b.w, b.y + b.h
-        inter_x1, inter_y1 = max(xa1, xb1), max(ya1, yb1)
-        inter_x2, inter_y2 = min(xa2, xb2), min(ya2, yb2)
-        if inter_x2 <= inter_x1 or inter_y2 <= inter_y1:
-            return 0.0
-        inter = (inter_x2 - inter_x1) * (inter_y2 - inter_y1)
-        union = a.w * a.h + b.w * b.h - inter
-        return inter / union
-
-    rects.sort(key=lambda r: (r.y, r.x))
-    filtered: List[Rect] = []
-    for r in rects:
-        if any(iou(r, f) > 0.6 for f in filtered):
-            continue
-        filtered.append(r)
-
-    # Label kinds
-    blocks: List[Tuple[List[int], str]] = []
-    for r in filtered:
-        kind = "unknown"
-        if r.w * r.h > area * CV_THRESHOLDS.section_area_ratio:
-            kind = "section"
-        blocks.append((r.as_list(), kind))
-    return blocks
+def _prep_dark_ui(gray: np.ndarray) -> np.ndarray:
+    g = np.clip(gray / 255.0, 1e-6, 1.0) ** (1 / 1.6)
+    g = (g * 255).astype(np.uint8)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    g = clahe.apply(g)
+    return g
 
 
-def detect_grid(image_rgb: np.ndarray) -> Optional[Tuple[int, int, float]]:
+def _edges_for_layout(image_rgb: np.ndarray) -> np.ndarray:
     gray = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2GRAY)
-    edges = cv2.Canny(gray, 50, 150)
-    lines = cv2.HoughLinesP(
-        edges,
-        rho=CV_THRESHOLDS.hough_rho,
-        theta=CV_THRESHOLDS.hough_theta,
-        threshold=CV_THRESHOLDS.hough_threshold,
-        minLineLength=CV_THRESHOLDS.hough_min_line_length,
-        maxLineGap=CV_THRESHOLDS.hough_max_line_gap,
-    )
-    if lines is None:
-        return None
-    xs = []
-    for l in lines[:, 0, :]:
-        x1, y1, x2, y2 = l
-        if abs(x2 - x1) < 4 and abs(y2 - y1) > 20:  # vertical-ish
-            xs.append((x1 + x2) // 2)
-    if not xs:
-        return None
-    xs = sorted(xs)
-    # Cluster x positions into columns via simple gap-based grouping
-    cols = []
-    current = [xs[0]]
-    for x in xs[1:]:
-        if abs(x - current[-1]) < 20:
-            current.append(x)
-        else:
-            cols.append(int(np.median(current)))
-            current = [x]
-    cols.append(int(np.median(current)))
-    cols = sorted(set(cols))
-    if len(cols) < 2:
-        return None
-    gutters = [b - a for a, b in zip(cols, cols[1:])]
-    gutter = int(np.median(gutters)) if gutters else 0
-    confidence = min(1.0, len(xs) / max(1, len(lines)))
-    return len(cols), gutter, float(confidence)
+    dark = np.median(gray) < 45
+    base = _prep_dark_ui(gray) if dark else gray
+    blur = cv2.GaussianBlur(base, (3, 3), 0)
+    edges = cv2.Canny(blur, 50, 120)
+    edges = cv2.dilate(edges, np.ones((2, 2), np.uint8), iterations=1)
+    return edges
+
+
+def detect_blocks(image_rgb: np.ndarray) -> List[Tuple[List[int], str]]:
+    gray = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2GRAY)
+    base = _prep_dark_ui(gray)
+    k = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 9))
+    bin_ = cv2.threshold(base, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+    inv = 255 - bin_
+    close = cv2.morphologyEx(inv, cv2.MORPH_CLOSE, k, iterations=2)
+
+    cnts, _ = cv2.findContours(close, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    blocks: List[Tuple[List[int], str]] = []
+    H, W = gray.shape[:2]
+    for c in cnts:
+        x, y, w, h = cv2.boundingRect(c)
+        area = w * h
+        if area < 8000 or w < 180 or h < 100:
+            continue
+        if w / W > 0.95 and h < H * 0.12:
+            continue
+
+        rect = cv2.minAreaRect(c)
+        box = cv2.boxPoints(rect)
+        box = np.int32(box)
+        rect_area = w * h
+        hull_area = cv2.contourArea(c)
+        rectangularity = (hull_area / (rect_area + 1e-6))
+        if rectangularity < 0.55:
+            continue
+
+        blocks.append(([int(x), int(y), int(w), int(h)], "card"))
+
+    # Merge heavy overlaps
+    def iou_bbox(a: List[int], b: List[int]) -> float:
+        ax, ay, aw, ah = a; bx, by, bw, bh = b
+        x1 = max(ax, bx); y1 = max(ay, by); x2 = min(ax + aw, bx + bw); y2 = min(ay + ah, by + bh)
+        inter = max(0, x2 - x1) * max(0, y2 - y1)
+        ua = aw * ah + bw * bh - inter
+        return inter / (ua + 1e-6)
+
+    merged: List[Tuple[List[int], str]] = []
+    for b in blocks:
+        if all(iou_bbox(b[0], m[0]) < 0.4 for m in merged):
+            merged.append(b)
+    return merged
+
+
+def _grid_candidates(image_rgb: np.ndarray) -> List[Dict[str, float]]:
+    h, w, _ = image_rgb.shape
+    edges = _edges_for_layout(image_rgb)
+    col_sum = edges.sum(axis=0).astype(np.float32)
+    if col_sum.size == 0:
+        return []
+    col_sum = (col_sum - col_sum.min()) / (col_sum.ptp() + 1e-6)
+    candidates: List[Dict[str, float]] = []
+    for cols in range(2, 7):
+        for gutter in range(12, min(80, w // max(1, cols * 2)), 4):
+            period = (w - (cols - 1) * gutter) / cols
+            if period < 120:
+                continue
+            bins: List[float] = []
+            x = 0.0
+            for _ in range(cols - 1):
+                x += period
+                g0 = int(max(0, round(x)))
+                g1 = int(min(w - 1, round(x + gutter)))
+                bins.append(float(col_sum[g0:g1].mean()) if g1 > g0 else 0.0)
+                x += gutter
+            if not bins:
+                continue
+            score = float(np.mean(bins))
+            if score > 0.05:
+                candidates.append({"cols": float(cols), "gutterPx": float(gutter), "confidence": score})
+    candidates.sort(key=lambda c: c["confidence"], reverse=True)
+    return candidates[:8]
+
+
+def detect_grid(image_rgb: np.ndarray) -> Tuple[Optional[Tuple[int, int, float]], List[Dict[str, float]]]:
+    """Return best grid (cols, gutter, confidence) and candidate list."""
+    cands = _grid_candidates(image_rgb)
+    best = cands[0] if cands else None
+    best_tuple: Optional[Tuple[int, int, float]] = None
+    if best:
+        best_tuple = (int(best["cols"]), int(best["gutterPx"]), float(best["confidence"]))
+    return best_tuple, cands
 
 
 def _estimate_corner_radius(rect: Rect, edges: np.ndarray) -> int:
@@ -135,19 +157,66 @@ def _estimate_corner_radius(rect: Rect, edges: np.ndarray) -> int:
 
 
 def detect_buttons(image_rgb: np.ndarray, texts: List[Tuple[str, List[int]]]) -> List[ButtonCandidate]:
+    gray = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2GRAY)
+    base = _prep_dark_ui(gray)
+    inv = 255 - base
+    mser = cv2.MSER_create(_min_area=80, _max_area=12000)
+    regions = []
+    for img in (base, inv):
+        r, _ = mser.detectRegions(img)
+        regions.extend(r)
+
+    boxes: List[Rect] = []
+    H, W = gray.shape[:2]
+    for pts in regions:
+        x, y, w, h = cv2.boundingRect(pts.reshape(-1, 1, 2))
+        ar = w / float(h + 1e-6)
+        area = w * h
+        if area < 300 or area > W * H * 0.15:
+            continue
+        if ar < 1.4 or ar > 6.5:
+            continue
+        peri = 2 * (w + h)
+        approx = cv2.approxPolyDP(pts, 0.03 * peri, True)
+        if len(approx) > 10:
+            continue
+        boxes.append(Rect(x, y, w, h))
+
+    def has_center_text(b: Rect) -> bool:
+        bx, by, bw, bh = b.x, b.y, b.w, b.h
+        cx, cy = bx + bw / 2.0, by + bh / 2.0
+        for _id, tb in texts or []:
+            tx, ty, tw, th = tb
+            if bx <= tx and ty >= by and (tx + tw) <= (bx + bw) and (ty + th) <= (by + bh):
+                tcx, tcy = tx + tw / 2.0, ty + th / 2.0
+                if abs(tcx - cx) <= bw * 0.22 and abs(tcy - cy) <= bh * 0.28:
+                    return True
+        return False
+
+    scored: List[Tuple[Rect, float]] = [(b, 1.0 + (0.5 if has_center_text(b) else 0.0)) for b in boxes]
+    scored.sort(key=lambda x: x[1], reverse=True)
+
+    def iou(a: Rect, b: Rect) -> float:
+        ax1, ay1, ax2, ay2 = a.x, a.y, a.x + a.w, a.y + a.h
+        bx1, by1, bx2, by2 = b.x, b.y, b.x + b.w, b.y + b.h
+        inter_x1, inter_y1 = max(ax1, bx1), max(ay1, by1)
+        inter_x2, inter_y2 = min(ax2, bx2), min(ay2, by2)
+        if inter_x2 <= inter_x1 or inter_y2 <= inter_y1:
+            return 0.0
+        inter = (inter_x2 - inter_x1) * (inter_y2 - inter_y1)
+        ua = a.w * a.h + b.w * b.h - inter
+        return inter / (ua + 1e-6)
+
+    kept: List[Rect] = []
+    for b, _s in scored:
+        if all(iou(b, k) < 0.25 for k in kept):
+            kept.append(b)
+
     edges = _preprocess_gray(image_rgb)
-    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     candidates: List[ButtonCandidate] = []
-    for c in contours:
-        x, y, ww, hh = cv2.boundingRect(c)
-        if not (CV_THRESHOLDS.button_min_height_px <= hh <= CV_THRESHOLDS.button_max_height_px):
-            continue
-        aspect = ww / float(hh)
-        if not (CV_THRESHOLDS.button_min_aspect <= aspect <= CV_THRESHOLDS.button_max_aspect):
-            continue
-        radius = _estimate_corner_radius(Rect(x, y, ww, hh), edges)
-        candidates.append(ButtonCandidate(x, y, ww, hh, radius))
-    # sort for stable IDs
+    for r in kept:
+        candidates.append(ButtonCandidate(r.x, r.y, r.w, r.h, _estimate_corner_radius(r, edges)))
+
     candidates.sort(key=lambda r: (r.y, r.x))
     return candidates
 

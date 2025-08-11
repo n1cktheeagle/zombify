@@ -70,7 +70,7 @@ export type PerceptionJson = {
 export type AnalyzeModes = Array<"ocr" | "geometry" | "contrast" | "palette">;
 
 export async function analyzeImage(imageUrl: string, modes: AnalyzeModes = ["ocr", "geometry", "contrast", "palette"], init?: RequestInit): Promise<PerceptionJson> {
-  const base = process.env.NEXT_PUBLIC_PERCEPTION_URL || "http://localhost:8080";
+  const base = process.env.NEXT_PUBLIC_PERCEPTION_URL || "/api/perception";
   const res = await fetch(`${base}/analyze`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

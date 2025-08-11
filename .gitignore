@@ -63,3 +63,16 @@ venv/
 .DS_Store
 .vscode/
 *.log
+# Local caches & env
+.perception_cache/
+.venv/
+__pycache__/
+node_modules/
+.next/
+.env
+.env.*
+.DS_Store
+
+# Ignore accidental nested/bare repos
+zombify_rebuild_ready/
+zombify.git/

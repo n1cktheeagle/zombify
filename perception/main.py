@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import time
 from typing import List, Tuple
 
 import cv2
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Response, Request
+from fastapi.responses import JSONResponse
+import traceback
+from . import gcv_ocr
+import sys
 
 from . import config
 from .config import VERSION, DEFAULT_TARGET_WIDTH, OCR_BACKEND, CACHE_DIR
@@ -36,6 +41,48 @@ from .utils import download_and_preprocess
 
 app = FastAPI()
 
+# Ensure startup logs are emitted via uvicorn's logger
+_uvicorn_logger = logging.getLogger("uvicorn.error")
+
+@app.on_event("startup")
+def _log_startup_info() -> None:
+    gac = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    gac_exists = bool(gac and os.path.exists(gac))
+    _uvicorn_logger.info(
+        "GOOGLE_APPLICATION_CREDENTIALS=%s exists=%s", gac or "<unset>", gac_exists
+    )
+    _uvicorn_logger.info("OCR_BACKEND=%s", OCR_BACKEND)
+
+
+@app.on_event("startup")
+async def _startup_debug_vision() -> None:
+    try:
+        logger = logging.getLogger("uvicorn")
+        info = gcv_ocr.debug_info()
+        logger.info("Vision debug: %s", info)
+    except Exception as e:
+        logging.getLogger("uvicorn").warning("Vision debug failed: %s", e)
+
+    # Preflight: verify Service Usage permission; if missing, log fatal and exit
+    try:
+        gcv_ocr.verify_vision_access()
+    except Exception as e:
+        logger = logging.getLogger("uvicorn.error")
+        dbg = gcv_ocr.debug_info()
+        client_email = (dbg or {}).get("client_email") or "<unknown>"
+        project_id = (dbg or {}).get("project_id") or "<unknown>"
+        logger.critical(
+            "FATAL: Google Vision access check failed. The service account likely lacks the '\n"
+            "Service Usage Consumer' role (roles/serviceusage.serviceUsageConsumer).\n"
+            "Grant this role to %s on project %s.\n"
+            "Open: https://console.cloud.google.com/iam-admin/iam?project=%s",
+            client_email,
+            project_id,
+            project_id,
+        )
+        logger.critical("Startup aborted due to insufficient IAM permissions: %s", str(e))
+        sys.exit(1)
+
 
 def _cache_path(content_hash: str, width: int) -> str | None:
     if not CACHE_DIR:
@@ -59,7 +106,7 @@ def health(config_: int | None = None):
 
 
 @app.post("/analyze", response_model=AnalyzeResponse)
-def analyze(req: AnalyzeRequest, response: Response):
+def analyze(req: AnalyzeRequest, response: Response, request: Request):
     t_start = time.time()
     modes = set(req.modes or ["ocr", "geometry", "contrast", "palette"])
 
@@ -83,6 +130,8 @@ def analyze(req: AnalyzeRequest, response: Response):
 
     texts_items: List[TextItem] = []
     source_ocr = ""
+    ocr_debug = gcv_ocr.debug_info()
+    ocr_google: dict | None = None
     t_ocr_start = time.time()
 
     # OCR backend switch
@@ -90,7 +139,11 @@ def analyze(req: AnalyzeRequest, response: Response):
         if "ocr" in modes:
             if OCR_BACKEND == "gcv":
                 ocr_lines = gcv_run_ocr(img_rgb)
-                source_ocr = "gcv-3.x"
+                source_ocr = "google:ok"
+                ocr_google = {
+                    "client_email": ocr_debug.get("client_email"),
+                    "project_id": ocr_debug.get("project_id"),
+                }
             elif OCR_BACKEND == "paddle":
                 try:
                     from .paddle_ocr import run_ocr as paddle_run_ocr  # type: ignore
@@ -111,6 +164,31 @@ def analyze(req: AnalyzeRequest, response: Response):
         texts_items = []
         msg = str(e)
         source_ocr = f"error:{msg}"
+        _uvicorn_logger.error("OCR failed: %s\n%s", msg, traceback.format_exc())
+        # Optional 502 passthrough
+        return_error = request.query_params.get("return_error") == "1"
+        if return_error:
+            image_info = ImageInfo(w=meta["width"], h=meta["height"], hash=meta["hash"])
+            src = SourceInfo(
+                ocr=source_ocr,
+                cv=f"opencv-{cv2.__version__}",
+                google=None,
+                debug=ocr_debug,
+                ocr_exception=e.__class__.__name__,
+            )
+            result = AnalyzeResponse(
+                version=VERSION,
+                image=image_info,
+                texts=[],
+                contrast=[],
+                blocks=[],
+                grid=None,
+                buttons=[],
+                palette=None,
+                metrics=None,
+                source=src,
+            )
+            return JSONResponse(status_code=502, content=json.loads(result.model_dump_json()))
 
     t_ocr_end = time.time()
 
@@ -119,16 +197,19 @@ def analyze(req: AnalyzeRequest, response: Response):
     blocks_items: List[BlockItem] = []
     buttons_items: List[ButtonItem] = []
     grid_info = None
+    grid_candidates_model: List[GridInfo] | None = None
     palette_info = None
     metrics_info = None
     if "geometry" in modes:
         blocks = detect_blocks(img_rgb)
         for i, (bbox, kind) in enumerate(blocks):
             blocks_items.append(BlockItem(id=f"blocks.b{i}", bbox=bbox, kind=kind))
-        grid = detect_grid(img_rgb)
-        if grid is not None:
-            cols, gutter, conf = grid
+        best_grid, grid_candidates = detect_grid(img_rgb)
+        if best_grid is not None:
+            cols, gutter, conf = best_grid
             grid_info = GridInfo(cols=cols, gutterPx=int(gutter), confidence=float(conf))
+        if grid_candidates:
+            grid_candidates_model = [GridInfo(cols=int(gc["cols"]), gutterPx=int(gc["gutterPx"]), confidence=float(gc["confidence"])) for gc in grid_candidates]
         texts_for_buttons: List[Tuple[str, List[int]]] = [(t.id, t.bbox) for t in texts_items]
         btns = detect_buttons(img_rgb, texts_for_buttons)
         btns.sort(key=lambda b: (b.y, b.x))
@@ -170,7 +251,13 @@ def analyze(req: AnalyzeRequest, response: Response):
     t_cv_end = time.time()
 
     image_info = ImageInfo(w=meta["width"], h=meta["height"], hash=meta["hash"])
-    src = SourceInfo(ocr=source_ocr or "gcv-unknown", cv=f"opencv-{cv2.__version__}")
+    src = SourceInfo(
+        ocr=source_ocr or "gcv-unknown",
+        cv=f"opencv-{cv2.__version__}",
+        google=ocr_google if source_ocr == "google:ok" else None,
+        debug=ocr_debug,
+        ocr_exception=None,
+    )
 
     # timings headers
     response.headers["X-Perf-ocr-ms"] = f"{(t_ocr_end - t_ocr_start) * 1000:.1f}"
@@ -191,6 +278,16 @@ def analyze(req: AnalyzeRequest, response: Response):
         source=src,
     )
 
+    # attach grid candidates if available
+    if grid_candidates_model is not None:
+        # mutate result dict form before model_dump for cache write
+        parsed = json.loads(result.model_dump_json())
+        parsed["gridCandidates"] = [
+            {"cols": g.cols, "gutterPx": g.gutterPx, "confidence": g.confidence} for g in grid_candidates_model
+        ]
+        # For response, return JSONResponse to include the new field immediately
+        return JSONResponse(content=parsed)
+
     # write cache
     if cpath:
         try:
@@ -200,3 +297,8 @@ def analyze(req: AnalyzeRequest, response: Response):
             pass
 
     return result
+
+
+@app.get("/debug/vision")
+def debug_vision():
+    return gcv_ocr.debug_info()
