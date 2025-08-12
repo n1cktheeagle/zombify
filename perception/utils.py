@@ -20,7 +20,13 @@ def sha256_bytes(data: bytes) -> str:
 
 
 def download_image(url: str, timeout: int = 30) -> bytes:
-    resp = requests.get(url, timeout=timeout)
+    headers = {
+        "User-Agent": "ZombifyPerception/1.0 (+https://zombify.local; contact: dev@zombify.local)",
+        "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Connection": "keep-alive",
+    }
+    resp = requests.get(url, timeout=timeout, headers=headers)
     resp.raise_for_status()
     return resp.content
 

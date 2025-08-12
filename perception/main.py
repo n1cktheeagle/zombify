@@ -204,12 +204,8 @@ def analyze(req: AnalyzeRequest, response: Response, request: Request):
         blocks = detect_blocks(img_rgb)
         for i, (bbox, kind) in enumerate(blocks):
             blocks_items.append(BlockItem(id=f"blocks.b{i}", bbox=bbox, kind=kind))
-        best_grid, grid_candidates = detect_grid(img_rgb)
-        if best_grid is not None:
-            cols, gutter, conf = best_grid
-            grid_info = GridInfo(cols=cols, gutterPx=int(gutter), confidence=float(conf))
-        if grid_candidates:
-            grid_candidates_model = [GridInfo(cols=int(gc["cols"]), gutterPx=int(gc["gutterPx"]), confidence=float(gc["confidence"])) for gc in grid_candidates]
+        # Grid disabled
+        best_grid, grid_candidates = (None, [])
         texts_for_buttons: List[Tuple[str, List[int]]] = [(t.id, t.bbox) for t in texts_items]
         btns = detect_buttons(img_rgb, texts_for_buttons)
         btns.sort(key=lambda b: (b.y, b.x))
@@ -279,14 +275,7 @@ def analyze(req: AnalyzeRequest, response: Response, request: Request):
     )
 
     # attach grid candidates if available
-    if grid_candidates_model is not None:
-        # mutate result dict form before model_dump for cache write
-        parsed = json.loads(result.model_dump_json())
-        parsed["gridCandidates"] = [
-            {"cols": g.cols, "gutterPx": g.gutterPx, "confidence": g.confidence} for g in grid_candidates_model
-        ]
-        # For response, return JSONResponse to include the new field immediately
-        return JSONResponse(content=parsed)
+    # Grid candidates disabled
 
     # write cache
     if cpath:

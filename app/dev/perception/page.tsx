@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import PerceptionOverlay from "@/components/PerceptionOverlay";
+import StrictPanel from "../../../components/StrictPanel";
 
 type AnalyzeModes = Array<"ocr" | "geometry" | "contrast" | "palette">;
 type PerceptionJson = any;
@@ -11,6 +12,10 @@ export default function PerceptionDevPage() {
   const [url, setUrl] = useState(DEFAULT_URL);
   const [data, setData] = useState<PerceptionJson | null>(null);
   const [facts, setFacts] = useState<string>("");
+  const [strictJson, setStrictJson] = useState<string>("");
+  const [strict, setStrict] = useState(true);
+  const [highlightIds, setHighlightIds] = useState<string[]>([]);
+  const [hoverId, setHoverId] = useState<string | null>(null);
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [showTexts, setShowTexts] = useState(true);
@@ -43,6 +48,18 @@ export default function PerceptionDevPage() {
       }
       setData(json);
       setFacts(`Texts: ${json.texts?.length ?? 0}`);
+      // Trigger strict feedback in background
+      try {
+        const endpoint = strict ? '/api/strict-feedback' : '/api/legacy-feedback';
+        const strictRes = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ perception: json, imageUrl: url.trim() }),
+          cache: 'no-store',
+        });
+        const strictText = await strictRes.text();
+        setStrictJson(strictText);
+      } catch (_) {}
     } catch (e: any) {
       setError(e?.message || "Failed to fetch");
     } finally {
@@ -58,7 +75,7 @@ export default function PerceptionDevPage() {
   };
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-4">
+    <div className="p-6 w-full max-w-none space-y-4">
       <h1 className="text-2xl font-semibold">Perception Dev</h1>
       <div className="flex gap-2 items-center">
         <input
@@ -71,12 +88,16 @@ export default function PerceptionDevPage() {
           {loading ? "Analyzing…" : "Analyze"}
         </button>
         <button className="border rounded px-3 py-2 text-xs" onClick={onCopyCurl} disabled={!url}>Copy curl</button>
+        <label className="ml-2 text-xs flex items-center gap-2">
+          <input type="checkbox" checked={strict} onChange={(e)=> setStrict(e.target.checked)} />
+          <span>Strict v3</span>
+        </label>
       </div>
       {error && <p className="text-red-500">{error}</p>}
       {facts && <p className="text-sm text-gray-600">{facts}</p>}
       {data && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="space-y-3">
+        <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="space-y-3 lg:col-span-2 xl:col-span-3">
             <div className="flex flex-wrap gap-3 items-center">
               <label className="flex items-center gap-2">
                 <input type="checkbox" checked={showTexts} onChange={(e) => setShowTexts(e.target.checked)} />
@@ -90,10 +111,7 @@ export default function PerceptionDevPage() {
                 <input type="checkbox" checked={showBlocks} onChange={(e) => setShowBlocks(e.target.checked)} />
                 <span>Blocks</span>
               </label>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={showGrid} onChange={(e) => setShowGrid(e.target.checked)} />
-                <span>Grid</span>
-              </label>
+              {/* Grid toggle removed */}
             </div>
 
             <PerceptionOverlay
@@ -103,34 +121,30 @@ export default function PerceptionDevPage() {
               texts={(data.texts || []).map((t: any) => ({ id: t.id, bbox: t.bbox }))}
               buttons={(data.buttons || []).map((b: any) => ({ id: b.id, bbox: b.bbox }))}
               blocks={(data.blocks || []).map((b: any) => ({ id: b.id, bbox: b.bbox, kind: b.kind }))}
-              grid={data.grid}
-              gridCandidates={data.gridCandidates || []}
-              show={{ texts: showTexts, buttons: showButtons, blocks: showBlocks, grid: showGrid }}
+              grid={null}
+              gridCandidates={[]}
+              show={{ texts: showTexts, buttons: showButtons, blocks: showBlocks, grid: false }}
+              highlightedButtonIds={highlightIds}
+              hoveredButtonId={hoverId}
             />
 
             <div className="rounded-lg border p-3 text-sm">
               <div><strong>Texts:</strong> {(data.texts || []).length}</div>
               <div><strong>Buttons:</strong> {(data.buttons || []).length}</div>
               <div><strong>Blocks:</strong> {(data.blocks || []).length}</div>
-              <div>
-                <strong>Grid:</strong> {data.grid ? `${data.grid.cols} cols, gutter ${data.grid.gutterPx}px, conf ${Number(data.grid.confidence || 0).toFixed(2)}` : "n/a"}
-                {Array.isArray((data as any).gridCandidates) && (data as any).gridCandidates.length > 0 && (
-                  <div className="opacity-70">
-                    Candidates: {(data as any).gridCandidates.slice(0,4).map((g: any, i: number) => (
-                      <span key={i}>{i ? " · " : ""}{g.cols}c/{g.gutterPx}px ({Number(g.confidence || 0).toFixed(2)})</span>
-                    ))}
-                  </div>
-                )}
-              </div>
+               {/* Grid info removed */}
               {data.source?.ocr && <div><strong>OCR:</strong> {String(data.source.ocr)}</div>}
             </div>
           </div>
 
-          <div>
+          <div className="xl:col-span-1">
             <h2 className="font-medium mb-2">Perception JSON</h2>
             <pre className="text-xs bg-black text-green-300 p-3 rounded overflow-auto" style={{ maxHeight: 480 }}>
               {JSON.stringify(data, null, 2)}
             </pre>
+            {strictJson && (
+              <StrictPanel raw={strictJson} onHover={(id: string | null)=> setHoverId(id)} onSelect={(ids: string[])=> setHighlightIds(ids)} />
+            )}
           </div>
         </div>
       )}
