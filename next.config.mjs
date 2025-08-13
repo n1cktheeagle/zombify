@@ -42,6 +42,7 @@ const nextConfig = {
       },
     ];
   },
+  // Note: Next 14 handles CSS internally; avoid adding webpack CSS plugins in ESM config to prevent errors.
 };
 
 export default nextConfig;
