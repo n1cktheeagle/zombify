@@ -1,0 +1,32 @@
+{
+  "image": { "w": 1440, "h": 900 },
+  "palette": { "mode": "dark" },
+  "texts": [
+    { "id": "t1", "text": "Repair", "bbox": [1000, 555, 120, 28], "conf": 0.98, "approxSizePx": 16 },
+    { "id": "t2", "text": "Inventory", "bbox": [600, 180, 160, 34], "conf": 0.95, "approxSizePx": 24 },
+    { "id": "t3", "text": "Sword +3", "bbox": [522, 260, 140, 22], "conf": 0.9, "approxSizePx": 18 },
+    { "id": "t4", "text": "Shield", "bbox": [521, 300, 100, 22], "conf": 0.9, "approxSizePx": 18 },
+    { "id": "t6", "text": "Bow", "bbox": [525, 340, 80, 20], "conf": 0.9, "approxSizePx": 16 },
+    { "id": "t7", "text": "Arrow x20", "bbox": [700, 260, 120, 20], "conf": 0.9, "approxSizePx": 16 },
+    { "id": "t8", "text": "Potion", "bbox": [700, 300, 100, 20], "conf": 0.9, "approxSizePx": 16 },
+    { "id": "t9", "text": "Herb", "bbox": [700, 340, 80, 20], "conf": 0.9, "approxSizePx": 16 },
+    { "id": "t10", "text": "Apply", "bbox": [560, 560, 80, 22], "conf": 0.95, "approxSizePx": 18 },
+    { "id": "t5", "text": "120/160", "bbox": [1320, 200, 80, 20], "conf": 0.9, "approxSizePx": 14 }
+  ],
+  "buttons": [
+    { "id": "b1", "bbox": [980, 545, 160, 44], "cornerRadius": 10, "hasCenterText": true, "textId": "t1" },
+    { "id": "b2", "bbox": [540, 550, 140, 40], "cornerRadius": 8, "hasCenterText": true, "textId": "t10" },
+    { "id": "b_noise", "bbox": [1340, 210, 70, 26], "cornerRadius": 4, "hasCenterText": true, "textId": "t5" }
+  ],
+  "blocks": [
+    { "id": "blk1", "bbox": [520, 170, 400, 450], "kind": "section" },
+    { "id": "blk_sidebar", "bbox": [0, 0, 220, 900], "kind": "other" }
+  ],
+  "contrast": [
+    { "id": "c1", "textId": "t1", "ratio": 7, "wcag": "PASS" },
+    { "id": "c2", "textId": "t10", "ratio": 6, "wcag": "PASS" },
+    { "id": "c5", "textId": "t5", "ratio": 2, "wcag": "FAIL" }
+  ]
+}
+
+

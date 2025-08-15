@@ -1,48 +1,47 @@
 import { iou, nms } from "../utils/geometry";
 import type { BBox } from "../utils/geometry";
+import { computeImageStats, isButtonShaped } from "../utils/imageStats";
 import type { Perception, OCRText, RawButton, ScoredBox, PostProcessResult, Contrast } from "./types";
 
 // Tunable, deterministic params (exported)
 export const PARAMS = {
-  // Buttons
-  buttonMinScore: 0.74,
-  buttonGrace: 0.68,
-  buttonNmsIoU: 0.22,
-  textPad: 6,
-  nearTextPx: 14,
-  centerTol: 0.28,
-  // Strong hard-filters for text-as-button
-  btn: {
-    maxWords: 3,
-    maxChars: 18,
-    forbidPunct: /[.,;:!?\'\"“”‘’]/,
-    aspectRange: [1.4, 6.0] as [number, number],
-    heightRange: [22, 56] as [number, number],
-    widthRange: [64, 280] as [number, number],
-    maxAreaPct: 0.10,
-    allowTextAsButton: true,
-    verbyLexicon: [
-      "ok","save","send","join","buy","play","next","prev","close","open","add",
-      "create","edit","apply","upload","delete","remove","share","install","get",
-      "start","try","view","watch","learn","repair","deposit","withdraw","search",
-      "cancel","confirm","continue","agree","accept","decline"
-    ],
+  // BUTTONS
+  allowTextAsButton: false,
+  buttonMinScore: 0.8,
+  buttonGrace: 0.0,
+  buttonNmsIoU: 0.2,
+  btnGeom: {
+    height: [22, 56] as [number, number],
+    width: [72, 280] as [number, number],
+    aspect: [1.4, 6.0] as [number, number],
+    maxAreaPct: 0.05,
   },
 
-  // Sections
-  sectionMinScore: 0.64,
-  sectionNmsIoU: 0.28,
-  sectionAreaPct: [0.04, 0.55] as [number, number],
-  // Anti-fullscreen & anti-sidebar controls
-  sectionFullscreenPenalty: 0.25,
-  sidebarIgnoreLeftPx: 160,
-  // Content requirements
-  sectionNeeds: {
-    minTexts: 5,
-    requireTitle: true,
-    titleMaxChars: 28,
-  },
+  // SECTIONS
+  sectionMinScore: 0.7,
+  sectionNmsIoU: 0.3,
+  sectionAreaPct: [0.05, 0.55] as [number, number],
+  sectionFullscreenPenalty: 0.3,
+
+  // LAYOUT
+  nearTextPx: 16,
+  centerTol: 0.3,
+  textPad: 6,
 } as const;
+
+export const SECTION_RULES = {
+  needTitle: true,
+  minTextsInside: 6,
+  titleMaxChars: 28,
+} as const;
+
+export type PostprocessOutput = {
+  texts: Perception["texts"];
+  buttons: ScoredBox[];
+  sections: ScoredBox[];
+  candidates: { buttons: BBox[]; sections: BBox[] };
+  _debug?: any;
+};
 
 // Affordance lexicon
 export const AFFORDANCE_TERMS = [
@@ -75,9 +74,26 @@ export const AFFORDANCE_TERMS = [
   "get pro",
   "make primary",
   "ignore",
+  "bet",
+  "clear",
 ];
 
 const ARROW_CHARS = /[►▶▸→↓↑«»]/;
+
+function makeIgnoreBands(imageW: number, imageH: number): BBox[] {
+  return [
+    [0, 0, Math.max(160, Math.floor(imageW * 0.11)), imageH],
+    [0, 0, imageW, Math.max(72, Math.floor(imageH * 0.09))],
+  ];
+}
+
+function overlapsIgnored(b: BBox, ignore: BBox[], iouFn: (a: BBox, b: BBox) => number): boolean {
+  return ignore.some((band) => iouFn(b, band) > 0.15);
+}
+
+function overlaps(a: BBox, b: BBox): boolean {
+  return iou(a, b) > 0;
+}
 
 // Text normalization
 export function normalizeText(raw: string | null | undefined): string {
@@ -204,7 +220,13 @@ function looksNumericStat(text: string): boolean {
   if (/\b\d+\s*:\s*\d+\b/.test(raw)) return true; // score like 16:12
   if (/\b\d{1,2}:\d{2}\b/.test(raw)) return true; // time like 12:34
   if (/\b\d{1,3}(,\d{3})*\b/.test(raw) && /\d/.test(raw)) return true; // numeric count
+  if (/^x\d+$/i.test(raw.trim())) return true; // x1, x2
   return false;
+}
+
+function looksCurrencyOrPlainNumber(text: string): boolean {
+  const raw = (text || "").trim();
+  return /^\$?\d+(?:\.\d+)?$/.test(raw);
 }
 
 function scoreButtonCandidate(
@@ -221,14 +243,14 @@ function scoreButtonCandidate(
 
   // Size prior (tightened geometry)
   if (
-    within(w, PARAMS.btn.widthRange[0], PARAMS.btn.widthRange[1]) &&
-    within(h, PARAMS.btn.heightRange[0], PARAMS.btn.heightRange[1])
+    within(w, PARAMS.btnGeom.width[0], PARAMS.btnGeom.width[1]) &&
+    within(h, PARAMS.btnGeom.height[0], PARAMS.btnGeom.height[1])
   )
     score += 0.1;
   else score -= 0.1;
 
   // Aspect prior
-  if (aspect >= PARAMS.btn.aspectRange[0] && aspect <= PARAMS.btn.aspectRange[1]) score += 0.08;
+  if (aspect >= PARAMS.btnGeom.aspect[0] && aspect <= PARAMS.btnGeom.aspect[1]) score += 0.08;
   else score -= 0.05;
 
   // Corner radius
@@ -259,19 +281,51 @@ function scoreButtonCandidate(
 
   // Text affordance + contrast
   const textForScoring = usedText || (candidate as RawButton).textId ? texts.find((t) => t.id === (candidate as RawButton).textId) || null : null;
+  // If we have text, require center alignment; also reject currency-only or numeric-only strings
+  if (textForScoring && !centerAligned) {
+    return {
+      id: candidate.id,
+      kind: "button",
+      bbox: candidate.bbox,
+      score: 0,
+      label: null,
+      textId: null,
+      __rawScore: 0,
+    } as any;
+  }
   if (textForScoring) {
-    score += textAffordanceScore(textForScoring.text);
+    const afford = textAffordanceScore(textForScoring.text);
+    if (afford <= 0 || looksNumericStat(textForScoring.text) || looksCurrencyOrPlainNumber(textForScoring.text)) {
+      return {
+        id: candidate.id,
+        kind: "button",
+        bbox: candidate.bbox,
+        score: 0,
+        label: null,
+        textId: null,
+        __rawScore: 0,
+      } as any;
+    }
+    // If corners are sharp and affordance weak, drop
+    if (r < 6 && afford < 0.2) {
+      return {
+        id: candidate.id,
+        kind: "button",
+        bbox: candidate.bbox,
+        score: 0,
+        label: null,
+        textId: null,
+        __rawScore: 0,
+      } as any;
+    }
+    score += afford;
     score += contrastScore(contrast, textForScoring.id);
-    if (looksNumericStat(textForScoring.text)) score -= 0.12; // numeric stat penalization
   }
 
   // Edge density prior via area threshold (approximation)
   if (area(candidate.bbox) < 300) score -= 0.1;
 
-  // Exclusion: left vertical nav strip
-  // If fully inside x < image.w*0.18 and tall (h > image.h*0.5)
-  const leftStrip: [number, number, number, number] = [0, 0, image.w * 0.18, image.h];
-  if (bboxContains(leftStrip, candidate.bbox) && h > image.h * 0.5) score -= 0.25;
+  // Note: ignore bands are enforced earlier in candidate filtering
 
   // Clamp
   score = clamp01(score);
@@ -297,7 +351,12 @@ function isTextButtonish(txt: string): boolean {
   if (t.length > PARAMS.btn.maxChars) return false;
   if (PARAMS.btn.forbidPunct.test(t)) return false;
   const token = t.toLowerCase();
-  const ok = PARAMS.btn.verbyLexicon.some(
+  const ok = [
+    "ok","save","send","join","buy","play","next","prev","close","open","add",
+    "create","edit","apply","upload","delete","remove","share","install","get",
+    "start","try","view","watch","learn","repair","deposit","withdraw","search",
+    "cancel","confirm","continue","agree","accept","decline"
+  ].some(
     (v) => token === v || token.startsWith(v + " ") || token.endsWith(" " + v)
   );
   return ok;
@@ -309,16 +368,18 @@ function passesButtonGeometry(b: [number, number, number, number], img: { w: num
   const ar = w / Math.max(1, h);
   const areaPct = (w * h) / Math.max(1, img.w * img.h);
   return (
-    h >= PARAMS.btn.heightRange[0] && h <= PARAMS.btn.heightRange[1] &&
-    w >= PARAMS.btn.widthRange[0] && w <= PARAMS.btn.widthRange[1] &&
-    ar >= PARAMS.btn.aspectRange[0] && ar <= PARAMS.btn.aspectRange[1] &&
-    areaPct <= PARAMS.btn.maxAreaPct
+    h >= PARAMS.btnGeom.height[0] && h <= PARAMS.btnGeom.height[1] &&
+    w >= PARAMS.btnGeom.width[0] && w <= PARAMS.btnGeom.width[1] &&
+    ar >= PARAMS.btnGeom.aspect[0] && ar <= PARAMS.btnGeom.aspect[1] &&
+    areaPct <= PARAMS.btnGeom.maxAreaPct
   );
 }
 
 function buildTextDrivenButtonCandidates(texts: OCRText[], image: { w: number; h: number }): Array<{ id: string; bbox: [number, number, number, number]; textId: string | null }> {
   const out: Array<{ id: string; bbox: [number, number, number, number]; textId: string | null }> = [];
-  if (!PARAMS.btn.allowTextAsButton) return out;
+  if (!PARAMS.allowTextAsButton) {
+    return out;
+  }
   for (const t of texts) {
     if (t.approxSizePx < 5 || t.approxSizePx > 24) continue;
     if (!isTextButtonish(t.text)) continue;
@@ -398,7 +459,7 @@ function scoreSectionCandidate(
   const a = area(bbox);
   let score = 0.1; // Base
 
-  // Coverage prior and hard bounds: 4%..55%
+  // Coverage prior and hard bounds: 5%..55%
   const coverage = a / imgArea;
   if (coverage < PARAMS.sectionAreaPct[0] || coverage > PARAMS.sectionAreaPct[1]) {
     return null; // reject
@@ -406,20 +467,28 @@ function scoreSectionCandidate(
   score += 0.15;
 
   // Title presence: top-row text of size ≥ 1.2× local median
-  const containedTexts = texts.filter((t) => iou(t.bbox as any, bbox as any) > 0 && bboxContains(bbox, t.bbox));
+  const containedTexts = texts.filter((t) => overlaps(t.bbox as any, bbox as any));
   if (containedTexts.length === 0) return null;
   const sizes = containedTexts.map((t) => t.approxSizePx);
   const med = median(sizes);
   const topRow = containedTexts.filter((t) => t.bbox[1] <= bbox[1] + Math.max(24, 0.1 * bbox[3]));
   const likelyTitle = topRow.sort((a, b) => b.approxSizePx - a.approxSizePx)[0];
-  const hasTitle = likelyTitle && likelyTitle.approxSizePx >= 1.2 * med && (likelyTitle.text || "").length <= PARAMS.sectionNeeds.titleMaxChars;
-  if (PARAMS.sectionNeeds.requireTitle && !hasTitle) return null;
+  const hasTitle = likelyTitle && likelyTitle.approxSizePx >= 1.2 * med && (likelyTitle.text || "").length <= SECTION_RULES.titleMaxChars;
+  if (SECTION_RULES.needTitle && !hasTitle) return null;
   if (hasTitle) score += 0.1;
 
+  // Favor card-like sizes with some content
+  if (coverage >= 0.06 && coverage <= 0.2) score += 0.2;
+  if (containedTexts.length >= 3 && containedTexts.length <= 8) score += 0.15;
+
   // Internal grid: ≥6 texts arranged in ≥2 rows (y-band clusters)
-  if (containedTexts.length >= PARAMS.sectionNeeds.minTexts) {
+  if (containedTexts.length >= SECTION_RULES.minTextsInside) {
     const rowBands = clusterByYBands(containedTexts, 28);
     if (rowBands >= 2) score += 0.1;
+  }
+  if (containedTexts.length < SECTION_RULES.minTextsInside) {
+    // still acceptable if moderate card size
+    if (!(coverage >= 0.06 && coverage <= 0.2 && containedTexts.length >= 3 && hasTitle)) return null;
   }
 
   // Button adjacency: contains at least one accepted button
@@ -446,7 +515,89 @@ function clusterByYBands(texts: OCRText[], bandHeight: number): number {
   return bands.length;
 }
 
-export function postprocess(perception: Perception): PostProcessResult {
+// --- Loose candidate generation helpers ---
+function clampBox(b: BBox, img: { w: number; h: number }): BBox {
+  let [x, y, w, h] = b;
+  x = Math.max(0, Math.min(x, img.w));
+  y = Math.max(0, Math.min(y, img.h));
+  w = Math.max(0, Math.min(w, img.w - x));
+  h = Math.max(0, Math.min(h, img.h - y));
+  return [x, y, w, h];
+}
+function buildLooseButtonCandidates(texts: OCRText[], rawButtons: RawButton[], image: { w: number; h: number }): BBox[] {
+  const cands: BBox[] = [];
+  for (const t of texts) {
+    const [x, y, w, h] = t.bbox;
+    const pad = 8;
+    const bb = clampBox([x - pad, y - pad, w + 2 * pad, h + 2 * pad], image);
+    if (bb[2] >= 24 && bb[3] >= 18) cands.push(bb);
+  }
+  for (const b of rawButtons) {
+    const bb = clampBox(b.bbox as any, image);
+    if (bb[2] >= 24 && bb[3] >= 18) cands.push(bb);
+  }
+  // NMS IoU 0.3
+  const scored = cands.map((b, i) => ({ id: `cbtn_${i}`, kind: "button" as const, bbox: b, score: 0.5 }));
+  return nms(scored, 0.3).map((s) => s.bbox);
+}
+function buildLooseSectionCandidates(texts: OCRText[], blocks: any[], image: { w: number; h: number }): BBox[] {
+  const boxes: BBox[] = [];
+  for (const b of blocks || []) {
+    const bb = clampBox((b?.bbox as any) ?? [0,0,0,0], image);
+    const areaPct = (bb[2] * bb[3]) / Math.max(1, image.w * image.h);
+    if (areaPct >= 0.03 && areaPct <= 0.75) boxes.push(bb);
+  }
+  // crude text clustering reuse
+  const clustered = clusterTextsForSections(texts, image);
+  for (const bb of clustered) {
+    const clamped = clampBox(bb, image);
+    const areaPct = (clamped[2] * clamped[3]) / Math.max(1, image.w * image.h);
+    if (areaPct >= 0.03 && areaPct <= 0.75) boxes.push(clamped);
+  }
+  const scored = boxes.map((b, i) => ({ id: `csec_${i}`, kind: "section" as const, bbox: b, score: 0.5 }));
+  return nms(scored, 0.3).map((s) => s.bbox);
+}
+function clusterTextsForSections(texts: OCRText[], image: { w: number; h: number }): BBox[] {
+  const sorted = [...texts].sort((a, b) => a.bbox[1] - b.bbox[1]);
+  const clusters: OCRText[][] = [];
+  for (const t of sorted) {
+    let best: { idx: number; score: number } | null = null;
+    for (let i = 0; i < clusters.length; i++) {
+      const last = clusters[i][clusters[i].length - 1];
+      const dy = Math.abs(t.bbox[1] - (last.bbox[1] + last.bbox[3]));
+      const dx = Math.abs(t.bbox[0] - last.bbox[0]);
+      const score = (dy <= 48 ? 1 : 0) + (dx <= 48 ? 1 : 0);
+      if (score > 0 && (!best || score > best.score)) best = { idx: i, score };
+    }
+    if (best) clusters[best.idx].push(t); else clusters.push([t]);
+  }
+  const boxes: BBox[] = [];
+  for (const cl of clusters) {
+    if (cl.length < 3) continue;
+    const xs = cl.map((t) => t.bbox[0]);
+    const ys = cl.map((t) => t.bbox[1]);
+    const x2s = cl.map((t) => t.bbox[0] + t.bbox[2]);
+    const y2s = cl.map((t) => t.bbox[1] + t.bbox[3]);
+    const x = Math.max(0, Math.min(...xs) - 12);
+    const y = Math.max(0, Math.min(...ys) - 12);
+    const w = Math.min(image.w - x, Math.max(...x2s) - Math.min(...xs) + 24);
+    const h = Math.min(image.h - y, Math.max(...y2s) - Math.min(...ys) + 24);
+    boxes.push([x, y, w, h]);
+  }
+  return boxes;
+}
+function innerTextsCount(bbox: BBox, texts: OCRText[]): number {
+  const [x, y, w, h] = bbox;
+  const cx1 = x, cy1 = y, cx2 = x + w, cy2 = y + h;
+  let count = 0;
+  for (const t of texts) {
+    const tc = bboxCenter(t.bbox);
+    if (tc.cx >= cx1 && tc.cx <= cx2 && tc.cy >= cy1 && tc.cy <= cy2) count++;
+  }
+  return count;
+}
+
+export function postprocess(perception: Perception): PostprocessOutput {
   const image = perception?.image || { w: 0, h: 0 };
   const texts = Array.isArray(perception?.texts) ? perception.texts : [];
   const rawButtons = Array.isArray(perception?.buttons) ? perception.buttons : [];
@@ -455,8 +606,7 @@ export function postprocess(perception: Perception): PostProcessResult {
 
   const debugRejected: ScoredBox[] = [];
 
-  // Ignore band at the left (e.g., sidebars)
-  const IGNORE_LEFT: [number, number, number, number] = [0, 0, PARAMS.sidebarIgnoreLeftPx, image.h];
+  const IGNORE = makeIgnoreBands(image.w, image.h);
 
   // Build candidates: raw + OCR-driven
   const textDriven = buildTextDrivenButtonCandidates(texts, image);
@@ -466,27 +616,44 @@ export function postprocess(perception: Perception): PostProcessResult {
   ];
 
   const scoredButtonsAll = mergedCandidates
-    .filter((c) => iou(c.bbox as any, IGNORE_LEFT as any) <= 0.15)
+    .filter((c) => !overlapsIgnored(c.bbox as any, IGNORE, iou))
+    .filter((c) => {
+      const rc = c as RawButton;
+      const hasCenterText = (rc as any).hasCenterText === true;
+      const hasTextId = Boolean((rc as any).textId);
+      return hasCenterText || hasTextId;
+    })
+    .filter((c) => {
+      const [x, y, w, h] = c.bbox as BBox;
+      const areaPct = (w * h) / Math.max(1, image.w * image.h);
+      const aspect = w / Math.max(1, h);
+      const g = PARAMS.btnGeom;
+      if (h < g.height[0] || h > g.height[1]) return false;
+      if (w < g.width[0] || w > g.width[1]) return false;
+      if (aspect < g.aspect[0] || aspect > g.aspect[1]) return false;
+      if (areaPct > g.maxAreaPct) return false;
+      const inside = innerTextsCount(c.bbox as BBox, texts);
+      if (inside > 2) return false;
+      const stats = computeImageStats(image as any, c.bbox as any);
+      if (!isButtonShaped(stats)) return false;
+      return true;
+    })
     .map((c) => scoreButtonCandidate(c as any, texts, contrast, image));
 
-  // Filter + NMS
+  // Filter + NMS (strict list only)
   const passButtons = scoredButtonsAll.filter((b) => b.score >= PARAMS.buttonMinScore);
   const keptButtons = nms(passButtons, PARAMS.buttonNmsIoU);
-  if (keptButtons.length === 0) {
-    const anyGrace = scoredButtonsAll.filter((b) => b.score >= PARAMS.buttonGrace).sort((a, b) => b.score - a.score);
-    if (anyGrace.length > 0) keptButtons.push(anyGrace[0]);
-  }
 
   // Section candidates: raw blocks + grouped texts
   const sectionBoxesFromBlocks = blocks
     .filter((b) => b.kind === "section")
     .map((b) => b.bbox as [number, number, number, number])
-    .filter((bbox) => iou(bbox as any, IGNORE_LEFT as any) <= 0.15);
+    .filter((bbox) => !overlapsIgnored(bbox as any, IGNORE, iou));
   const sectionBoxesFromGrouping = clusterTextsByProximity(texts, image);
   const sectionCandidates = [
     ...sectionBoxesFromBlocks.map((bbox, idx) => ({ id: `blk_${idx}`, bbox })),
     ...sectionBoxesFromGrouping
-      .filter((bbox) => iou(bbox as any, IGNORE_LEFT as any) <= 0.15)
+      .filter((bbox) => !overlapsIgnored(bbox as any, IGNORE, iou))
       .map((bbox, idx) => ({ id: `grp_${idx}`, bbox })),
   ];
 
@@ -504,20 +671,19 @@ export function postprocess(perception: Perception): PostProcessResult {
     .sort((a, b) => b.score - a.score)
     .slice(0, 10);
 
-  // Abstain behavior: if both arrays empty and top raw candidate scores < 0.55
-  const topRaw = (scoredButtonsAll as ScoredBox[]).concat(scoredSectionsAll).sort((a, b) => b.score - a.score)[0];
-  if (keptButtons.length === 0 && keptSections.length === 0 && (!topRaw || topRaw.score < PARAMS.buttonGrace)) {
-    return {
-      buttons: [],
-      sections: [],
-      debug: { rejected, params: PARAMS as any },
-    };
-  }
+  const finalButtons = keptButtons.filter((b) => b.score >= PARAMS.buttonMinScore);
+  const finalSections = keptSections.filter((s) => s.score >= PARAMS.sectionMinScore);
+
+  // --- Loose candidates (always provided) ---
+  const candButtons = buildLooseButtonCandidates(texts, rawButtons, image);
+  const candSections = buildLooseSectionCandidates(texts, blocks, image);
 
   return {
-    buttons: keptButtons,
-    sections: keptSections,
-    debug: { rejected, params: PARAMS as any },
+    texts,
+    buttons: finalButtons.length ? finalButtons : [],
+    sections: finalSections.length ? finalSections : [],
+    candidates: { buttons: candButtons, sections: candSections },
+    _debug: { rejected, params: PARAMS as any },
   };
 }
 

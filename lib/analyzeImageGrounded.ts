@@ -259,8 +259,8 @@ export async function analyzeImageGrounded(
     || process.env.OPENAI_MODEL
     || process.env.OPENAI_VISION_FALLBACK_MODEL
     || process.env.OPENAI_VISION_MODEL
-    || 'gpt-4o';
-  const FALLBACK_MODEL = process.env.OPENAI_GROUNDED_FALLBACK || 'gpt-4o-mini';
+    || 'gpt-5';
+  const FALLBACK_MODEL = process.env.OPENAI_GROUNDED_FALLBACK || 'gpt-5';
 
   async function respond(params: any) {
     try {

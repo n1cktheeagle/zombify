@@ -10,7 +10,7 @@ export async function analyzeImageFast(imageUrl: string): Promise<ZombifyAnalysi
       project: process.env.OPENAI_PROJECT_ID || undefined
     });
     const VISION_MODEL = process.env.OPENAI_VISION_MODEL || 'gpt-5-vision';
-    const VISION_FALLBACK_MODEL = process.env.OPENAI_VISION_FALLBACK_MODEL || 'gpt-4o';
+    const VISION_FALLBACK_MODEL = process.env.OPENAI_VISION_FALLBACK_MODEL || 'gpt-5';
 
     async function createVisionChatCompletion(params: any) {
       try {

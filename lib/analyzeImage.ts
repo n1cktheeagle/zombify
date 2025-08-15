@@ -16,7 +16,7 @@ import crypto from 'crypto';
 
 // Model configuration: prefer GPT-5 Vision if available, fallback to 4o
 const VISION_MODEL = process.env.OPENAI_VISION_MODEL || 'gpt-5-vision';
-const VISION_FALLBACK_MODEL = process.env.OPENAI_VISION_FALLBACK_MODEL || 'gpt-4o';
+const VISION_FALLBACK_MODEL = process.env.OPENAI_VISION_FALLBACK_MODEL || 'gpt-5';
 const GPT_VERSION = process.env.OPENAI_VISION_MODEL_VERSION || VISION_MODEL;
 
 // Helper to perform a chat completion with fallback to an alternate model if the primary is unavailable

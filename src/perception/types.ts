@@ -8,6 +8,9 @@ export type OCRText = {
   approxSizePx: number;
 };
 
+export type BBox = [number, number, number, number];
+export type TextSpan = { id: string; text: string; bbox: BBox; conf: number; approxSizePx?: number };
+
 export type RawButton = {
   id: string;
   bbox: [number, number, number, number];
@@ -51,6 +54,10 @@ export type ScoredBox = {
 export type PostProcessResult = {
   buttons: ScoredBox[];
   sections: ScoredBox[];
+  // For backward/forward compatibility in tests and callers that expect `blocks`
+  blocks?: ScoredBox[];
+  // Optionally echo texts for tests that check label membership
+  texts?: OCRText[];
   debug?: {
     rejected: ScoredBox[]; // for UI overlay toggles
     params: Record<string, number | string>;
