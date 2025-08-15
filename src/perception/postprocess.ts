@@ -505,7 +505,7 @@ export function postprocess(perception: Perception): PostProcessResult {
     .slice(0, 10);
 
   // Abstain behavior: if both arrays empty and top raw candidate scores < 0.55
-  const topRaw = scoredButtonsAll.concat(scoredSectionsAll).sort((a, b) => b.score - a.score)[0];
+  const topRaw = (scoredButtonsAll as ScoredBox[]).concat(scoredSectionsAll).sort((a, b) => b.score - a.score)[0];
   if (keptButtons.length === 0 && keptSections.length === 0 && (!topRaw || topRaw.score < PARAMS.buttonGrace)) {
     return {
       buttons: [],

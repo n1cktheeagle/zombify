@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+import { NextResponse } from 'next/server';
 
 async function forward(req: Request, { params }: { params: { path?: string[] } }) {
   const path = (params.path ?? []).join('/');
@@ -30,7 +31,7 @@ async function forward(req: Request, { params }: { params: { path?: string[] } }
       headers: passthroughHeaders,
     });
   } catch (_e) {
-    return Response.json({ ok: false, error: 'connection_refused' }, { status: 502 });
+    return NextResponse.json({ ok: false, error: 'connection_refused' }, { status: 502 });
   }
 }
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 
 /* ---------- config ---------- */
 const MODEL = process.env.OPENAI_STRICT_FEEDBACK_MODEL || "gpt-4o";
@@ -497,7 +498,7 @@ export async function POST(req: NextRequest) {
       safetyNet: payload.detections.buttons.filter((b: any) => b.source === 'safety-net').length,
       grids: (payload.detections.grids || []).length
     });
-    const messages = [
+    const messages: ChatCompletionMessageParam[] = [
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: `Return ONLY valid JSON exactly matching this schema:\n${SCHEMA}` },
       { role: "user", content: JSON.stringify({
@@ -508,7 +509,7 @@ export async function POST(req: NextRequest) {
           meta: payload.meta,
           perceptualFallback: payload.perceptualFallback
       }) }
-    ] as const;
+    ];
 
     const res = await openai.chat.completions.create(
       {
@@ -577,11 +578,11 @@ export async function POST(req: NextRequest) {
         id: c.id, bbox: c.bbox, text: c.label, origin: c.source, scoredConfidence: c.scoredConfidence,
         aboveFold: c.aboveFold, textContrast: c.textContrast
       })),
-      discardedTop: (discarded || []).slice(0,3).map((d:any)=> ({ id: d.id, bbox: d.bbox, text: d.label, origin: d.source, scoredConfidence: d.scoredConfidence, reason: d.discardReason?.note }))
+      discardedTop: [] as any[]
     };
     // No fold policy: pick highest score with thresholds
     const best = candidates[0];
-    const allowLowForUnion = best && best.source === 'safety-net:text+button' && ctaRegex.test(best.label || '');
+    const allowLowForUnion = best && best.source === 'safety-net:text+button' && CTA_REGEX.test(best.label || '');
     const passed = best && (best.scoredConfidence >= 0.35 || (allowLowForUnion && best.scoredConfidence >= 0.33));
 
     // remove any model CTA findings; we will reinsert one canonical CTA or an absence

@@ -43,6 +43,9 @@ export default function Dashboard() {
   const [extractionProgress, setExtractionProgress] = useState(0);
   const [extractionStage, setExtractionStage] = useState('');
   const [selectedEngine, setSelectedEngine] = useState<'classic' | 'clarity' | 'grounded'>('classic');
+  const ITEMS_PER_PAGE = 20;
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   
   const router = useRouter();
   const supabase = createClientComponentClient();
@@ -56,6 +59,16 @@ export default function Dashboard() {
     }
   }, [initialized, user, router]);
 
+  // Helper to fetch a batch of feedback records
+  const fetchFeedbackBatch = async (startIndex: number, endIndex: number) => {
+    return await supabase
+      .from('feedback')
+      .select('*')
+      .or(`user_id.eq.${user?.id},and(user_id.is.null,is_guest.eq.true)`) // user's uploads or guest uploads on this device
+      .order('created_at', { ascending: false })
+      .range(startIndex, endIndex);
+  };
+
   // Load dashboard-specific data
   useEffect(() => {
     if (!initialized || !user) {
@@ -66,13 +79,8 @@ export default function Dashboard() {
     const loadFeedback = async () => {
       try {
         console.log('📊 Loading feedback for authenticated user:', user.id);
-        
-        const { data: feedbackData, error: feedbackError } = await supabase
-          .from('feedback')
-          .select('*')
-          .or(`user_id.eq.${user.id},and(user_id.is.null,is_guest.eq.true)`)
-          .order('created_at', { ascending: false })
-          .limit(20);
+
+        const { data: feedbackData, error: feedbackError } = await fetchFeedbackBatch(0, ITEMS_PER_PAGE - 1);
 
         if (feedbackError) {
           console.error('❌ Feedback query failed:', feedbackError);
@@ -87,6 +95,7 @@ export default function Dashboard() {
           setError('Failed to load your analyses');
         } else {
           setFeedback(feedbackData || []);
+          setHasMore((feedbackData?.length || 0) === ITEMS_PER_PAGE);
           console.log('✅ Feedback loaded successfully');
           
           // Check if the most recent analysis has dark patterns
@@ -233,6 +242,29 @@ export default function Dashboard() {
   const handleNavigate = async (id: string) => {
     setNavigating(id);
     router.push(`/feedback/${id}`);
+  };
+
+  // Load more handler
+  const handleLoadMore = async () => {
+    if (isLoadingMore || !hasMore) return;
+    setIsLoadingMore(true);
+    try {
+      const startIndex = feedback.length;
+      const endIndex = startIndex + ITEMS_PER_PAGE - 1;
+      const { data: moreData, error: moreError } = await fetchFeedbackBatch(startIndex, endIndex);
+      if (moreError) {
+        console.error('❌ Load more failed:', moreError);
+        return;
+      }
+      if (moreData && moreData.length > 0) {
+        setFeedback(prev => [...prev, ...moreData]);
+        setHasMore(moreData.length === ITEMS_PER_PAGE);
+      } else {
+        setHasMore(false);
+      }
+    } finally {
+      setIsLoadingMore(false);
+    }
   };
 
 
@@ -564,6 +596,18 @@ export default function Dashboard() {
                   </div>
                 );
               })}
+            </div>
+          )}
+          {/* Load more */}
+          {feedback.length > 0 && hasMore && (
+            <div className="flex justify-center mt-8">
+              <button
+                onClick={handleLoadMore}
+                disabled={isLoadingMore}
+                className="px-6 py-2 bg-black text-white rounded disabled:opacity-50"
+              >
+                {isLoadingMore ? 'Loading…' : 'Load more'}
+              </button>
             </div>
           )}
         </div>

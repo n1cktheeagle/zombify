@@ -439,7 +439,7 @@ export default function FeedbackSummary({ analysis, imageUrl, className = '' }: 
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.5, opacity: 0 }}
                 transition={{ duration: 0.3 }}
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e: React.MouseEvent) => e.stopPropagation()}
               >
                 {/* Modal Header */}
                 <div className="bg-black text-white p-4 flex justify-between items-center">
