@@ -110,6 +110,12 @@ describe("postprocess - RPG inventory image", () => {
     if (invSection) {
       expect(invSection.score).toBeGreaterThanOrEqual(PARAMS.sectionMinScore);
     }
+
+    // candidates present and IDs stable shape
+    expect(result.candidates.buttons.length).toBeGreaterThan(0);
+    expect(result.candidates.sections.length).toBeGreaterThan(0);
+    const idFormatOk = result.candidates.buttons.every((c: any) => typeof c.id === 'string' && /^(ocr_pad|raw_button|raw_block|cluster):/.test(c.id));
+    expect(idFormatOk).toBeTruthy();
   });
 });
 

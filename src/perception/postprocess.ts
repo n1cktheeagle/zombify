@@ -1,7 +1,7 @@
 import { iou, nms } from "../utils/geometry";
 import type { BBox } from "../utils/geometry";
 import { computeImageStats, isButtonShaped } from "../utils/imageStats";
-import type { Perception, OCRText, RawButton, ScoredBox, PostProcessResult, Contrast } from "./types";
+import type { Perception, OCRText, RawButton, ScoredBox, PostProcessResult, Contrast, Candidate, Candidates } from "./types";
 
 // Tunable, deterministic params (exported)
 export const PARAMS = {
@@ -39,7 +39,7 @@ export type PostprocessOutput = {
   texts: Perception["texts"];
   buttons: ScoredBox[];
   sections: ScoredBox[];
-  candidates: { buttons: BBox[]; sections: BBox[] };
+  candidates: Candidates;
   _debug?: any;
 };
 
@@ -524,38 +524,50 @@ function clampBox(b: BBox, img: { w: number; h: number }): BBox {
   h = Math.max(0, Math.min(h, img.h - y));
   return [x, y, w, h];
 }
-function buildLooseButtonCandidates(texts: OCRText[], rawButtons: RawButton[], image: { w: number; h: number }): BBox[] {
-  const cands: BBox[] = [];
-  for (const t of texts) {
+function buildLooseButtonCandidates(texts: OCRText[], rawButtons: RawButton[], image: { w: number; h: number }): Candidate[] {
+  const prelim: Candidate[] = [];
+  // OCR padded
+  for (let i = 0; i < texts.length; i++) {
+    const t = texts[i];
     const [x, y, w, h] = t.bbox;
-    const pad = 8;
+    const pad = PARAMS.textPad;
     const bb = clampBox([x - pad, y - pad, w + 2 * pad, h + 2 * pad], image);
-    if (bb[2] >= 24 && bb[3] >= 18) cands.push(bb);
+    if (bb[2] >= 24 && bb[3] >= 18) {
+      prelim.push({ id: `ocr_pad:${i}`, bbox: bb, source: "ocr_pad", textId: t.id });
+    }
   }
-  for (const b of rawButtons) {
+  // Raw buttons from detector
+  for (let i = 0; i < rawButtons.length; i++) {
+    const b = rawButtons[i];
     const bb = clampBox(b.bbox as any, image);
-    if (bb[2] >= 24 && bb[3] >= 18) cands.push(bb);
+    if (bb[2] >= 24 && bb[3] >= 18) {
+      prelim.push({ id: `raw_button:${i}`, bbox: bb, source: "raw_button", textId: (b as any).textId ?? null });
+    }
   }
-  // NMS IoU 0.3
-  const scored = cands.map((b, i) => ({ id: `cbtn_${i}`, kind: "button" as const, bbox: b, score: 0.5 }));
-  return nms(scored, 0.3).map((s) => s.bbox);
+  // NMS IoU 0.3, prefer larger area
+  const scored = prelim.map((c) => ({ id: c.id, kind: "button" as const, bbox: c.bbox, score: (c.bbox[2] * c.bbox[3]) }));
+  const keptIds = new Set(nms(scored, 0.3).map((s) => s.id));
+  return prelim.filter((c) => keptIds.has(c.id));
 }
-function buildLooseSectionCandidates(texts: OCRText[], blocks: any[], image: { w: number; h: number }): BBox[] {
-  const boxes: BBox[] = [];
-  for (const b of blocks || []) {
-    const bb = clampBox((b?.bbox as any) ?? [0,0,0,0], image);
+function buildLooseSectionCandidates(texts: OCRText[], blocks: any[], image: { w: number; h: number }): Candidate[] {
+  const prelim: Candidate[] = [];
+  // Raw blocks
+  const bs = Array.isArray(blocks) ? blocks : [];
+  for (let i = 0; i < bs.length; i++) {
+    const bb = clampBox((bs[i]?.bbox as any) ?? [0,0,0,0], image);
     const areaPct = (bb[2] * bb[3]) / Math.max(1, image.w * image.h);
-    if (areaPct >= 0.03 && areaPct <= 0.75) boxes.push(bb);
+    if (areaPct >= 0.03 && areaPct <= 0.75) prelim.push({ id: `raw_block:${i}`, bbox: bb, source: "raw_block" });
   }
-  // crude text clustering reuse
+  // Clustered text groups
   const clustered = clusterTextsForSections(texts, image);
-  for (const bb of clustered) {
-    const clamped = clampBox(bb, image);
+  for (let i = 0; i < clustered.length; i++) {
+    const clamped = clampBox(clustered[i], image);
     const areaPct = (clamped[2] * clamped[3]) / Math.max(1, image.w * image.h);
-    if (areaPct >= 0.03 && areaPct <= 0.75) boxes.push(clamped);
+    if (areaPct >= 0.03 && areaPct <= 0.75) prelim.push({ id: `cluster:${i}`, bbox: clamped, source: "cluster" });
   }
-  const scored = boxes.map((b, i) => ({ id: `csec_${i}`, kind: "section" as const, bbox: b, score: 0.5 }));
-  return nms(scored, 0.3).map((s) => s.bbox);
+  const scored = prelim.map((c) => ({ id: c.id, kind: "section" as const, bbox: c.bbox, score: (c.bbox[2] * c.bbox[3]) }));
+  const keptIds = new Set(nms(scored, 0.3).map((s) => s.id));
+  return prelim.filter((c) => keptIds.has(c.id));
 }
 function clusterTextsForSections(texts: OCRText[], image: { w: number; h: number }): BBox[] {
   const sorted = [...texts].sort((a, b) => a.bbox[1] - b.bbox[1]);

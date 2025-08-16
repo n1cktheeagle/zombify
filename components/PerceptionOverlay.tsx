@@ -3,13 +3,23 @@ import React, { useEffect, useRef, useState } from "react";
 
 type BBox = [number, number, number, number];
 
+export const GPT_FAIL_UNRANKED = "GPT ranking unavailable. Showing unranked candidates.";
+export const GPT_FAIL_STRICT = "GPT ranking failed. Nothing shown per strict mode.";
+
+type CandidateLite = { id: string; bbox: BBox; source?: string };
+
 type Props = {
   imageUrl: string;
   targetWidth: number; // same as you send to backend
   imageNatural: { w: number; h: number };
   texts?: { id: string; bbox: BBox }[];
   buttons?: { id: string; bbox: BBox }[];
+  // legacy: blocks kept for backward compat; use sections when possible
   blocks?: { id: string; bbox: BBox; kind?: string }[];
+  sections?: { id: string; bbox: BBox }[];
+  allCandidates?: { buttons: CandidateLite[]; sections: CandidateLite[] };
+  from?: "gpt" | "unranked" | "strict-fail";
+  bannerMessage?: string | null;
   grid?: { cols: number | null; gutterPx: number | null; confidence: number } | null;
   gridCandidates?: Array<{ cols: number; gutterPx: number; confidence: number }>;
   show: { texts: boolean; buttons: boolean; blocks: boolean; grid: boolean };
@@ -24,6 +34,10 @@ export default function PerceptionOverlay({
   texts = [],
   buttons = [],
   blocks = [],
+  sections = [],
+  allCandidates,
+  from = "gpt",
+  bannerMessage = null,
   grid,
   gridCandidates = [],
   show,
@@ -33,6 +47,7 @@ export default function PerceptionOverlay({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const [noGridMsg, setNoGridMsg] = useState<string | null>(null);
+  const [showAllCandidates, setShowAllCandidates] = useState<boolean>(false);
 
   function normalizeBBox(input: any, naturalW: number, naturalH: number): BBox | null {
     if (!input) return null;
@@ -74,7 +89,7 @@ export default function PerceptionOverlay({
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     ctx.clearRect(0, 0, displayW, displayH);
-    console.log('overlay: buttons', buttons?.length || 0, 'blocks', blocks?.length || 0);
+    // draw legend chip for source in DOM layer below
 
     const drawBox = (bboxIn: any, lineWidth: number, dash: number[], label?: string, stroke?: string) => {
       const norm = normalizeBBox(bboxIn, imageNatural.w, imageNatural.h);
@@ -101,9 +116,10 @@ export default function PerceptionOverlay({
       ctx.restore();
     };
 
-    // blocks (draw all, yellow)
-    if (show.blocks && blocks.length) {
-      blocks.forEach((b) => drawBox(b.bbox, 2, [], (b as any).kind || 'block', '#f59e0b'));
+    // sections/blocks (draw all, yellow)
+    const sectionsToDraw = (sections && sections.length ? sections : (blocks || [])).map((b: any) => ({ bbox: b.bbox, kind: (b as any).kind || 'section' }));
+    if (show.blocks && sectionsToDraw.length) {
+      sectionsToDraw.forEach((b) => drawBox(b.bbox, 2, [], (b as any).kind || 'section', '#f59e0b'));
     }
 
     // buttons (draw all in blue/cyan; highlight selected/hovered)
@@ -123,6 +139,13 @@ export default function PerceptionOverlay({
     if (show.texts && texts.length) {
       ctx.strokeStyle = "#ef4444"; // red
       texts.forEach((t) => drawBox(t.bbox, 1.5, [2, 2]));
+    }
+
+    // All candidates overlay (thin dashed gray)
+    if (showAllCandidates && allCandidates) {
+      const light = (bboxIn: any) => drawBox(bboxIn, 1, [2, 3], undefined, "#64748b");
+      (allCandidates.buttons || []).forEach((c) => light(c.bbox));
+      (allCandidates.sections || []).forEach((c) => light(c.bbox));
     }
 
     // grid
@@ -206,14 +229,37 @@ export default function PerceptionOverlay({
     draw();
     return () => window.removeEventListener("resize", onResize);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [imageUrl, targetWidth, imageNatural.w, imageNatural.h, texts, buttons, blocks, grid, show, highlightedButtonIds, hoveredButtonId]);
+  }, [imageUrl, targetWidth, imageNatural.w, imageNatural.h, texts, buttons, blocks, sections, allCandidates, showAllCandidates, grid, show, highlightedButtonIds, hoveredButtonId]);
+
+  // Auto-enable candidate overlay in unranked mode
+  useEffect(() => {
+    if (from === 'unranked' && allCandidates && (allCandidates.buttons?.length || allCandidates.sections?.length)) {
+      setShowAllCandidates(true);
+    } else if (from === 'gpt') {
+      setShowAllCandidates(false);
+    }
+  }, [from, allCandidates]);
 
   return (
     <div className="relative w-full">
       <img ref={imgRef} src={imageUrl} alt="analyzed" className="w-full h-auto block rounded-lg" onLoad={draw} />
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none z-10" />
+      {/* Banner for non-GPT sources */}
+      {from !== "gpt" && bannerMessage && (
+        <div className="absolute left-2 top-2 text-xs px-2 py-1 rounded bg-yellow-900/80 text-yellow-50 border border-yellow-600 z-20">
+          {bannerMessage}
+        </div>
+      )}
+      {/* Legend + toggle */}
+      <div className="absolute right-2 top-2 z-20 flex items-center gap-2">
+        <span className="text-[10px] uppercase tracking-wide px-2 py-1 rounded border bg-white/80 text-gray-800">{from}</span>
+        <label className="text-xs px-2 py-1 rounded border bg-white/80 text-gray-800 flex items-center gap-1">
+          <input type="checkbox" checked={showAllCandidates} onChange={(e)=> setShowAllCandidates(e.target.checked)} />
+          Show all candidates
+        </label>
+      </div>
       {noGridMsg && (
-        <div className="absolute left-2 top-2 text-xs px-2 py-1 rounded bg-yellow-900/70 text-yellow-50 border border-yellow-600">
+        <div className="absolute left-2 bottom-2 text-xs px-2 py-1 rounded bg-yellow-900/70 text-yellow-50 border border-yellow-600">
           {noGridMsg}
         </div>
       )}

@@ -11,6 +11,18 @@ export type OCRText = {
 export type BBox = [number, number, number, number];
 export type TextSpan = { id: string; text: string; bbox: BBox; conf: number; approxSizePx?: number };
 
+export type Candidate = {
+  id: string;
+  bbox: BBox;
+  source: "ocr_pad" | "raw_block" | "raw_button" | "cluster";
+  textId?: string | null;
+};
+
+export type Candidates = {
+  buttons: Candidate[];
+  sections: Candidate[];
+};
+
 export type RawButton = {
   id: string;
   bbox: [number, number, number, number];
@@ -58,6 +70,8 @@ export type PostProcessResult = {
   blocks?: ScoredBox[];
   // Optionally echo texts for tests that check label membership
   texts?: OCRText[];
+  // Broad, high-recall candidates for downstream ranking
+  candidates?: Candidates;
   debug?: {
     rejected: ScoredBox[]; // for UI overlay toggles
     params: Record<string, number | string>;

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import PerceptionOverlay from "@/components/PerceptionOverlay";
+import PerceptionOverlay, { GPT_FAIL_STRICT, GPT_FAIL_UNRANKED } from "@/components/PerceptionOverlay";
 import StrictPanel from "../../../components/StrictPanel";
 import { postprocess } from "../../../src/perception/postprocess";
 
@@ -22,7 +22,14 @@ export default function PerceptionDevPage() {
   const [showTexts, setShowTexts] = useState(true);
   const [showButtons, setShowButtons] = useState(true);
   const [showBlocks, setShowBlocks] = useState(true);
+  const [overlayFrom, setOverlayFrom] = useState<"gpt" | "unranked" | "strict-fail">("gpt");
+  const [overlayBanner, setOverlayBanner] = useState<string | null>(null);
+  const [allCandidates, setAllCandidates] = useState<{ buttons: Array<{ id: string; bbox: [number,number,number,number] }>; sections: Array<{ id: string; bbox: [number,number,number,number] }> } | null>(null);
   const [showGrid, setShowGrid] = useState(true);
+  const [debugMode] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try { return new URL(window.location.href).searchParams.get('debug') === '1'; } catch { return false; }
+  });
   const targetWidth = 1440 as const;
   const modes: AnalyzeModes = ["ocr", "geometry", "contrast", "palette"];
 
@@ -47,6 +54,10 @@ export default function PerceptionDevPage() {
       // Client-side postprocess to ensure candidates are built even if server skips it
       const pp = postprocess(raw);
       const candidatesRaw = pp?.candidates ?? { buttons: [], sections: [] };
+      setAllCandidates({
+        buttons: (candidatesRaw.buttons || []).map((c: any) => ({ id: c.id ?? "", bbox: c.bbox })),
+        sections: (candidatesRaw.sections || []).map((c: any) => ({ id: c.id ?? "", bbox: c.bbox })),
+      });
       // ---- client-side trim to avoid huge payloads ----
       const iou = (a: number[], b: number[]) => {
         const [ax, ay, aw, ah] = a; const [bx, by, bw, bh] = b;
@@ -60,11 +71,13 @@ export default function PerceptionDevPage() {
         for (const b of boxes) { let over=false; for (const k of kept){ if(iou(b,k)>thr){ over=true; break; } } if(!over) kept.push(b); if(kept.length>=limit) break; }
         return kept;
       };
-      const textsSlim = (raw.texts || []).slice(0, 120).map((t: any) => ({ text: t.text, bbox: t.bbox }));
-      const buttonsSlim = dedupe((candidatesRaw.buttons || []).slice(0, 200), 0.3, 60);
-      const sectionsSlim = (candidatesRaw.sections || []).slice(0, 30);
-      const candidates = { buttons: buttonsSlim, sections: sectionsSlim };
-      const totalCands = buttonsSlim.length + sectionsSlim.length;
+      const textsSlim = (raw.texts || []).slice(0, 120).map((t: any) => ({ id: t.id, text: t.text, bbox: t.bbox }));
+      // Keep high recall but cap payload sizes
+      const byArea = (a: any, b: any) => (b.bbox[2]*b.bbox[3]) - (a.bbox[2]*a.bbox[3]);
+      const candButtonsSlim = [...(candidatesRaw.buttons || [])].sort(byArea).slice(0, 300);
+      const candSectionsSlim = [...(candidatesRaw.sections || [])].sort(byArea).slice(0, 300);
+      const candidates = { buttons: candButtonsSlim, sections: candSectionsSlim };
+      const totalCands = candButtonsSlim.length + candSectionsSlim.length;
       if (totalCands === 0) {
         setError("no_candidates");
         setData(null);
@@ -78,23 +91,42 @@ export default function PerceptionDevPage() {
       });
       if (!r.ok) {
         const err = await r.json().catch(() => ({} as any));
-        const msg = err?.error?.code ? `${err.error.code}` : `strict_feedback_${r.status}`;
-        throw new Error(msg);
+        const msg = err?.error ? String(err.error) : `strict_feedback_${r.status}`;
+        const code = err?.code ? String(err.code) : 'UPSTREAM';
+        const strictMode = process.env.NEXT_PUBLIC_STRICT_STRICT_MODE || process.env.STRICT_STRICT_MODE || 'unranked';
+        if (strictMode === 'strict') {
+          setOverlayFrom('strict-fail');
+          setOverlayBanner(`GPT ranking failed (${code}). Nothing shown per strict mode.`);
+          setData({ ...raw, buttons: [], blocks: [] });
+        } else {
+          setOverlayFrom('unranked');
+          setOverlayBanner(`GPT ranking unavailable (${code}). Showing unranked candidates.`);
+          setData({ ...raw, buttons: [], blocks: [] });
+        }
+        // eslint-disable-next-line no-console
+        console.error('[strict-feedback]', { code, error: msg });
+        return;
       }
-      const picked = await r.json();
-      const buttons = Array.isArray(picked?.buttons) ? picked.buttons : [];
-      const sections = Array.isArray(picked?.sections) ? picked.sections : [];
-      // Normalize to overlay's expected shape { id, bbox }
-      const normButtons = buttons.map((b: any, i: number) => ({
-        id: b?.id ?? `btn_${i}`,
-        bbox: (Array.isArray(b?.bbox) ? b.bbox : (Array.isArray(b?.box) ? b.box : (Array.isArray(b) ? b : [0,0,0,0])))
-      }));
-      const normBlocks = sections.map((s: any, i: number) => ({
-        id: s?.id ?? `sec_${i}`,
-        bbox: (Array.isArray(s?.bbox) ? s.bbox : (Array.isArray(s?.box) ? s.box : (Array.isArray(s) ? s : [0,0,0,0]))),
-        kind: 'section'
-      }));
-      setData({ ...raw, buttons: normButtons, blocks: normBlocks });
+      let picked: any = null;
+      if (r.ok) {
+        picked = await r.json();
+        const idToBoxBtn = new Map((candidates.buttons || []).map((c: any) => [c.id, c.bbox]));
+        const idToBoxSec = new Map((candidates.sections || []).map((c: any) => [c.id, c.bbox]));
+        const picksBtnIds: string[] = Array.isArray(picked?.picks?.buttons) ? picked.picks.buttons : [];
+        const picksSecIds: string[] = Array.isArray(picked?.picks?.sections) ? picked.picks.sections : [];
+        const normButtons = picksBtnIds.map((id, i) => ({ id, bbox: idToBoxBtn.get(id) || [0,0,0,0] }));
+        const normBlocks = picksSecIds.map((id, i) => ({ id, bbox: idToBoxSec.get(id) || [0,0,0,0], kind: 'section' }));
+        setOverlayFrom('gpt');
+        setOverlayBanner(null);
+        setData({ ...raw, buttons: normButtons, blocks: normBlocks });
+      }
+      // one-time log
+      try {
+        const buttonsCount = (picked?.picks?.buttons || []).length || (data?.buttons || []).length || 0;
+        const sectionsCount = (picked?.picks?.sections || []).length || (data?.blocks || []).length || 0;
+        // eslint-disable-next-line no-console
+        console.log('overlay', { from: r.ok ? 'gpt' : (overlayFrom), buttons: buttonsCount, sections: sectionsCount, candButtons: candButtonsSlim.length, candSections: candSectionsSlim.length });
+      } catch {}
       setFacts(`Texts: ${raw.texts?.length ?? 0}`);
 
       try {
@@ -153,6 +185,10 @@ export default function PerceptionDevPage() {
               texts={(data.texts || []).map((t: any) => ({ id: t.id, bbox: t.bbox }))}
               buttons={(data.buttons || []).map((b: any) => ({ id: b.id, bbox: b.bbox }))}
               blocks={(data.blocks || []).map((b: any) => ({ id: b.id, bbox: b.bbox, kind: b.kind || 'section' }))}
+              sections={(data.blocks || []).map((b: any) => ({ id: b.id, bbox: b.bbox }))}
+              from={overlayFrom}
+              bannerMessage={overlayBanner}
+              allCandidates={debugMode ? (allCandidates || undefined) : undefined}
               grid={null}
               gridCandidates={[]}
               show={{ texts: showTexts, buttons: showButtons, blocks: showBlocks, grid: false }}
