@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { setPrefetchedDashboard, getPrefetchedDashboard } from '@/lib/prefetchCache';
+import { setPrefetchedFeedback } from '@/lib/prefetchCache';
 import UploadZone from '@/components/UploadZone';
 import { useAuth } from '@/hooks/useAuth';
 import { ZombifyAnalysis } from '@/types/analysis';
@@ -80,6 +82,13 @@ export default function Dashboard() {
       try {
         console.log('📊 Loading feedback for authenticated user:', user.id);
 
+        // Hydrate immediately from prefetch cache if available to avoid "Loading Dashboard..."
+        const cached = getPrefetchedDashboard();
+        if (cached && cached.length > 0) {
+          setFeedback(cached as any);
+          setLoading(false);
+        }
+
         const { data: feedbackData, error: feedbackError } = await fetchFeedbackBatch(0, ITEMS_PER_PAGE - 1);
 
         if (feedbackError) {
@@ -97,6 +106,8 @@ export default function Dashboard() {
           setFeedback(feedbackData || []);
           setHasMore((feedbackData?.length || 0) === ITEMS_PER_PAGE);
           console.log('✅ Feedback loaded successfully');
+          // Save to prefetch cache for immediate hydration on return navigations
+          if (feedbackData) setPrefetchedDashboard(feedbackData);
           
           // Check if the most recent analysis has dark patterns
           if (feedbackData && feedbackData.length > 0) {
@@ -241,6 +252,18 @@ export default function Dashboard() {
   // Handle navigation
   const handleNavigate = async (id: string) => {
     setNavigating(id);
+    try {
+      // Prefetch the target feedback data to avoid blank state on destination
+      const { data: feedbackData, error: feedbackError } = await supabase
+        .from('feedback')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (!feedbackError && feedbackData) {
+        setPrefetchedFeedback(id, feedbackData);
+      }
+    } catch {}
     router.push(`/feedback/${id}`);
   };
 
@@ -493,7 +516,20 @@ export default function Dashboard() {
                     className={`bg-[#f5f1e6] cursor-pointer transition-all duration-200 relative font-mono text-xs border border-black/30 hover:bg-[#ebe7dc] hover:border-black/50 ${
                       navigating === item.id ? 'opacity-50 pointer-events-none' : ''
                     }`}
-                    onClick={() => router.push(targetPath)}
+                    onClick={async () => {
+                      // For v1 feedback route, prefetch the record before pushing
+                      const toId = item.id;
+                      setNavigating(toId);
+                      try {
+                        const { data: feedbackData } = await supabase
+                          .from('feedback')
+                          .select('*')
+                          .eq('id', toId)
+                          .single();
+                        if (feedbackData) setPrefetchedFeedback(toId, feedbackData);
+                      } catch {}
+                      router.push(targetPath);
+                    }}
                   >
                     {/* Retro scanlines */}
                     <div className="absolute inset-0 pointer-events-none" 

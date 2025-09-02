@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { getPrefetchedFeedback, clearPrefetchedFeedback } from '@/lib/prefetchCache';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ZombifyAnalysis } from '@/types/analysis';
 import { useUpload } from '@/contexts/UploadContext';
@@ -176,7 +177,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
     // Your sign up logic here
   };
 
-  // Initialize page data
+  // Initialize page data with prefetch cache hydration first
   useEffect(() => {
     let mounted = true;
 
@@ -184,6 +185,14 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
       console.log('🚀 Starting initializePage for ID:', params.id);
       
       try {
+        // Hydrate immediately from prefetch cache if present to avoid blank state
+        const cached = getPrefetchedFeedback(params.id);
+        if (cached && mounted) {
+          setData(cached as any);
+          setLoading(false);
+          clearPrefetchedFeedback(params.id);
+        }
+
         // Get user
         console.log('🔐 Checking authentication...');
         const { data: { user: currentUser } } = await supabase.auth.getUser();
@@ -193,7 +202,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
           setUser(currentUser);
         }
 
-        // Fetch feedback data
+        // Fetch feedback data (authoritative load)
         console.log('📡 Fetching feedback data...');
         
         const { data: feedbackData, error: feedbackError } = await supabase

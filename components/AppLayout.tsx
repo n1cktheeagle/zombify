@@ -3,6 +3,7 @@
 import { ReactNode, useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { MainHeader } from '@/components/MainHeader';
+import TopLoadingBar from '@/components/TopLoadingBar';
 import DashboardSidebar from '@/components/DashboardSidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { useUpload } from '@/contexts/UploadContext';
@@ -119,6 +120,7 @@ export function AppLayout({ children, fullWidth = false }: AppLayoutProps) {
   // Render authenticated layout
   return (
     <div className="min-h-screen bg-[#f5f1e6] text-black font-mono">
+      <TopLoadingBar />
       {/* Commented out main header for now */}
       {/* <MainHeader variant="app" /> */}
       

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Folder, Clock, Lock, ChevronDown, Settings, LogOut } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { setPrefetchedFeedback } from '@/lib/prefetchCache';
 import Image from 'next/image';
 import GlitchLogo from './GlitchLogo';
 
@@ -70,7 +71,15 @@ export default function DashboardSidebar({
 
   const currentFeedbackId = getCurrentFeedbackId();
 
-  const handleAnalysisClick = (analysisId: string) => {
+  const handleAnalysisClick = async (analysisId: string) => {
+    try {
+      // Prefetch via API route if available; fall back silently
+      const res = await fetch(`/api/feedback?id=${analysisId}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data) setPrefetchedFeedback(analysisId, data);
+      }
+    } catch {}
     router.push(`/feedback/${analysisId}`);
   };
 

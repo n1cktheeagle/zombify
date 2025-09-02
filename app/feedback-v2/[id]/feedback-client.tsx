@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { getPrefetchedFeedback, clearPrefetchedFeedback } from '@/lib/prefetchCache';
 import Link from 'next/link';
 
 interface FeedbackRow {
@@ -23,6 +24,14 @@ export default function FeedbackV2Client({ params }: { params: { id: string } })
     let mounted = true;
     (async () => {
       try {
+        // Hydrate from prefetch cache first, if present
+        const cached = getPrefetchedFeedback(params.id);
+        if (cached && mounted) {
+          setRow(cached as any);
+          setLoading(false);
+          clearPrefetchedFeedback(params.id);
+        }
+
         const { data, error } = await supabase
           .from('feedback')
           .select('*')
