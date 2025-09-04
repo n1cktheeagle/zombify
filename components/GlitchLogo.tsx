@@ -81,7 +81,7 @@ export default function GlitchLogo({ onClick, className = '' }: GlitchLogoProps)
 
   return (
     <div 
-      className={`flex items-center gap-2 cursor-pointer transition-all duration-200 ${className}`}
+      className={`logo-glitch ${isGlitching ? 'glitch-active' : ''} flex items-center gap-2 cursor-pointer transition-all duration-200 shrink-0 whitespace-nowrap ${className}`}
       onClick={onClick}
       onMouseEnter={startGlitch}
       onMouseLeave={stopGlitch}

@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(out, { status: 200 });
     } catch {
       const pp = postprocess(raw);
-      const out = { ...raw, buttons: pp.buttons ?? [], sections: pp.sections ?? [], blocks: pp.sections ?? [], ...(process.env.NODE_ENV !== "production" ? { _debug: pp.debug } : {}) } as any;
+      const out = { ...raw, buttons: pp.buttons ?? [], sections: pp.sections ?? [], blocks: pp.sections ?? [], ...(process.env.NODE_ENV !== "production" && pp._debug !== undefined ? { _debug: pp._debug } : {}) } as any;
       return NextResponse.json(out, { status: 200 });
     }
   } catch (e: any) {

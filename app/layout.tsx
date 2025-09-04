@@ -4,6 +4,7 @@ import "./globals.css"
 import { AuthProvider } from '@/hooks/useAuth'
 import { UploadProvider } from '@/contexts/UploadContext'
 import { AppLayout } from '@/components/AppLayout'
+import { Analytics } from '@vercel/analytics/react'
 
 export const metadata: Metadata = {
   title: "Zombify - UX Feedback Tool",
@@ -43,6 +44,7 @@ export default function RootLayout({
             </AppLayout>
           </UploadProvider>
         </AuthProvider>
+        <Analytics />
       </body>
     </html>
   )
