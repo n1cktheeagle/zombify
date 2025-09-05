@@ -1,3 +1,11 @@
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
+if (process.env.NEXT_PUBLIC_LAUNCH_MODE === "landing-only") {
+  // eslint-disable-next-line import/no-anonymous-default-export
+  export default function Placeholder() { return null }
+}
+
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -131,7 +139,7 @@ export default function AccountSettings() {
               Back to Dashboard
             </button>
           </div>
-                      <h1 className="text-4xl font-bold mb-2 font-heading">ACCOUNT SETTINGS</h1>
+          <h1 className="text-4xl font-bold mb-2 font-heading">ACCOUNT SETTINGS</h1>
           <p className="text-lg opacity-70">Manage your account and preferences</p>
         </div>
 

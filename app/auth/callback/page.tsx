@@ -1,3 +1,10 @@
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
+if (process.env.NEXT_PUBLIC_LAUNCH_MODE === "landing-only") {
+  export default function Placeholder() { return null }
+}
+
 'use client'
 
 import { Suspense, useEffect } from 'react'
