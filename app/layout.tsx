@@ -1,9 +1,7 @@
 import type React from "react"
 import type { Metadata } from "next"
 import "./globals.css"
-import { AuthProvider } from '@/hooks/useAuth'
-import { UploadProvider } from '@/contexts/UploadContext'
-import { AppLayout } from '@/components/AppLayout'
+import dynamic from 'next/dynamic'
 import { Analytics } from '@vercel/analytics/react'
 
 export const metadata: Metadata = {
@@ -11,6 +9,9 @@ export const metadata: Metadata = {
   description: "Get undead-level UX feedback for your designs",
   generator: 'v0.dev'
 }
+
+const landingOnly = process.env.NEXT_PUBLIC_LAUNCH_MODE === 'landing-only'
+const RootProviders = landingOnly ? null : dynamic(() => import('@/components/RootProviders'))
 
 export default function RootLayout({
   children,
@@ -37,13 +38,13 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <AuthProvider>
-          <UploadProvider>
-            <AppLayout>
-              {children}
-            </AppLayout>
-          </UploadProvider>
-        </AuthProvider>
+        {landingOnly ? (
+          children
+        ) : (
+          // Load heavy providers only for full app mode
+          // @ts-expect-error dynamic component type
+          <RootProviders>{children}</RootProviders>
+        )}
         {/* Vercel Web Analytics (prod only) */}
         <Analytics />
       </body>
