@@ -1223,7 +1223,7 @@
 /* Responsive Design Helpers */
 @media (max-width: 768px) {
   .zombify-card {
-    margin: 0 1rem;
+    margin: 0;
   }
   
   .glitch-text {
@@ -1298,4 +1298,11 @@
 
 .ascii-container:hover .ascii-original {
   opacity: 0;
+}
+
+@layer utilities {
+  .mobile-gutter {
+    padding-left: 1.5rem; /* 24px */
+    padding-right: 1.5rem; /* 24px */
+  }
 }
