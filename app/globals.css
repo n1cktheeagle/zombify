@@ -89,6 +89,7 @@
   }
   body {
     @apply bg-background text-foreground;
+    background-color: #f5f1e6;
     font-family: "IBM Plex Mono", monospace;
   }
   .font-serif {
@@ -123,6 +124,13 @@
   .zombify-primary-button:hover:not(:disabled) {
     @apply bg-black/90;
     animation: button-glitch 0.2s infinite;
+  }
+  /* When disabled (sending), remove hover animations/effects */
+  .zombify-primary-button:disabled,
+  .zombify-primary-button:disabled:hover {
+    @apply bg-black text-white;
+    animation: none !important;
+    transform: none !important;
   }
 
   .zombify-ghost-button {

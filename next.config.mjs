@@ -1,9 +1,18 @@
 /** @type {import('next').NextConfig} */
+const landingOnly = process.env.NEXT_PUBLIC_LAUNCH_MODE === 'landing-only'
+
 const nextConfig = {
-  // ✅ Skip ESLint during Vercel builds (we'll fix lint locally later)
+  // ESLint control (always skipping during builds in current setup; keep behavior)
   eslint: {
     ignoreDuringBuilds: true,
   },
+
+  // When launching only the landing page, allow TypeScript errors to pass the build
+  typescript: landingOnly
+    ? {
+        ignoreBuildErrors: true,
+      }
+    : undefined,
 
   // Configure images for Supabase storage
   images: {

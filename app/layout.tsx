@@ -44,6 +44,7 @@ export default function RootLayout({
             </AppLayout>
           </UploadProvider>
         </AuthProvider>
+        {/* Vercel Web Analytics (prod only) */}
         <Analytics />
       </body>
     </html>
