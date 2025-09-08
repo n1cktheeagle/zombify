@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import "./globals.css"
 import dynamic from 'next/dynamic'
 import { Analytics } from '@vercel/analytics/react'
+import AttrCapture from '@/components/AttrCapture'
 
 export const metadata: Metadata = {
   title: "Zombify - UX Feedback Tool",
@@ -38,6 +39,7 @@ export default function RootLayout({
         />
       </head>
       <body>
+        <AttrCapture />
         {landingOnly ? (
           children
         ) : (

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Script from 'next/script'
 import { track } from '@vercel/analytics'
+import { getAttrForInsert } from '@/lib/utm'
 import GlitchLogo from '@/components/GlitchLogo'
 // Removed AuthButton for alpha waitlist landing
 
@@ -130,7 +131,56 @@ export default function LandingPage() {
         return
       }
 
-      const payload = { email, consent: true, source: 'zombify-landing', turnstileToken, website }
+      const attr = getAttrForInsert()
+      // Fallback: derive from current URL if localStorage empty
+      let fb_source: string | null = null
+      let fb_medium: string | null = null
+      let fb_campaign: string | null = null
+      let fb_content: string | null = null
+      let fb_term: string | null = null
+      let fb_referrer: string | null = null
+      if (typeof window !== 'undefined') {
+        const p = new URLSearchParams(window.location.search)
+        fb_source = p.get('utm_source') || p.get('source')
+        fb_medium = p.get('utm_medium') || p.get('medium')
+        fb_campaign = p.get('utm_campaign') || p.get('campaign')
+        fb_content = p.get('utm_content') || p.get('content')
+        fb_term = p.get('utm_term') || p.get('term')
+        const refP = p.get('referrer') || p.get('ref')
+        fb_referrer = refP || (typeof document !== 'undefined' ? (document.referrer || null) : null)
+        // Normalize empties
+        fb_source = fb_source && fb_source.trim() ? fb_source : null
+        fb_medium = fb_medium && fb_medium.trim() ? fb_medium : null
+        fb_campaign = fb_campaign && fb_campaign.trim() ? fb_campaign : null
+        fb_content = fb_content && fb_content.trim() ? fb_content : null
+        fb_term = fb_term && fb_term.trim() ? fb_term : null
+        fb_referrer = fb_referrer && fb_referrer.trim() ? fb_referrer : null
+      }
+      const final_source = attr.source ?? fb_source ?? null
+      const final_medium = attr.medium ?? fb_medium ?? null
+      const final_campaign = attr.campaign ?? fb_campaign ?? null
+      const final_content = attr.content ?? fb_content ?? null
+      const final_term = attr.term ?? fb_term ?? null
+      const final_referrer = attr.referrer ?? fb_referrer ?? null
+      const payload = {
+        email,
+        consent: true,
+        source: 'zombify-landing',
+        turnstileToken,
+        website,
+        // send both utm_* and plain fields for compatibility
+        utm_source: final_source,
+        utm_medium: final_medium,
+        utm_campaign: final_campaign,
+        utm_content: final_content,
+        utm_term: final_term,
+        utm_referrer: final_referrer,
+        medium: final_medium,
+        campaign: final_campaign,
+        content: final_content,
+        term: final_term,
+        referrer: final_referrer,
+      }
 
       const res = await fetch('/api/alpha', {
         method: 'POST',

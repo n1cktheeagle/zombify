@@ -46,6 +46,21 @@ export async function POST(req: Request) {
     const source = body?.source
     const turnstileToken = body?.turnstileToken
     const website = body?.website
+    // attribution (optional) – accept both utm_* and plain keys from the client
+    const plain_medium = typeof body?.medium === 'string' ? body.medium : null
+    const plain_campaign = typeof body?.campaign === 'string' ? body.campaign : null
+    const plain_content = typeof body?.content === 'string' ? body.content : null
+    const plain_term = typeof body?.term === 'string' ? body.term : null
+    const plain_referrer = typeof body?.referrer === 'string' ? body.referrer : null
+
+    const utm_source = typeof body?.utm_source === 'string' ? body.utm_source : null
+    const utm_medium = typeof body?.utm_medium === 'string' ? body.utm_medium : null
+    const utm_campaign = typeof body?.utm_campaign === 'string' ? body.utm_campaign : null
+    const utm_content = typeof body?.utm_content === 'string' ? body.utm_content : null
+    const utm_term = typeof body?.utm_term === 'string' ? body.utm_term : null
+    const utm_referrer = typeof body?.utm_referrer === 'string'
+      ? body.utm_referrer
+      : (typeof body?.referrer === 'string' ? body.referrer : null)
 
     if (!email || !isValidEmail(email)) {
       return NextResponse.json({ error: 'Invalid email' }, { status: 400 })
@@ -130,30 +145,35 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true }, { status: 202, headers: { 'Cache-Control': 'no-store' } })
     }
 
-    // Verify Turnstile after cheap checks and rate limiting
-    try {
-      if (!TURNSTILE_SECRET_KEY) throw new Error('Missing TURNSTILE_SECRET_KEY')
-      const params = new URLSearchParams()
-      params.append('secret', TURNSTILE_SECRET_KEY)
-      params.append('response', String(turnstileToken || ''))
-      if (ip && ip !== 'unknown') params.append('remoteip', ip)
+    // Verify Turnstile after cheap checks and rate limiting (with optional dev bypass)
+    const bypassTurnstile = isDev && process.env.TURNSTILE_BYPASS === '1'
+    if (!bypassTurnstile) {
+      try {
+        if (!TURNSTILE_SECRET_KEY) throw new Error('Missing TURNSTILE_SECRET_KEY')
+        const params = new URLSearchParams()
+        params.append('secret', TURNSTILE_SECRET_KEY)
+        params.append('response', String(turnstileToken || ''))
+        if (ip && ip !== 'unknown') params.append('remoteip', ip)
 
-      const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: params.toString(),
-      })
-      const verifyData: any = await verifyRes.json().catch(() => ({}))
-      if (!verifyRes.ok || !verifyData?.success) {
-        console.error('alpha signup:', { stage: 'turnstile', error: verifyData })
+        const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: params.toString(),
+        })
+        const verifyData: any = await verifyRes.json().catch(() => ({}))
+        if (!verifyRes.ok || !verifyData?.success) {
+          console.error('alpha signup:', { stage: 'turnstile', error: verifyData })
+          return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 403 })
+        }
+      } catch (err) {
+        console.error('alpha signup:', { stage: 'turnstile', error: err })
         return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 403 })
       }
-    } catch (err) {
-      console.error('alpha signup:', { stage: 'turnstile', error: err })
-      return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 403 })
+    } else {
+      devLog('turnstile bypass active')
     }
 
-    const insertPayload = {
+    const basePayload = {
       email,
       consent: true,
       source: typeof source === 'string' && source ? source : 'zombify-landing',
@@ -161,9 +181,43 @@ export async function POST(req: Request) {
       user_agent: userAgent,
     }
 
-    const { error: insertError } = await client
-      .from('alpha_signups')
-      .insert(insertPayload)
+    // First attempt: insert using utm_* columns
+    const insertUtmPayload: Record<string, any> = {
+      ...basePayload,
+      utm_source,
+      utm_medium,
+      utm_campaign,
+      utm_content,
+      utm_term,
+      utm_referrer,
+    }
+
+    // Remove keys that are undefined to avoid confusion
+    Object.keys(insertUtmPayload).forEach((k) => {
+      if (typeof insertUtmPayload[k] === 'undefined') delete insertUtmPayload[k]
+    })
+
+    devLog('utm insert payload', insertUtmPayload)
+
+    // Try inserting, and if missing column errors occur, remove the offending column and retry
+    let insertError: any | null = null
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const { error } = await client.from('alpha_signups').insert(insertUtmPayload)
+      insertError = error
+      if (!insertError) break
+      const code = String((insertError as any)?.code || '')
+      const msg = String((insertError as any)?.message || '')
+      if (code === 'PGRST204' || msg.includes('Could not find the')) {
+        const m = msg.match(/'([^']+)'/)
+        const missingCol = m?.[1]
+        if (missingCol && missingCol in insertUtmPayload) {
+          delete (insertUtmPayload as any)[missingCol]
+          devLog('retrying without column', missingCol)
+          continue
+        }
+      }
+      break
+    }
 
     if (insertError) {
       // If unique violation, treat as idempotent success
@@ -171,6 +225,57 @@ export async function POST(req: Request) {
       if (String(code).includes('23505')) {
         return NextResponse.json({ ok: true }, { status: 202, headers: { 'Cache-Control': 'no-store' } })
       }
+
+      // If missing columns (e.g., PGRST204), try plain column names
+      const msg = String((insertError as any)?.message || '')
+      const isMissingColumn = String((insertError as any)?.code || '') === 'PGRST204' || msg.includes("Could not find the")
+      if (isMissingColumn) {
+        const insertPlainPayload: Record<string, any> = {
+          ...basePayload,
+          medium: plain_medium,
+          campaign: plain_campaign,
+          content: plain_content,
+          term: plain_term,
+          referrer: plain_referrer,
+        }
+        Object.keys(insertPlainPayload).forEach((k) => {
+          if (typeof insertPlainPayload[k] === 'undefined') delete insertPlainPayload[k]
+        })
+        devLog('plain insert payload', insertPlainPayload)
+
+        let secondErr: any | null = null
+        for (let attempt = 0; attempt < 6; attempt++) {
+          const { error } = await client.from('alpha_signups').insert(insertPlainPayload)
+          secondErr = error
+          if (!secondErr) break
+          const code2 = String((secondErr as any)?.code || '')
+          const msg2 = String((secondErr as any)?.message || '')
+          if (code2 === 'PGRST204' || msg2.includes('Could not find the')) {
+            const m2 = msg2.match(/'([^']+)'/)
+            const missingCol2 = m2?.[1]
+            if (missingCol2 && missingCol2 in insertPlainPayload) {
+              delete (insertPlainPayload as any)[missingCol2]
+              devLog('retrying plain without column', missingCol2)
+              continue
+            }
+          }
+          break
+        }
+
+        if (!secondErr) {
+          return NextResponse.json({ ok: true }, { status: 200, headers: { 'Cache-Control': 'no-store' } })
+        }
+        // Final fallback: insert minimal fields only
+        const minimalPayload = { ...basePayload }
+        const { error: fallbackErr } = await client
+          .from('alpha_signups')
+          .insert(minimalPayload)
+        if (!fallbackErr) {
+          return NextResponse.json({ ok: true }, { status: 200, headers: { 'Cache-Control': 'no-store' } })
+        }
+        console.error('alpha signup:', { stage: 'insert-fallback', error: secondErr || fallbackErr })
+      }
+
       console.error('alpha signup:', { stage: 'insert', error: insertError })
       return NextResponse.json({ error: 'Failed to record signup' }, { status: 500 })
     }
