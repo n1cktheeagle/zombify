@@ -8,7 +8,29 @@ import AttrCapture from '@/components/AttrCapture'
 export const metadata: Metadata = {
   title: "Zombify - UX Feedback Tool",
   description: "Get undead-level UX feedback for your designs",
-  generator: 'v0.dev'
+  generator: 'v0.dev',
+  metadataBase: new URL('https://zombify.ai'),
+  openGraph: {
+    title: 'Zombify — UI Analysis Engine for the Attention Apocalypse',
+    description: 'Upload a screenshot. Zombify detects blind spots, dark patterns, and grip leaks in your design. Alpha waitlist open.',
+    url: 'https://zombify.ai',
+    siteName: 'Zombify',
+    images: [
+      {
+        url: 'https://zombify.ai/zombify-og.jpg',
+        width: 1200,
+        height: 630,
+        type: 'image/jpeg',
+      },
+    ],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Zombify — UI Analysis Engine for the Attention Apocalypse',
+    description: 'Upload a screenshot. Zombify detects blind spots, dark patterns, and grip leaks in your design. Alpha waitlist open.',
+    images: ['https://zombify.ai/zombify-og.jpg'],
+  },
 }
 
 const landingOnly = process.env.NEXT_PUBLIC_LAUNCH_MODE === 'landing-only'
