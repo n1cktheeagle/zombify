@@ -5,6 +5,9 @@ import Script from 'next/script'
 import { track } from '@vercel/analytics'
 import { getAttrForInsert } from '@/lib/utm'
 import GlitchLogo from '@/components/GlitchLogo'
+import GlitchText from '@/components/GlitchText'
+import GlitchTranslate from '@/components/GlitchTranslate'
+import GlitchArt from '@/components/GlitchArt'
 // Removed AuthButton for alpha waitlist landing
 
 export default function LandingPage() {
@@ -20,7 +23,7 @@ export default function LandingPage() {
   const [cooldown, setCooldown] = useState(false)
 
   useEffect(() => {
-    const fullText = 'Booting Zombify'
+    const fullText = 'Booting'
 
     if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       setTypedText(fullText)
@@ -241,8 +244,8 @@ export default function LandingPage() {
       </nav>
 
       <div className="relative z-10 min-h-screen flex flex-col items-center px-6 pt-24 md:pt-28">
-        <div className="mb-20 select-none flex justify-center cursor-pointer ascii-container">
-          <pre className="text-[4px] leading-[1] opacity-20 font-mono whitespace-pre pointer-events-none ascii-original transition-opacity duration-[2000ms] ease-out">
+        <div className="mb-20 select-none flex justify-center ascii-container">
+          <GlitchArt className="text-[4px] leading-[1] opacity-20 font-mono whitespace-pre pointer-events-none ascii-original transition-opacity duration-[2000ms] ease-out" intensity="low" mask={{ rowStart: 0.28, rowEnd: 0.70, colStart: 0.32, colEnd: 0.68 }} randomSpots={3} spotSize={{ row: 0.08, col: 0.06 }}>
 {`                                                                                                    
                                                                                                     
                                                                                                     
@@ -298,7 +301,7 @@ export default function LandingPage() {
                                                                                                     
                                                                                                     
                                                                                                     `}
-          </pre>
+          </GlitchArt>
           <pre className="text-[4px] leading-[1] opacity-20 font-mono whitespace-pre pointer-events-none ascii-fragment left">
 {`                                                                                                    
                                                                                                     
@@ -308,7 +311,7 @@ export default function LandingPage() {
                        %##+--=++**######%%##%                                                       
                     %##+-:::::::::::::--==++*#######%%%@                                            
                  %##=::::::::::::::::::::::::::::::-=+*######%%%@                                   
-              %#*-....:::::::::::::::::::::::::::::::::::::::-==+**#####%%%%%%                     
+              %#*-....:::::::::::::::::::::::::::::::::::::::-==+**#####%%%%%%                      
              @#-...................::::::::::::::::::::::::::::::::::::--==+*#@@                   
              @#-.:::::::::::::...............::::::::::::::::::::::::::::::-+*@@                   
              %#-.:::----:::::::::::::::::...............::::::::::::::::-++++*@@%%%%%@             
@@ -329,7 +332,7 @@ export default function LandingPage() {
              @#-.::=+@@@@@@@@#=:..:..:...:#=.........:----#@@@@#..::-+*++++++*@#+++++@@            
              @#-.::=+@@@@@@@@@%*:..::....:%+.:::::-==...+@@@@@@#..::-+*++++++*@#+++*%@@            
              @#-.::=+@@@@@@@@@@@%*-:::::.:%+:...:::..::=#@@@@@@#..::-+*++++++#@#+*@@@              
-             @#-.::=+@@@@@@@@@@@@#-:....::@*-:.:.:..:-*@@@@@@@@#..::-+*++++++#@%@@@                
+             @#-.::=+@@@@@@@@@@@@#-:....::@*-:.:.:..:-*@@@@@@@@#..::-+*++++++#@%@@@               
              @#-.::=+@@@@@@@@@@@@@@@#=-=+@@@+:..:--=#@@@@@@@@@@#..::-+*++++++#@@@                  
              %#-.::=+#@@@@@@@@@@@@@@@@@@@@@@@@@%@%@@@@@@@@@@@@@#..::-+*++++++#@%@@@@@@@@@          
              %#-.:::........-+#%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#..::-+*++++++#@*++++++**@@         
@@ -345,16 +348,16 @@ export default function LandingPage() {
           %*..:::::::::::::::::::::::::::::::::::::.............:-++++++++++++++++*%@@             
           %*..::::::::::::::::::::::::::::::::===--:::::::::::..-+*+++++++++++++#@@@               
           %#:::::::::::::::::::::::::::::::::=*@@@%#*++*+=-:::::+**+++++++++++#@@                  
-           @@##**++==----:::::::::::::::::::::.....-=*#%@@@*::::+**++++++++*%@@                    
-             @@@@@@@@@%%#**+====---:::::::::::::::::::......::::+**++++++*@@@                      
-                         @@@@@@@@%#*+=+++=--::::::::::::::::::::+**++++*@@@                        
-                                  @@@@@@@@%##**++===---:::::::::+**++#@@@                          
-                                           @@@@@@@@@%%##*+=====-+*#%@@                              
-                                                       @@@@@@@@@%@@@                               
-                                                                @@                                 
-                                                                                                    
-                                                                                                    
-                                                                                                    `}
+           @@##**++==----:::::::::::::::::::::.....-=*#%@@@*::::+**++++++++*%@@                   
+             @@@@@@@@@%%#**+====---:::::::::::::::::::......::::+**++++++*@@@                     
+                         @@@@@@@@%#*+=+++=--::::::::::::::::::::+**++++*@@@                       
+                                  @@@@@@@@%##**++===---:::::::::+**++#@@@                         
+                                           @@@@@@@@@%%##*+=====-+*#%@@                            
+                                                       @@@@@@@@@%@@@                              
+                                                                @@                               
+                                                                                                  
+                                                                                                  
+                                                                                                  `}
           </pre>
           <pre className="text-[4px] leading-[1] opacity-20 font-mono whitespace-pre pointer-events-none ascii-fragment right">
 {`                                                                                                    
@@ -417,7 +420,8 @@ export default function LandingPage() {
 
         <div className="text-center mb-16 md:mb-20 w-full">
           <h1 className="text-3xl font-light leading-tight font-mono">
-            {typedText}<span className="inline-block w-[14px] h-[0.9em] bg-black ml-[3px] animate-blink align-middle relative -top-[3px]"></span>
+            {typedText.replace(/\s*Zombify/i, '')} <GlitchTranslate baseText="Zombify" intensity="low" />
+            <span className="inline-block w-[14px] h-[0.9em] bg-black ml-[3px] animate-blink align-middle relative -top-[3px]"></span>
           </h1>
           <p className="mt-3 text-sm md:text-base opacity-70 font-mono">
             Ensure your UI works for modern-day <span className="line-through">users</span> zombies.
@@ -454,8 +458,19 @@ export default function LandingPage() {
                         type="submit"
                         disabled={loading || cooldown}
                         className={`zombify-primary-button h-10 w-full sm:w-auto inline-flex items-center justify-center px-6 text-sm font-bold tracking-wide whitespace-nowrap rounded-none sm:border-l-0 ${loading ? 'opacity-60 cursor-not-allowed' : ''}`}
+                        style={{ textAlign: 'center' }}
                       >
-                        {loading ? 'SENDING...' : 'NOTIFY ME'}
+                        <span className="btn-wrap">
+                          <span className="btn-group">
+                            <span className="btn-label">{loading ? 'SENDING...' : 'NOTIFY ME'}</span>
+                            <span className="btn-slot" aria-hidden>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                                <path d="m22 7-10 5L2 7"></path>
+                              </svg>
+                            </span>
+                          </span>
+                        </span>
                       </button>
                     </div>
                   </div>
@@ -478,7 +493,12 @@ export default function LandingPage() {
         <div className="text-center space-y-6 mb-16 md:mb-20 px-0">
           <div className="max-w-2xl mx-auto space-y-4">
             <p className="text-lg opacity-70 leading-[1.75] font-mono">
-              People are changing. Glued to screens, endlessly scrolling… attention spans are collapsing. We use products in a sleep-like zombie trance, on autopilot. Zombify helps your UI survive this era, exposing blind spots, friction points, misaligned intent, shady patterns, and missed opportunities. Uncover the flaws you don’t see.
+              People are changing. Glued to screens,
+              {' '}<GlitchText intensity="low">endlessly scrolling…</GlitchText>{' '}
+              <GlitchText intensity="low">attention spans</GlitchText> are collapsing. We use products in a sleep-like
+              {' '}<GlitchText intensity="low">zombie trance</GlitchText>, on autopilot. Zombify helps your UI survive this era, exposing
+              {' '}<GlitchText intensity="low">blind spots</GlitchText>, friction points, misaligned intent, shady patterns, and
+              {' '}<GlitchText intensity="low">missed opportunities</GlitchText>. Uncover the flaws you don’t see.
             </p>
           </div>
         </div>
