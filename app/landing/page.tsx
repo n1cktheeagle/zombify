@@ -12,6 +12,7 @@ import GlitchArt from '@/components/GlitchArt'
 
 export default function LandingPage() {
   const [typedText, setTypedText] = useState('')
+  const [typingComplete, setTypingComplete] = useState(false)
   const [showContent, setShowContent] = useState(true)
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
@@ -23,10 +24,11 @@ export default function LandingPage() {
   const [cooldown, setCooldown] = useState(false)
 
   useEffect(() => {
-    const fullText = 'Booting'
+    const fullText = 'Booting Zombify'
 
     if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       setTypedText(fullText)
+      setTypingComplete(true)
       return
     }
 
@@ -36,6 +38,7 @@ export default function LandingPage() {
       setTypedText(fullText.slice(0, currentIndex))
       if (currentIndex >= fullText.length) {
         clearInterval(interval)
+        setTypingComplete(true)
       }
     }, 50)
 
@@ -420,11 +423,17 @@ export default function LandingPage() {
 
         <div className="text-center mb-16 md:mb-20 w-full">
           <h1 className="text-3xl font-light leading-tight font-mono">
-            {typedText.replace(/\s*Zombify/i, '')} <GlitchTranslate baseText="Zombify" intensity="low" />
+            {typingComplete ? (
+              <>
+                Booting <GlitchTranslate baseText="Zombify" intensity="low" />
+              </>
+            ) : (
+              typedText
+            )}
             <span className="inline-block w-[14px] h-[0.9em] bg-black ml-[3px] animate-blink align-middle relative -top-[3px]"></span>
           </h1>
           <p className="mt-3 text-sm md:text-base opacity-70 font-mono">
-            Ensure your UI works for modern-day <span className="line-through">users</span> zombies.
+            UI/UX optimization for today's digital zombies.
           </p>
           <div id="waitlist" className="mt-12 md:mt-16 w-full self-stretch max-w-none md:max-w-2xl mx-0 md:mx-auto px-0 sm:px-0">
             <div className="zombify-card w-full px-3 md:px-6 py-5 border border-black/20 rounded-none bg-white/70 backdrop-blur-sm text-left">
@@ -464,9 +473,9 @@ export default function LandingPage() {
                           <span className="btn-group">
                             <span className="btn-label">{loading ? 'SENDING...' : 'NOTIFY ME'}</span>
                             <span className="btn-slot" aria-hidden>
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <rect x="2" y="4" width="20" height="16" rx="2"></rect>
-                                <path d="m22 7-10 5L2 7"></path>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <path d="M1.5 8.67V18A2.25 2.25 0 003.75 20.25h16.5A2.25 2.25 0 0022.5 18V8.67l-8.31 5.19a3 3 0 01-3.18 0L1.5 8.67z" />
+                                <path d="M22.5 6.75V6A2.25 2.25 0 0020.25 3.75H3.75A2.25 2.25 0 001.5 6v.75l9.03 5.64a1.5 1.5 0 001.56 0L22.5 6.75z" />
                               </svg>
                             </span>
                           </span>
@@ -493,12 +502,23 @@ export default function LandingPage() {
         <div className="text-center space-y-6 mb-16 md:mb-20 px-0">
           <div className="max-w-2xl mx-auto space-y-4">
             <p className="text-lg opacity-70 leading-[1.75] font-mono">
-              People are changing. Glued to screens,
-              {' '}<GlitchText intensity="low">endlessly scrolling…</GlitchText>{' '}
-              <GlitchText intensity="low">attention spans</GlitchText> are collapsing. We use products in a sleep-like
-              {' '}<GlitchText intensity="low">zombie trance</GlitchText>, on autopilot. Zombify helps your UI survive this era, exposing
-              {' '}<GlitchText intensity="low">blind spots</GlitchText>, friction points, misaligned intent, shady patterns, and
-              {' '}<GlitchText intensity="low">missed opportunities</GlitchText>. Uncover the flaws you don’t see.
+              The attention economy has turned users into digital{' '}
+              <GlitchText intensity="low">zombies</GlitchText>.
+              {' '}<GlitchText intensity="low">Mindless scrolling</GlitchText>,{' '}
+              <GlitchText intensity="low">autopilot browsing</GlitchText>{' '}and{' '}
+              <GlitchText intensity="low">zero patience</GlitchText>{' '}for friction.
+            </p>
+            <p className="text-lg opacity-70 leading-[1.75] font-mono">
+              Your design either works for today's{' '}
+              <GlitchText intensity="low">scattered attention spans</GlitchText>{' '}
+              or users{' '}<GlitchText intensity="low">abandon it instantly</GlitchText>.
+            </p>
+            <p className="text-lg opacity-70 leading-[1.75] font-mono">
+              Zombify analyzes your UI and exposes the{' '}
+              <GlitchText intensity="low">blind spots</GlitchText>,{' '}
+              <GlitchText intensity="low">friction points</GlitchText>, and{' '}
+              <GlitchText intensity="low">usability issues</GlitchText>{' '}
+              that drive users away.
             </p>
           </div>
         </div>
@@ -572,9 +592,20 @@ export default function LandingPage() {
                   window.scrollTo({ top: offset, behavior: 'smooth' });
                 }
               }}
-              className="zombify-primary-button w-full sm:w-auto px-6 py-2 text-sm font-bold tracking-wide"
+              className="zombify-primary-button h-10 w-full sm:w-auto inline-flex items-center justify-center px-6 text-sm font-bold tracking-wide whitespace-nowrap rounded-none sm:border-l-0"
+              style={{ textAlign: 'center' }}
             >
-              NOTIFY ME
+              <span className="btn-wrap">
+                <span className="btn-group">
+                  <span className="btn-label">NOTIFY ME</span>
+                  <span className="btn-slot" aria-hidden>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <path d="M1.5 8.67V18A2.25 2.25 0 003.75 20.25h16.5A2.25 2.25 0 0022.5 18V8.67l-8.31 5.19a3 3 0 01-3.18 0L1.5 8.67z" />
+                      <path d="M22.5 6.75V6A2.25 2.25 0 0020.25 3.75H3.75A2.25 2.25 0 001.5 6v.75l9.03 5.64a1.5 1.5 0 001.56 0L22.5 6.75z" />
+                    </svg>
+                  </span>
+                </span>
+              </span>
             </button>
           </div>
         </div>
@@ -592,16 +623,16 @@ export default function LandingPage() {
               </svg>
             </a>
             <a href="mailto:hi@zombify.ai" className="opacity-60 hover:opacity-100 transition-opacity">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="4" width="20" height="16" rx="2"></rect>
-                <path d="m22 7-10 5L2 7"></path>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M1.5 8.67V18A2.25 2.25 0 003.75 20.25h16.5A2.25 2.25 0 0022.5 18V8.67l-8.31 5.19a3 3 0 01-3.18 0L1.5 8.67z" />
+                <path d="M22.5 6.75V6A2.25 2.25 0 0020.25 3.75H3.75A2.25 2.25 0 001.5 6v.75l9.03 5.64a1.5 1.5 0 001.56 0L22.5 6.75z" />
               </svg>
             </a>
           </div>
           <p className="text-sm font-mono opacity-60">
             Designed with 0 figma files. Built for the era of collapsing attention.
           </p>
-          <p className="text-xs font-mono opacity-60 mt-1">© 2025 Zombify. All Rights Reserved.</p>
+          <p className="text-xs font-mono opacity-60 mt-3">© 2025 Zombify. All Rights Reserved.</p>
         </div>
       </footer>
     </div>

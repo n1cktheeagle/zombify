@@ -137,10 +137,11 @@
   .zombify-primary-button .btn-wrap { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 100%; }
   /* Group has constant width (label + 12px + 16px); slot always exists so width doesn't change */
   .zombify-primary-button .btn-group { display: inline-flex; align-items: center; }
-  .zombify-primary-button .btn-label { display: inline-block; }
-  .zombify-primary-button .btn-slot { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 16px; }
-  .zombify-primary-button .btn-slot svg { display: none; margin-left: 12px; }
-  .zombify-primary-button:hover .btn-slot svg { display: block; }
+  .zombify-primary-button .btn-label { display: inline-block; transition: transform 0.2s ease; transform: translateX(12px); }
+  .zombify-primary-button .btn-slot { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 16px; overflow: hidden; }
+  .zombify-primary-button .btn-slot svg { display: block; opacity: 0; margin-left: 8px; width: 14px; height: 14px; transition: opacity 0.2s ease; }
+  .zombify-primary-button:hover .btn-slot svg { opacity: 1; }
+  .zombify-primary-button:hover .btn-label { transform: translateX(0); }
   /* When disabled (sending), remove hover animations/effects */
   .zombify-primary-button:disabled,
   .zombify-primary-button:disabled:hover {
@@ -737,25 +738,10 @@
 }
 
 /* Mail icon on hover without resizing */
-.zombify-primary-button::before {
-  content: '';
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  width: 16px;
-  height: 12px;
-  margin-top: -6px; /* center vertically */
-  pointer-events: none;
-  background-repeat: no-repeat;
-  background-size: contain;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='16' viewBox='0 0 24 24' fill='none' stroke='%23f5f1e6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2' y='4' width='20' height='16' rx='2'/%3E%3Cpath d='m22 7-10 5L2 7'/%3E%3C/svg%3E");
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
+.zombify-primary-button::before { display: none; }
 
 /* Reveal icon and make space by nudging label left on hover */
-.zombify-primary-button:hover .btn-icon { display: inline-block; }
-.zombify-primary-button:hover .btn-label { transform: none; }
+.zombify-primary-button:hover .btn-label { transform: translateX(0); }
 
 @keyframes button-static {
   0%, 100% { 
