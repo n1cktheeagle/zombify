@@ -1,88 +1,100 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react'
+
+type GlitchIntensity = 'low' | 'medium' | 'high'
+type GlitchTrigger = 'hover' | 'continuous' | 'mount'
 
 interface GlitchTextProps {
-  children: React.ReactNode;
-  className?: string;
-  intensity?: 'low' | 'medium' | 'high';
-  trigger?: 'hover' | 'continuous' | 'mount';
+  children: string
+  className?: string
+  intensity?: GlitchIntensity
+  trigger?: GlitchTrigger
 }
 
-export default function GlitchText({ 
-  children, 
-  className = '', 
-  intensity = 'medium',
-  trigger = 'hover'
-}: GlitchTextProps) {
-  const [isGlitching, setIsGlitching] = useState(false);
+function pickRandom<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)]
+}
 
-  const glitchVariants = {
-    normal: { 
-      x: 0, 
-      textShadow: '0 0 0 transparent',
-      filter: 'none'
-    },
-    glitch: {
-      x: [0, -2, 2, -1, 1, 0],
-      textShadow: [
-        '0 0 0 transparent',
-        '2px 0 #ff0000, -2px 0 #00ffff',
-        '-2px 0 #ff0000, 2px 0 #00ffff',
-        '1px 0 #ff0000, -1px 0 #00ffff',
-        '0 0 0 transparent'
-      ],
-      filter: [
-        'none',
-        'hue-rotate(90deg)',
-        'hue-rotate(180deg)',
-        'hue-rotate(270deg)',
-        'none'
-      ],
-      transition: {
-        duration: intensity === 'low' ? 0.3 : intensity === 'medium' ? 0.5 : 0.8,
-        times: [0, 0.2, 0.4, 0.6, 0.8, 1],
-        ease: "easeInOut" as const
-      }
-    }
-  };
+export default function GlitchText({
+  children,
+  className = '',
+  intensity = 'low',
+  trigger = 'continuous',
+}: GlitchTextProps) {
+  const original = String(children)
+  const [display, setDisplay] = useState<string>(original)
+  const [glitching, setGlitching] = useState(false)
+  const rafRef = useRef<number | null>(null)
+  const startTimeRef = useRef<number>(0)
+
+  const scrambleChars = useMemo(() => {
+    return Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789#$%&*@?/=+~')
+  }, [])
+
+  const durationMs = intensity === 'low' ? 350 : intensity === 'medium' ? 550 : 850
+  const stepMs = 30
 
   useEffect(() => {
+    if (trigger === 'mount') runGlitchOnce()
     if (trigger === 'continuous') {
-      const interval = setInterval(() => {
-        setIsGlitching(true);
-        setTimeout(() => setIsGlitching(false), intensity === 'low' ? 300 : intensity === 'medium' ? 500 : 800);
-      }, Math.random() * 5000 + 3000); // Random between 3-8 seconds
+      const timer = setInterval(() => runGlitchOnce(), 3000 + Math.random() * 4000)
+      return () => clearInterval(timer)
+    }
+    return undefined
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trigger, intensity])
 
-      return () => clearInterval(interval);
-    }
-    
-    if (trigger === 'mount') {
-      setIsGlitching(true);
-      setTimeout(() => setIsGlitching(false), intensity === 'low' ? 300 : intensity === 'medium' ? 500 : 800);
-    }
-  }, [trigger, intensity]);
+  useEffect(() => {
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
+  }, [])
 
-  const handleHover = () => {
-    if (trigger === 'hover') {
-      setIsGlitching(true);
-      setTimeout(() => setIsGlitching(false), intensity === 'low' ? 300 : intensity === 'medium' ? 500 : 800);
+  const runGlitchOnce = () => {
+    if (glitching) return
+    setGlitching(true)
+    startTimeRef.current = performance.now()
+    const tick = () => {
+      const now = performance.now()
+      const elapsed = now - startTimeRef.current
+      if (elapsed >= durationMs) {
+        setDisplay(original)
+        setGlitching(false)
+        rafRef.current = null
+        return
+      }
+      const progress = elapsed / durationMs
+      const scrambleCount = Math.max(1, Math.floor((original.length * (intensity === 'low' ? 0.08 : intensity === 'medium' ? 0.14 : 0.22)) * (0.5 + Math.sin(progress * Math.PI))))
+      const indices = new Set<number>()
+      while (indices.size < scrambleCount) {
+        const i = Math.floor(Math.random() * original.length)
+        if (original[i] !== ' ') indices.add(i)
+      }
+      const next = original
+        .split('')
+        .map((ch, idx) => (indices.has(idx) ? pickRandom(scrambleChars) : ch))
+        .join('')
+      setDisplay(next)
+      rafRef.current = requestAnimationFrame(() => {
+        // slow down updates a bit
+        setTimeout(() => tick(), stepMs)
+      })
     }
-  };
+    tick()
+  }
+
+  const onHover = () => {
+    if (trigger === 'hover') runGlitchOnce()
+  }
 
   return (
-    <motion.div
+    <span
       className={`inline-block ${className}`}
-      variants={glitchVariants}
-      animate={isGlitching ? 'glitch' : 'normal'}
-      onHoverStart={handleHover}
-      style={{ 
-        fontWeight: 'bold',
-        position: 'relative'
-      }}
+      onMouseEnter={onHover}
+      style={{ willChange: 'contents', transition: 'filter 120ms ease' }}
     >
-      {children}
-    </motion.div>
-  );
+      {display}
+    </span>
+  )
 }
+
+

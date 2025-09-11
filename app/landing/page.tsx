@@ -5,10 +5,14 @@ import Script from 'next/script'
 import { track } from '@vercel/analytics'
 import { getAttrForInsert } from '@/lib/utm'
 import GlitchLogo from '@/components/GlitchLogo'
+import GlitchText from '@/components/GlitchText'
+import GlitchTranslate from '@/components/GlitchTranslate'
+import GlitchArt from '@/components/GlitchArt'
 // Removed AuthButton for alpha waitlist landing
 
 export default function LandingPage() {
   const [typedText, setTypedText] = useState('')
+  const [typingComplete, setTypingComplete] = useState(false)
   const [showContent, setShowContent] = useState(true)
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
@@ -24,6 +28,7 @@ export default function LandingPage() {
 
     if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       setTypedText(fullText)
+      setTypingComplete(true)
       return
     }
 
@@ -33,6 +38,7 @@ export default function LandingPage() {
       setTypedText(fullText.slice(0, currentIndex))
       if (currentIndex >= fullText.length) {
         clearInterval(interval)
+        setTypingComplete(true)
       }
     }, 50)
 
@@ -241,8 +247,8 @@ export default function LandingPage() {
       </nav>
 
       <div className="relative z-10 min-h-screen flex flex-col items-center px-6 pt-24 md:pt-28">
-        <div className="mb-20 select-none flex justify-center cursor-pointer ascii-container">
-          <pre className="text-[4px] leading-[1] opacity-20 font-mono whitespace-pre pointer-events-none ascii-original transition-opacity duration-[2000ms] ease-out">
+        <div className="mb-20 select-none flex justify-center ascii-container">
+          <GlitchArt className="text-[4px] leading-[1] opacity-20 font-mono whitespace-pre pointer-events-none ascii-original transition-opacity duration-[2000ms] ease-out" intensity="low" mask={{ rowStart: 0.28, rowEnd: 0.70, colStart: 0.32, colEnd: 0.68 }} randomSpots={3} spotSize={{ row: 0.08, col: 0.06 }}>
 {`                                                                                                    
                                                                                                     
                                                                                                     
@@ -298,7 +304,7 @@ export default function LandingPage() {
                                                                                                     
                                                                                                     
                                                                                                     `}
-          </pre>
+          </GlitchArt>
           <pre className="text-[4px] leading-[1] opacity-20 font-mono whitespace-pre pointer-events-none ascii-fragment left">
 {`                                                                                                    
                                                                                                     
@@ -308,7 +314,7 @@ export default function LandingPage() {
                        %##+--=++**######%%##%                                                       
                     %##+-:::::::::::::--==++*#######%%%@                                            
                  %##=::::::::::::::::::::::::::::::-=+*######%%%@                                   
-              %#*-....:::::::::::::::::::::::::::::::::::::::-==+**#####%%%%%%                     
+              %#*-....:::::::::::::::::::::::::::::::::::::::-==+**#####%%%%%%                      
              @#-...................::::::::::::::::::::::::::::::::::::--==+*#@@                   
              @#-.:::::::::::::...............::::::::::::::::::::::::::::::-+*@@                   
              %#-.:::----:::::::::::::::::...............::::::::::::::::-++++*@@%%%%%@             
@@ -329,7 +335,7 @@ export default function LandingPage() {
              @#-.::=+@@@@@@@@#=:..:..:...:#=.........:----#@@@@#..::-+*++++++*@#+++++@@            
              @#-.::=+@@@@@@@@@%*:..::....:%+.:::::-==...+@@@@@@#..::-+*++++++*@#+++*%@@            
              @#-.::=+@@@@@@@@@@@%*-:::::.:%+:...:::..::=#@@@@@@#..::-+*++++++#@#+*@@@              
-             @#-.::=+@@@@@@@@@@@@#-:....::@*-:.:.:..:-*@@@@@@@@#..::-+*++++++#@%@@@                
+             @#-.::=+@@@@@@@@@@@@#-:....::@*-:.:.:..:-*@@@@@@@@#..::-+*++++++#@%@@@               
              @#-.::=+@@@@@@@@@@@@@@@#=-=+@@@+:..:--=#@@@@@@@@@@#..::-+*++++++#@@@                  
              %#-.::=+#@@@@@@@@@@@@@@@@@@@@@@@@@%@%@@@@@@@@@@@@@#..::-+*++++++#@%@@@@@@@@@          
              %#-.:::........-+#%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#..::-+*++++++#@*++++++**@@         
@@ -345,16 +351,16 @@ export default function LandingPage() {
           %*..:::::::::::::::::::::::::::::::::::::.............:-++++++++++++++++*%@@             
           %*..::::::::::::::::::::::::::::::::===--:::::::::::..-+*+++++++++++++#@@@               
           %#:::::::::::::::::::::::::::::::::=*@@@%#*++*+=-:::::+**+++++++++++#@@                  
-           @@##**++==----:::::::::::::::::::::.....-=*#%@@@*::::+**++++++++*%@@                    
-             @@@@@@@@@%%#**+====---:::::::::::::::::::......::::+**++++++*@@@                      
-                         @@@@@@@@%#*+=+++=--::::::::::::::::::::+**++++*@@@                        
-                                  @@@@@@@@%##**++===---:::::::::+**++#@@@                          
-                                           @@@@@@@@@%%##*+=====-+*#%@@                              
-                                                       @@@@@@@@@%@@@                               
-                                                                @@                                 
-                                                                                                    
-                                                                                                    
-                                                                                                    `}
+           @@##**++==----:::::::::::::::::::::.....-=*#%@@@*::::+**++++++++*%@@                   
+             @@@@@@@@@%%#**+====---:::::::::::::::::::......::::+**++++++*@@@                     
+                         @@@@@@@@%#*+=+++=--::::::::::::::::::::+**++++*@@@                       
+                                  @@@@@@@@%##**++===---:::::::::+**++#@@@                         
+                                           @@@@@@@@@%%##*+=====-+*#%@@                            
+                                                       @@@@@@@@@%@@@                              
+                                                                @@                               
+                                                                                                  
+                                                                                                  
+                                                                                                  `}
           </pre>
           <pre className="text-[4px] leading-[1] opacity-20 font-mono whitespace-pre pointer-events-none ascii-fragment right">
 {`                                                                                                    
@@ -417,10 +423,17 @@ export default function LandingPage() {
 
         <div className="text-center mb-16 md:mb-20 w-full">
           <h1 className="text-3xl font-light leading-tight font-mono">
-            {typedText}<span className="inline-block w-[14px] h-[0.9em] bg-black ml-[3px] animate-blink align-middle relative -top-[3px]"></span>
+            {typingComplete ? (
+              <>
+                Booting <GlitchTranslate baseText="Zombify" intensity="low" />
+              </>
+            ) : (
+              typedText
+            )}
+            <span className="inline-block w-[14px] h-[0.9em] bg-black ml-[3px] animate-blink align-middle relative -top-[3px]"></span>
           </h1>
           <p className="mt-3 text-sm md:text-base opacity-70 font-mono">
-            Ensure your UI works for modern-day <span className="line-through">users</span> zombies.
+            UI/UX optimization for today's digital zombies.
           </p>
           <div id="waitlist" className="mt-12 md:mt-16 w-full self-stretch max-w-none md:max-w-2xl mx-0 md:mx-auto px-0 sm:px-0">
             <div className="zombify-card w-full px-3 md:px-6 py-5 border border-black/20 rounded-none bg-white/70 backdrop-blur-sm text-left">
@@ -454,8 +467,19 @@ export default function LandingPage() {
                         type="submit"
                         disabled={loading || cooldown}
                         className={`zombify-primary-button h-10 w-full sm:w-auto inline-flex items-center justify-center px-6 text-sm font-bold tracking-wide whitespace-nowrap rounded-none sm:border-l-0 ${loading ? 'opacity-60 cursor-not-allowed' : ''}`}
+                        style={{ textAlign: 'center' }}
                       >
-                        {loading ? 'SENDING...' : 'NOTIFY ME'}
+                        <span className="btn-wrap">
+                          <span className="btn-group">
+                            <span className="btn-label">{loading ? 'SENDING...' : 'NOTIFY ME'}</span>
+                            <span className="btn-slot" aria-hidden>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <path d="M1.5 8.67V18A2.25 2.25 0 003.75 20.25h16.5A2.25 2.25 0 0022.5 18V8.67l-8.31 5.19a3 3 0 01-3.18 0L1.5 8.67z" />
+                                <path d="M22.5 6.75V6A2.25 2.25 0 0020.25 3.75H3.75A2.25 2.25 0 001.5 6v.75l9.03 5.64a1.5 1.5 0 001.56 0L22.5 6.75z" />
+                              </svg>
+                            </span>
+                          </span>
+                        </span>
                       </button>
                     </div>
                   </div>
@@ -478,7 +502,23 @@ export default function LandingPage() {
         <div className="text-center space-y-6 mb-16 md:mb-20 px-0">
           <div className="max-w-2xl mx-auto space-y-4">
             <p className="text-lg opacity-70 leading-[1.75] font-mono">
-              People are changing. Glued to screens, endlessly scrolling… attention spans are collapsing. We use products in a sleep-like zombie trance, on autopilot. Zombify helps your UI survive this era, exposing blind spots, friction points, misaligned intent, shady patterns, and missed opportunities. Uncover the flaws you don’t see.
+              The attention economy has turned users into digital{' '}
+              <GlitchText intensity="low">zombies</GlitchText>.
+              {' '}<GlitchText intensity="low">Mindless scrolling</GlitchText>,{' '}
+              <GlitchText intensity="low">autopilot browsing</GlitchText>{' '}and{' '}
+              <GlitchText intensity="low">zero patience</GlitchText>{' '}for friction.
+            </p>
+            <p className="text-lg opacity-70 leading-[1.75] font-mono">
+              Your design either works for today's{' '}
+              <GlitchText intensity="low">scattered attention spans</GlitchText>{' '}
+              or users{' '}<GlitchText intensity="low">abandon it instantly</GlitchText>.
+            </p>
+            <p className="text-lg opacity-70 leading-[1.75] font-mono">
+              Zombify analyzes your UI and exposes the{' '}
+              <GlitchText intensity="low">blind spots</GlitchText>,{' '}
+              <GlitchText intensity="low">friction points</GlitchText>, and{' '}
+              <GlitchText intensity="low">usability issues</GlitchText>{' '}
+              that drive users away.
             </p>
           </div>
         </div>
@@ -552,9 +592,20 @@ export default function LandingPage() {
                   window.scrollTo({ top: offset, behavior: 'smooth' });
                 }
               }}
-              className="zombify-primary-button w-full sm:w-auto px-6 py-2 text-sm font-bold tracking-wide"
+              className="zombify-primary-button h-10 w-full sm:w-auto inline-flex items-center justify-center px-6 text-sm font-bold tracking-wide whitespace-nowrap rounded-none sm:border-l-0"
+              style={{ textAlign: 'center' }}
             >
-              NOTIFY ME
+              <span className="btn-wrap">
+                <span className="btn-group">
+                  <span className="btn-label">NOTIFY ME</span>
+                  <span className="btn-slot" aria-hidden>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <path d="M1.5 8.67V18A2.25 2.25 0 003.75 20.25h16.5A2.25 2.25 0 0022.5 18V8.67l-8.31 5.19a3 3 0 01-3.18 0L1.5 8.67z" />
+                      <path d="M22.5 6.75V6A2.25 2.25 0 0020.25 3.75H3.75A2.25 2.25 0 001.5 6v.75l9.03 5.64a1.5 1.5 0 001.56 0L22.5 6.75z" />
+                    </svg>
+                  </span>
+                </span>
+              </span>
             </button>
           </div>
         </div>
@@ -572,16 +623,16 @@ export default function LandingPage() {
               </svg>
             </a>
             <a href="mailto:hi@zombify.ai" className="opacity-60 hover:opacity-100 transition-opacity">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="4" width="20" height="16" rx="2"></rect>
-                <path d="m22 7-10 5L2 7"></path>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M1.5 8.67V18A2.25 2.25 0 003.75 20.25h16.5A2.25 2.25 0 0022.5 18V8.67l-8.31 5.19a3 3 0 01-3.18 0L1.5 8.67z" />
+                <path d="M22.5 6.75V6A2.25 2.25 0 0020.25 3.75H3.75A2.25 2.25 0 001.5 6v.75l9.03 5.64a1.5 1.5 0 001.56 0L22.5 6.75z" />
               </svg>
             </a>
           </div>
           <p className="text-sm font-mono opacity-60">
             Designed with 0 figma files. Built for the era of collapsing attention.
           </p>
-          <p className="text-xs font-mono opacity-60 mt-1">© 2025 Zombify. All Rights Reserved.</p>
+          <p className="text-xs font-mono opacity-60 mt-3">© 2025 Zombify. All Rights Reserved.</p>
         </div>
       </footer>
     </div>
