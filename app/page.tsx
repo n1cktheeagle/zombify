@@ -7,5 +7,5 @@ export const metadata: Metadata = {
   title: 'Zombify — Booting Zombify',
   description:
     'Ensure your UI works for modern-day zombies. Join the waitlist for Zombify.',
-  alternates: { canonical: '/' },
+  alternates: { canonical: 'https://zombify.ai/' },
 }
