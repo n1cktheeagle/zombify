@@ -4,6 +4,7 @@ import "./globals.css"
 import dynamic from 'next/dynamic'
 import { Analytics } from '@vercel/analytics/react'
 import AttrCapture from '@/components/AttrCapture'
+import { CookieBanner } from '@/components/CookieBanner'
 
 export const metadata: Metadata = {
   title: "Zombify - UX Feedback Tool",
@@ -71,6 +72,8 @@ export default function RootLayout({
         )}
         {/* Vercel Web Analytics (prod only) */}
         <Analytics />
+        {/* Cookie Consent Banner */}
+        <CookieBanner />
       </body>
     </html>
   )
