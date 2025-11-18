@@ -348,10 +348,7 @@ export function GuestUploadZone() {
                     {isDisabled ? 'Upload disabled' : 'Feed Zombify'}
                   </p>
                   <p className="text-sm opacity-60">
-                    {isDisabled ? 'Account required for more uploads' : 'or click to browse UI image • PNG, JPG & WebP'}
-                  </p>
-                  <p className="text-xs opacity-40 mt-2">
-                    Free one-time analysis • No signup required
+                    {isDisabled ? 'Account required for more uploads' : 'or click to browse & analyze UI image (PNG, JPG & WebP)'}
                   </p>
                 </div>
               </>

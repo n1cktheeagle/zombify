@@ -9,7 +9,7 @@ export function LandingHeader() {
       <Link href="/">
         <GlitchLogo onClick={() => {}} className="text-xl" />
       </Link>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-5">
         {/* Discord and Email */}
         <div className="flex items-center gap-3">
           <a href="https://discord.gg/ynDpjDeRTr" aria-label="Discord" className="opacity-60 hover:opacity-100 transition-opacity">
@@ -35,7 +35,7 @@ export function LandingHeader() {
           </a>
           <a 
             href={`${process.env.NEXT_PUBLIC_APP_URL || 'https://app.zombify.ai'}/auth/signup`}
-            className="font-mono text-sm tracking-wide px-4 py-2 bg-black text-white hover:bg-black/90 transition-all"
+            className="font-mono text-sm tracking-wide px-4 py-2 bg-black border border-black text-white hover:bg-black/90 transition-all"
           >
             SIGN UP
           </a>

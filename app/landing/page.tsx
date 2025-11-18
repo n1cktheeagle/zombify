@@ -10,6 +10,7 @@ import GlitchArt from '@/components/GlitchArt'
 import { GuestUploadZone } from '@/components/GuestUploadZone'
 import { LandingHeader } from '@/components/LandingHeader'
 import { LandingFooter } from '@/components/LandingFooter'
+import { FigmaBadge } from '@/components/FigmaBadge'
 
 export default function LandingPage() {
   const [typedText, setTypedText] = useState('')
@@ -242,7 +243,7 @@ export default function LandingPage() {
       <LandingHeader />
 
       <div className="relative z-10 min-h-screen flex flex-col items-center px-6 pt-24 md:pt-28">
-        <div className="mb-20 select-none flex justify-center ascii-container">
+        <div className="mb-10 select-none flex justify-center ascii-container">
           <GlitchArt className="text-[4px] leading-[1] opacity-20 font-mono whitespace-pre pointer-events-none ascii-original transition-opacity duration-[2000ms] ease-out" intensity="low" mask={{ rowStart: 0.28, rowEnd: 0.70, colStart: 0.32, colEnd: 0.68 }} randomSpots={3} spotSize={{ row: 0.08, col: 0.06 }}>
 {`                                                                                                    
                                                                                                     
@@ -428,10 +429,19 @@ export default function LandingPage() {
             <span className="inline-block w-[14px] h-[0.9em] bg-black ml-[3px] animate-blink align-middle relative -top-[3px]"></span>
           </h1>
           <p className="mt-3 text-sm md:text-base opacity-70 font-mono">
-            UI/UX optimization for today's digital zombies.
+            UI/UX analysis & feedback engine for today's distracted minds.
           </p>
-          <div id="upload-zone" className="mt-12 md:mt-16 w-full self-stretch max-w-none md:max-w-2xl mx-0 md:mx-auto px-0 sm:px-0">
+          
+          <div id="upload-zone" className="mt-[42px] w-full self-stretch max-w-none md:max-w-2xl mx-0 md:mx-auto px-0 sm:px-0">
             <GuestUploadZone />
+            <p className="text-xs opacity-40 mt-3 text-center font-mono">
+              Free one-time analysis • No signup required
+            </p>
+          </div>
+          
+          {/* Figma Integration Badge */}
+          <div className="mt-6 flex justify-center">
+            <FigmaBadge />
           </div>
         </div>
 
