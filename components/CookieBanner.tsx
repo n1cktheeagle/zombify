@@ -55,7 +55,7 @@ export function CookieBanner() {
       <div className="bg-white border-4 border-black p-6 shadow-lg font-mono">
         <h2 className="text-base font-bold mb-2 text-left">Cookie Preferences</h2>
         <p className="text-sm text-black/70 mb-4 text-left leading-relaxed">
-          We use cookies to enhance your experience and analyze site traffic.
+          Zombify uses necessary cookies for authentication and core functionality. Optional analytics and attribution cookies help us improve the product.
         </p>
         
         <div className="flex flex-col gap-2">

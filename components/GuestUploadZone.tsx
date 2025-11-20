@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Upload } from 'lucide-react';
 import Script from 'next/script';
+import ButtonBig from '@/components/ui/ButtonBig';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://app.zombify.ai';
 
@@ -13,7 +14,30 @@ export function GuestUploadZone() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileReady, setTurnstileReady] = useState(false);
+  const [loadingDots, setLoadingDots] = useState(1);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const widgetIdRef = useRef<string | null>(null);
+  
+  // Dev mode state (persisted in localStorage)
+  const [devMode, setDevMode] = useState(false);
+  const [bypassRateLimits, setBypassRateLimits] = useState(false);
+
+  // Load dev mode state from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedBypass = localStorage.getItem('dev_bypass_rate_limits') === 'true';
+      setBypassRateLimits(savedBypass);
+    }
+  }, []);
+
+  // Save to localStorage when changed
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dev_bypass_rate_limits', String(bypassRateLimits));
+    }
+  }, [bypassRateLimits]);
 
   useEffect(() => {
     // Generate or retrieve guest session ID
@@ -50,6 +74,73 @@ export function GuestUploadZone() {
     }
   }, [cooldownSeconds]);
 
+  // Render Turnstile when file is selected and script is ready
+  useEffect(() => {
+    if (!file || !turnstileReady) return;
+    if (widgetIdRef.current) return;
+
+    const timer = setTimeout(() => {
+      const turnstile = (window as any).turnstile;
+      if (!turnstile) return;
+
+      const container = document.getElementById('turnstile-container');
+      if (!container) return;
+
+      try {
+        const widgetId = turnstile.render(container, {
+          sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+          callback: (token: string) => {
+            console.log('[Turnstile] Success callback, token received');
+            setTurnstileToken(token);
+            setError(null);
+          },
+          'error-callback': () => {
+            console.error('[Turnstile] Error callback triggered');
+            setTurnstileToken(null);
+            setError('Bot verification failed. Please refresh the page and try again.');
+          },
+          'timeout-callback': () => {
+            console.error('[Turnstile] Timeout callback triggered');
+            setTurnstileToken(null);
+            setError('Verification timed out. Please try again.');
+          }
+        });
+        widgetIdRef.current = widgetId;
+      } catch (err) {
+        console.error('Turnstile render error:', err);
+        setError('Verification failed to load. Please refresh and try again.');
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [file, turnstileReady]);
+
+  // Cleanup when file is removed
+  useEffect(() => {
+    if (!file && widgetIdRef.current) {
+      const turnstile = (window as any).turnstile;
+      if (turnstile) {
+        try {
+          turnstile.remove(widgetIdRef.current);
+        } catch (e) {
+          // ignore
+        }
+      }
+      widgetIdRef.current = null;
+      setTurnstileToken(null);
+    }
+  }, [file]);
+
+  // Animate loading dots when verifying
+  useEffect(() => {
+    if (!turnstileToken && file) {
+      const interval = setInterval(() => {
+        setLoadingDots((prev) => (prev >= 3 ? 1 : prev + 1));
+      }, 500);
+      return () => clearInterval(interval);
+    }
+  }, [turnstileToken, file]);
+
   const formatCooldownTime = (seconds: number) => {
     const days = Math.floor(seconds / 86400);
     const hours = Math.floor((seconds % 86400) / 3600);
@@ -69,7 +160,7 @@ export function GuestUploadZone() {
       return;
     }
 
-    if (selectedFile.size > 10 * 1024 * 1024) { // 10MB limit
+    if (selectedFile.size > 10 * 1024 * 1024) {
       setError('Image must be under 10MB');
       return;
     }
@@ -103,75 +194,39 @@ export function GuestUploadZone() {
     setIsDragOver(false);
   };
 
-  const getTurnstileToken = async (): Promise<string> => {
-    return new Promise<string>((resolve, reject) => {
-      try {
-        const t = (window as any).turnstile;
-        if (!t) return reject(new Error('Turnstile not ready'));
-        const el = document.getElementById('guest-turnstile') as any;
-        if (!el) return reject(new Error('Turnstile element missing'));
-
-        if (!el.__rendered) {
-          const wid = t.render('#guest-turnstile', {
-            sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!,
-            size: 'invisible',
-            retry: 'auto',
-            callback: (token: string) => {
-              el.__resolve?.(token);
-              el.__resolve = undefined;
-            }
-          });
-          el.__wid = wid;
-          el.__rendered = true;
-        }
-
-        if (el.__wid) t.reset(el.__wid);
-        el.__resolve = resolve;
-        t.execute(el.__wid);
-      } catch (e) {
-        reject(e as any);
-      }
-    });
-  };
-
   const handleUpload = async () => {
     if (!file || uploading || cooldownSeconds > 0) return;
+    
+    if (!turnstileToken) {
+      setError('Please complete the verification checkbox first.');
+      return;
+    }
     
     setUploading(true);
     setError(null);
 
     try {
-      // Get Turnstile token
-      let turnstileToken: string;
-      try {
-        turnstileToken = await getTurnstileToken();
-      } catch {
-        setError('Please complete the verification and try again.');
-        setUploading(false);
-        return;
-      }
-
-      // Get guest session ID
       const guestSessionId = localStorage.getItem('guest_session_id');
 
-      // Upload to zombify-app API
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('isGuest', 'true');
-      formData.append('guestSessionId', guestSessionId || '');
-      formData.append('turnstileToken', turnstileToken);
+      formData.append('is_guest', 'true');
+      formData.append('guest_session_id', guestSessionId || '');
+      formData.append('turnstile_token', turnstileToken);
+      if (bypassRateLimits) {
+        formData.append('dev_bypass_rate_limits', 'true');
+      }
 
       const response = await fetch(`${APP_URL}/api/upload`, {
         method: 'POST',
         body: formData,
-        credentials: 'include' // Important for cross-domain cookies
+        credentials: 'include'
       });
 
       const data = await response.json();
 
       if (!response.ok) {
         if (data.code === 'RATE_LIMIT_EXCEEDED' && data.remainingTime) {
-          // Set cooldown
           const cooldownEnd = Date.now() + (data.remainingTime * 1000);
           localStorage.setItem('guest_upload_cooldown', cooldownEnd.toString());
           setCooldownSeconds(data.remainingTime);
@@ -183,7 +238,6 @@ export function GuestUploadZone() {
         return;
       }
 
-      // Success! Redirect to feedback page
       if (data.feedbackId) {
         window.location.href = `${APP_URL}/feedback/${data.feedbackId}`;
       } else {
@@ -191,7 +245,6 @@ export function GuestUploadZone() {
         setUploading(false);
       }
     } catch (err) {
-      console.error('Upload error:', err);
       setError('Upload failed. Please try again.');
       setUploading(false);
     }
@@ -201,7 +254,40 @@ export function GuestUploadZone() {
 
   return (
     <>
-      <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
+      <Script 
+        src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+        strategy="afterInteractive"
+        onLoad={() => setTurnstileReady(true)}
+      />
+      
+      {/* Dev Mode Toggle - Only visible in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="fixed bottom-4 right-4 z-[9999] bg-yellow-100 border-2 border-yellow-400 p-2 shadow-lg rounded">
+          <label className="flex items-center gap-2 text-xs font-mono cursor-pointer">
+            <input
+              type="checkbox"
+              checked={devMode}
+              onChange={(e) => setDevMode(e.target.checked)}
+              className="cursor-pointer"
+            />
+            Dev Mode
+          </label>
+          {devMode && (
+            <div className="mt-2 space-y-1">
+              <button
+                onClick={() => setBypassRateLimits(!bypassRateLimits)}
+                className="block w-full px-2 py-1 bg-blue-500 text-white text-xs hover:bg-blue-600 transition-colors rounded"
+              >
+                {bypassRateLimits ? '✓' : '○'} Bypass Rate Limits
+              </button>
+              <div className="text-[10px] text-gray-600 mt-1">
+                {bypassRateLimits ? 'Rate limits OFF' : 'Rate limits ON'}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      
       <div className="w-full">
         <div
           className={`
@@ -236,11 +322,7 @@ export function GuestUploadZone() {
             disabled={isDisabled}
           />
 
-          {/* Invisible Turnstile */}
-          <div id="guest-turnstile" className="absolute opacity-0 pointer-events-none" />
-
           <div className="space-y-4 relative z-10 w-full">
-            {/* Cooldown Timer */}
             {cooldownSeconds > 0 ? (
               <div className="text-center">
                 <div className="text-2xl font-bold text-orange-600 mb-2 font-mono">
@@ -258,7 +340,6 @@ export function GuestUploadZone() {
               </div>
             ) : uploading ? (
               <div className="space-y-3">
-                {/* Thumbnail remains visible */}
                 <div className="relative mx-auto">
                   <div className="w-24 h-24 mx-auto border-2 border-black/40 rounded-lg overflow-hidden bg-black/5 relative">
                     {previewUrl ? (
@@ -272,7 +353,6 @@ export function GuestUploadZone() {
                   Analyzing...
                 </div>
                 <div className="w-3/4 max-w-sm mx-auto">
-                  {/* Terminal-style segmented progress bar */}
                   <div className="flex gap-1 items-center">
                     {Array.from({ length: 20 }).map((_, i) => {
                       const isFilled = i < 12;
@@ -289,7 +369,6 @@ export function GuestUploadZone() {
               </div>
             ) : file && previewUrl ? (
               <>
-                {/* Image Preview with Remove Button */}
                 <div className="relative mx-auto">
                   <div className="w-24 h-24 mx-auto border-2 border-black/40 rounded-lg overflow-hidden bg-black/5 relative group">
                     <img 
@@ -327,15 +406,21 @@ export function GuestUploadZone() {
                 )}
                 
                 {!uploading && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleUpload();
-                    }}
-                    className="font-mono text-sm tracking-wide px-6 py-3 bg-black text-white hover:bg-black/90 transition-all rounded"
-                  >
-                    ANALYZE NOW
-                  </button>
+                  <div className="flex flex-col items-center gap-3">
+                    <div id="turnstile-container"></div>
+                    
+                    <ButtonBig
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (turnstileToken) handleUpload();
+                      }}
+                      disabled={!turnstileToken}
+                      variant="black"
+                      stroke="thick"
+                    >
+                      {turnstileToken ? 'ANALYZE' : `VERIFYING YOU'RE HUMAN${'.'.repeat(loadingDots)}`}
+                    </ButtonBig>
+                  </div>
                 )}
               </>
             ) : (
@@ -359,4 +444,3 @@ export function GuestUploadZone() {
     </>
   );
 }
-
