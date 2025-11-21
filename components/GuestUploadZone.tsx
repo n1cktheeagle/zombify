@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import { Upload } from 'lucide-react';
 import Script from 'next/script';
 import ButtonBig from '@/components/ui/ButtonBig';
+import { AuthModal } from '@/components/AuthModal';
+import { useAuthModal } from '@/hooks/useAuthModal';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://app.zombify.ai';
 
@@ -16,6 +18,7 @@ export function GuestUploadZone() {
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileReady, setTurnstileReady] = useState(false);
+  const [turnstileClicked, setTurnstileClicked] = useState(false);
   const [loadingDots, setLoadingDots] = useState(1);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const widgetIdRef = useRef<string | null>(null);
@@ -23,6 +26,9 @@ export function GuestUploadZone() {
   // Dev mode state (persisted in localStorage)
   const [devMode, setDevMode] = useState(false);
   const [bypassRateLimits, setBypassRateLimits] = useState(false);
+  
+  // Auth modal
+  const { openSignIn, openSignUp, showAuthModal, closeModal, authMode } = useAuthModal();
 
   // Load dev mode state from localStorage on mount
   useEffect(() => {
@@ -74,9 +80,9 @@ export function GuestUploadZone() {
     }
   }, [cooldownSeconds]);
 
-  // Render Turnstile when file is selected and script is ready
+  // Render Turnstile ONLY when user clicks verify button
   useEffect(() => {
-    if (!file || !turnstileReady) return;
+    if (!file || !turnstileReady || !turnstileClicked) return;
     if (widgetIdRef.current) return;
 
     const timer = setTimeout(() => {
@@ -89,6 +95,8 @@ export function GuestUploadZone() {
       try {
         const widgetId = turnstile.render(container, {
           sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+          size: 'normal',
+          theme: 'light',
           callback: (token: string) => {
             console.log('[Turnstile] Success callback, token received');
             setTurnstileToken(token);
@@ -113,7 +121,7 @@ export function GuestUploadZone() {
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [file, turnstileReady]);
+  }, [file, turnstileReady, turnstileClicked]);
 
   // Cleanup when file is removed
   useEffect(() => {
@@ -128,6 +136,7 @@ export function GuestUploadZone() {
       }
       widgetIdRef.current = null;
       setTurnstileToken(null);
+      setTurnstileClicked(false);
     }
   }, [file]);
 
@@ -239,6 +248,12 @@ export function GuestUploadZone() {
       }
 
       if (data.feedbackId) {
+        // Store guest session ID in localStorage for persistence across verification flow
+        if (data.guestSessionId) {
+          localStorage.setItem('z_guest_session_id', data.guestSessionId);
+          console.log('[UPLOAD] Stored guest session ID in localStorage');
+        }
+        
         window.location.href = `${APP_URL}/feedback/${data.feedbackId}`;
       } else {
         setError('Upload succeeded but no feedback ID returned.');
@@ -262,26 +277,85 @@ export function GuestUploadZone() {
       
       {/* Dev Mode Toggle - Only visible in development */}
       {process.env.NODE_ENV === 'development' && (
-        <div className="fixed bottom-4 right-4 z-[9999] bg-yellow-100 border-2 border-yellow-400 p-2 shadow-lg rounded">
-          <label className="flex items-center gap-2 text-xs font-mono cursor-pointer">
+        <div className="fixed bottom-4 right-4 z-[9999] bg-yellow-100 border-2 border-yellow-400 p-3 shadow-lg rounded max-w-xs">
+          <label className="flex items-center gap-2 text-xs font-mono cursor-pointer font-bold">
             <input
               type="checkbox"
               checked={devMode}
               onChange={(e) => setDevMode(e.target.checked)}
               className="cursor-pointer"
             />
-            Dev Mode
+            🧪 Dev Mode
           </label>
           {devMode && (
-            <div className="mt-2 space-y-1">
+            <div className="mt-3 space-y-2">
+              <div className="text-[10px] font-bold text-gray-700 mb-2">RATE LIMIT TESTING:</div>
+              
+              {/* Bypass Rate Limits Toggle */}
               <button
                 onClick={() => setBypassRateLimits(!bypassRateLimits)}
-                className="block w-full px-2 py-1 bg-blue-500 text-white text-xs hover:bg-blue-600 transition-colors rounded"
+                className="block w-full px-2 py-1.5 bg-blue-500 text-white text-xs hover:bg-blue-600 transition-colors rounded text-left"
               >
-                {bypassRateLimits ? '✓' : '○'} Bypass Rate Limits
+                {bypassRateLimits ? '✅' : '❌'} Bypass Rate Limits
               </button>
-              <div className="text-[10px] text-gray-600 mt-1">
-                {bypassRateLimits ? 'Rate limits OFF' : 'Rate limits ON'}
+              
+              {/* Clear Rate Limit Records */}
+              <button
+                onClick={async () => {
+                  if (!confirm('Clear all guest upload records for this IP/fingerprint? This resets your 30-day cooldown.')) return;
+                  try {
+                    const res = await fetch(`${APP_URL}/api/admin/clear-guest-uploads`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ dev: true }),
+                      credentials: 'include'
+                    });
+                    if (res.ok) {
+                      alert('✅ Guest uploads cleared! You can test again.');
+                      setCooldownSeconds(0);
+                      localStorage.removeItem('guest_upload_cooldown');
+                    } else {
+                      alert('❌ Failed to clear: ' + (await res.text()));
+                    }
+                  } catch (err) {
+                    alert('❌ Error: ' + err);
+                  }
+                }}
+                className="block w-full px-2 py-1.5 bg-red-500 text-white text-xs hover:bg-red-600 transition-colors rounded text-left"
+              >
+                🗑️ Clear Upload History
+              </button>
+              
+              {/* Reset Fingerprint */}
+              <button
+                onClick={() => {
+                  if (!confirm('Reset your browser fingerprint? This generates a new guest session ID.')) return;
+                  const newId = crypto.randomUUID();
+                  localStorage.setItem('guest_session_id', newId);
+                  alert('✅ New fingerprint: ' + newId.substring(0, 8) + '...');
+                }}
+                className="block w-full px-2 py-1.5 bg-purple-500 text-white text-xs hover:bg-purple-600 transition-colors rounded text-left"
+              >
+                🔄 Reset Fingerprint
+              </button>
+              
+              {/* Clear All Data */}
+              <button
+                onClick={() => {
+                  if (!confirm('Clear ALL local storage data? (Fingerprint + cooldown)')) return;
+                  localStorage.clear();
+                  alert('✅ All data cleared! Reload page to start fresh.');
+                }}
+                className="block w-full px-2 py-1.5 bg-gray-500 text-white text-xs hover:bg-gray-600 transition-colors rounded text-left"
+              >
+                💥 Clear All Data
+              </button>
+              
+              {/* Status Display */}
+              <div className="mt-3 p-2 bg-white rounded border border-gray-300 text-[9px] font-mono space-y-1">
+                <div><strong>Status:</strong> {bypassRateLimits ? '🟢 Bypass ON' : '🔴 Limits Active'}</div>
+                <div><strong>Fingerprint:</strong> {typeof window !== 'undefined' ? localStorage.getItem('guest_session_id')?.substring(0, 12) + '...' : 'N/A'}</div>
+                <div><strong>Cooldown:</strong> {cooldownSeconds > 0 ? `${cooldownSeconds}s` : 'None'}</div>
               </div>
             </div>
           )}
@@ -295,11 +369,11 @@ export function GuestUploadZone() {
             border-2 border-dashed rounded-lg p-8 text-center
             transition-all duration-300 scanline-effect
             flex items-center justify-center
-            ${isDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer group'}
+            ${cooldownSeconds > 0 ? 'cursor-default' : isDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer group'}
             ${!isDisabled && !error ? 'border-black/50 bg-black/5' : 'border-black/20'}
             ${file ? 'border-black/40 bg-black/5' : ''}
             ${error ? 'border-red-400 bg-red-50' : ''}
-            ${cooldownSeconds > 0 ? 'border-orange-400 bg-orange-50' : ''}
+            ${cooldownSeconds > 0 ? 'border-black/50 bg-black/5' : ''}
             min-h-[260px]
           `}
           onDragOver={!isDisabled ? handleDragOver : undefined}
@@ -324,19 +398,31 @@ export function GuestUploadZone() {
 
           <div className="space-y-4 relative z-10 w-full">
             {cooldownSeconds > 0 ? (
-              <div className="text-center">
-                <div className="text-2xl font-bold text-orange-600 mb-2 font-mono">
-                  {formatCooldownTime(cooldownSeconds)}
+              <div className="space-y-4">
+                <p className="text-lg font-medium">Guest upload limit reached</p>
+                <p className="text-sm opacity-60">
+                  Please login to your account or sign up free
+                </p>
+                <div className="flex justify-center items-center gap-3">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openSignIn();
+                    }}
+                    className="font-mono text-sm tracking-wide px-4 py-2 border border-black text-black hover:bg-black/5 transition-all"
+                  >
+                    LOGIN
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openSignUp();
+                    }}
+                    className="font-mono text-sm tracking-wide px-4 py-2 bg-black border border-black text-white hover:bg-black/90 transition-all"
+                  >
+                    SIGN UP
+                  </button>
                 </div>
-                <p className="text-sm text-orange-700 font-mono">
-                  GUEST UPLOAD LIMIT REACHED
-                </p>
-                <p className="text-xs text-orange-600 mt-2">
-                  <a href={`${APP_URL}/auth/signup`} className="underline hover:opacity-70">
-                    Create a free account
-                  </a>{' '}
-                  for 3 uploads per month
-                </p>
               </div>
             ) : uploading ? (
               <div className="space-y-3">
@@ -405,22 +491,36 @@ export function GuestUploadZone() {
                   <p className="text-red-600 text-sm font-mono">{error}</p>
                 )}
                 
-                {!uploading && (
-                  <div className="flex flex-col items-center gap-3">
-                    <div id="turnstile-container"></div>
-                    
-                    <ButtonBig
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (turnstileToken) handleUpload();
-                      }}
-                      disabled={!turnstileToken}
-                      variant="black"
-                      stroke="thick"
-                    >
-                      {turnstileToken ? 'ANALYZE' : `VERIFYING YOU'RE HUMAN${'.'.repeat(loadingDots)}`}
-                    </ButtonBig>
+                {!uploading && !turnstileClicked && (
+                  <ButtonBig
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTurnstileClicked(true);
+                    }}
+                    variant="black"
+                    stroke="thick"
+                  >
+                    VERIFY I'M HUMAN
+                  </ButtonBig>
+                )}
+                
+                {!uploading && turnstileClicked && !turnstileToken && (
+                  <div className="text-sm font-mono text-black/60">
+                    Complete verification below...
                   </div>
+                )}
+                
+                {!uploading && turnstileToken && (
+                  <ButtonBig
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleUpload();
+                    }}
+                    variant="black"
+                    stroke="thick"
+                  >
+                    ANALYZE
+                  </ButtonBig>
                 )}
               </>
             ) : (
@@ -441,6 +541,22 @@ export function GuestUploadZone() {
           </div>
         </div>
       </div>
+      
+      {/* Turnstile Widget - Only shows after clicking "VERIFY I'M HUMAN" */}
+      {file && !uploading && turnstileClicked && !turnstileToken && (
+        <div className="mt-6 flex justify-center">
+          <div id="turnstile-container" className="scale-95 origin-center"></div>
+        </div>
+      )}
+      
+      {/* Auth Modal */}
+      {showAuthModal && (
+        <AuthModal 
+          onClose={closeModal} 
+          initialMode={authMode}
+          dismissible={true}
+        />
+      )}
     </>
   );
 }

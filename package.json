@@ -17,6 +17,7 @@
   "dependencies": {
     "@google-cloud/vision": "^5.3.2",
     "@hookform/resolvers": "^3.9.1",
+    "@hugeicons/core-free-icons": "^2.0.0",
     "@hugeicons/react": "^1.1.1",
     "@radix-ui/react-accordion": "1.2.2",
     "@radix-ui/react-alert-dialog": "1.1.4",
@@ -62,6 +63,7 @@
     "next": "14.2.3",
     "next-themes": "^0.4.4",
     "openai": "^5.8.2",
+    "posthog-js": "^1.297.2",
     "react": "^18.3.1",
     "react-day-picker": "8.10.1",
     "react-dom": "^18.3.1",
