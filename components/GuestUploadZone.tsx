@@ -240,6 +240,10 @@ export function GuestUploadZone() {
           localStorage.setItem('guest_upload_cooldown', cooldownEnd.toString());
           setCooldownSeconds(data.remainingTime);
           setError(data.error || 'Rate limit exceeded. Please try again later.');
+        } else if (data.code === 'MONTHLY_LIMIT_EXCEEDED') {
+          // Authenticated user hit monthly limit on landing page
+          // Show cooldown UI with login buttons (don't show error message)
+          setCooldownSeconds(999999); // Trigger cooldown UI
         } else {
           setError(data.error || 'Upload failed. Please try again.');
         }
