@@ -5,7 +5,7 @@ export default function CookiesPage() {
     <LegalPageLayout title="Cookie Policy" lastUpdated="November 2025">
       <div className="space-y-4 text-sm">
         <p>
-          This Cookie Policy explains how Zombify, operated by Nicholas Asher, trading as Zombify, based in South Africa ("we," "our," or "us"), uses cookies and similar technologies to ensure the proper functioning of our platform, analyze usage, and improve user experience.
+          This Cookie Policy explains how Zombify, a product operated by Firststab (Pty) Ltd, a company incorporated in the Republic of South Africa ("we," "our," or "us"), uses cookies and similar technologies to ensure the proper functioning of our platform, analyze usage, and improve user experience.
         </p>
         <p>
           This policy complies with the Protection of Personal Information Act, 4 of 2013 ("POPI") and the Electronic Communications and Transactions Act, 25 of 2002 ("ECTA"), which require user consent for storing or accessing information on a user's device.

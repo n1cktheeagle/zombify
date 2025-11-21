@@ -5,7 +5,7 @@ export default function TermsPage() {
     <LegalPageLayout title="Terms of Service" lastUpdated="November 2025">
       <div className="space-y-4 text-sm">
         <p>
-          These Terms of Service ("Terms") govern your access to and use of Zombify, operated by Nicholas Asher, trading as Zombify, based in South Africa ("we," "our," or "us").
+          These Terms of Service ("Terms") govern your access to and use of Zombify, a product operated by Firststab (Pty) Ltd, a company incorporated in the Republic of South Africa ("we," "our," or "us").
         </p>
         <p>
           By accessing or using the Service, you ("User") agree to be bound by these Terms together with our{' '}

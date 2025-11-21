@@ -5,7 +5,7 @@ export default function PrivacyPage() {
     <LegalPageLayout title="Privacy Policy" lastUpdated="November 2025">
       <div className="space-y-4 text-sm">
         <p>
-          This Privacy Policy explains how Zombify, operated by Nicholas Asher, trading as Zombify and based in South Africa ("we," "our," or "us"), collects, uses, and protects your Personal Information.
+          This Privacy Policy explains how Zombify, a product operated by Firststab (Pty) Ltd, a company incorporated in the Republic of South Africa ("we," "our," or "us"), collects, uses, and protects your Personal Information.
         </p>
         <p>
           By using Zombify, you agree to this Privacy Policy, which must be read together with our{' '}
@@ -17,8 +17,8 @@ export default function PrivacyPage() {
         <div className="border-t border-black/20 my-6"></div>
 
         <h3 className="font-bold text-base">1. Who We Are</h3>
-        <p>1.1 Operator: Nicholas Asher, trading as Zombify</p>
-        <p>1.2 Location: South Africa</p>
+        <p>1.1 Operator: Firststab (Pty) Ltd, operating Zombify</p>
+        <p>1.2 Location: Republic of South Africa</p>
         <p>1.3 Contact: hi@zombify.ai</p>
 
         <div className="border-t border-black/20 my-6"></div>

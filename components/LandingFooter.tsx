@@ -40,7 +40,7 @@ export function LandingFooter() {
           <p className="text-[10px] font-mono opacity-60">
             Designed with 0 figma files. Built for the era of collapsing attention.
           </p>
-          <p className="text-[10px] font-mono opacity-60 mt-2">© 2025 Zombify. All Rights Reserved.</p>
+          <p className="text-[10px] font-mono opacity-60 mt-2">© 2025 Zombify - A product of Firststab (Pty) Ltd</p>
         </div>
       </div>
     </footer>
