@@ -13,6 +13,16 @@ export default function LandingPage() {
   const [typedText, setTypedText] = useState('')
   const [typingComplete, setTypingComplete] = useState(false)
 
+  // Restore visibility on landing page load (in case of logout redirect)
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.body.style.opacity = '1'
+    }
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem('logging_out')
+    }
+  }, [])
+
   useEffect(() => {
     const fullText = 'Booting Zombify'
 
