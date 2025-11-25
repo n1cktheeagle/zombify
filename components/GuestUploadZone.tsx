@@ -256,9 +256,11 @@ export function GuestUploadZone() {
         if (data.guestSessionId) {
           localStorage.setItem('z_guest_session_id', data.guestSessionId);
           console.log('[UPLOAD] Stored guest session ID in localStorage');
+          // 🎯 Pass guestSessionId through URL for cross-origin access
+          window.location.href = `${APP_URL}/feedback/${data.feedbackId}?guestSessionId=${encodeURIComponent(data.guestSessionId)}`;
+        } else {
+          window.location.href = `${APP_URL}/feedback/${data.feedbackId}`;
         }
-        
-        window.location.href = `${APP_URL}/feedback/${data.feedbackId}`;
       } else {
         setError('Upload succeeded but no feedback ID returned.');
         setUploading(false);
@@ -345,10 +347,40 @@ export function GuestUploadZone() {
               
               {/* Clear All Data */}
               <button
-                onClick={() => {
-                  if (!confirm('Clear ALL local storage data? (Fingerprint + cooldown)')) return;
-                  localStorage.clear();
-                  alert('✅ All data cleared! Reload page to start fresh.');
+                onClick={async () => {
+                  if (!confirm('Clear ALL data? (Database records + cookies + localStorage)')) return;
+                  try {
+                    // Clear database records
+                    const res = await fetch(`${APP_URL}/api/admin/clear-guest-uploads`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ dev: true }),
+                      credentials: 'include'
+                    });
+                    
+                    // Clear all cookies
+                    document.cookie.split(";").forEach((c) => {
+                      document.cookie = c
+                        .replace(/^ +/, "")
+                        .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+                    });
+                    
+                    // Clear localStorage
+                    localStorage.clear();
+                    
+                    // Reset cooldown state
+                    setCooldownSeconds(0);
+                    
+                    if (res.ok) {
+                      alert('✅ All data cleared! (Database + Cookies + LocalStorage)');
+                    } else {
+                      alert('⚠️ LocalStorage/cookies cleared but database clear failed: ' + (await res.text()));
+                    }
+                  } catch (err) {
+                    // Still clear local data even if API fails
+                    localStorage.clear();
+                    alert('⚠️ Cleared local data, but API call failed: ' + err);
+                  }
                 }}
                 className="block w-full px-2 py-1.5 bg-gray-500 text-white text-xs hover:bg-gray-600 transition-colors rounded text-left"
               >

@@ -513,12 +513,25 @@ export async function getUserProviders(): Promise<string[]> {
 export async function signInWithGoogle() {
   console.log('🔍 Starting PKCE Google OAuth...')
   
-  // Get returnTo from URL if present
-  let redirectUrl = `${window.location.origin}/auth/callback`
+  // Get returnTo from URL if present, AND guest session ID
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  let redirectUrl = `${appUrl}/auth/callback`
   try {
+    const params = new URLSearchParams()
     const returnTo = new URLSearchParams(window.location.search).get('returnTo')
     if (returnTo) {
-      redirectUrl = `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent(returnTo)}`
+      params.set('returnTo', returnTo)
+    }
+    
+    // 🎯 NEW: Pass guest session ID through OAuth flow
+    const guestId = localStorage.getItem('z_guest_session_id') || localStorage.getItem('guest_session_id')
+    if (guestId) {
+      params.set('guestSessionId', guestId)
+      console.log('🔄 [OAUTH] Passing guest session through OAuth flow')
+    }
+    
+    if (params.toString()) {
+      redirectUrl = `${appUrl}/auth/callback?${params.toString()}`
     }
   } catch {}
   
@@ -539,12 +552,25 @@ export async function signInWithGoogle() {
 export async function signInWithDiscord() {
   console.log('🔍 Starting PKCE Discord OAuth...')
   
-  // Get returnTo from URL if present
-  let redirectUrl = `${window.location.origin}/auth/callback`
+  // Get returnTo from URL if present, AND guest session ID
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  let redirectUrl = `${appUrl}/auth/callback`
   try {
+    const params = new URLSearchParams()
     const returnTo = new URLSearchParams(window.location.search).get('returnTo')
     if (returnTo) {
-      redirectUrl = `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent(returnTo)}`
+      params.set('returnTo', returnTo)
+    }
+    
+    // 🎯 NEW: Pass guest session ID through OAuth flow
+    const guestId = localStorage.getItem('z_guest_session_id') || localStorage.getItem('guest_session_id')
+    if (guestId) {
+      params.set('guestSessionId', guestId)
+      console.log('🔄 [OAUTH] Passing guest session through OAuth flow')
+    }
+    
+    if (params.toString()) {
+      redirectUrl = `${appUrl}/auth/callback?${params.toString()}`
     }
   } catch {}
   
