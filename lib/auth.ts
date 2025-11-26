@@ -1,7 +1,7 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { User } from '@supabase/auth-helpers-nextjs'
+import { getSupabaseClient } from './supabaseClient'
+import { User } from '@supabase/supabase-js'
 
-export const supabase = createClientComponentClient()
+export const supabase = getSupabaseClient()
 
 export type AuthUser = User | null
 
