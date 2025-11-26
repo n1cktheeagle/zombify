@@ -29,6 +29,8 @@ export function GuestUploadZone() {
   const [uploadProgress, setUploadProgress] = useState(0); // 0-100
   const [stageText, setStageText] = useState('');
   const abortControllerRef = useRef<AbortController | null>(null);
+  const rotationTimerRef = useRef<number | null>(null);
+  const pollingIntervalRef = useRef<number | null>(null);
   
   // Dev mode state (persisted in localStorage)
   const [devMode, setDevMode] = useState(false);
@@ -147,14 +149,117 @@ export function GuestUploadZone() {
     }
   }, [file]);
   
+  // Warn before unload if uploading (from start, not just stage 3+)
+  useEffect(() => {
+    if (!uploading) return;
+    
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = 'Your upload is in progress. Are you sure you want to leave?';
+      return e.returnValue;
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [uploading]);
+  
   // Cleanup on unmount: abort any in-progress uploads
   useEffect(() => {
     return () => {
-      if (abortControllerRef.current) {
-        console.log('[GuestUpload] Component unmounting, aborting upload');
-        abortControllerRef.current.abort();
+      console.log('[GuestUpload] Component unmounting');
+      if (rotationTimerRef.current) {
+        clearInterval(rotationTimerRef.current);
+      }
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
       }
     };
+  }, []);
+  
+  // Check for active upload on mount and resume
+  useEffect(() => {
+    const savedState = localStorage.getItem('zombify_guest_active_upload');
+    if (!savedState) return;
+    
+    try {
+      const state = JSON.parse(savedState);
+      const ageMinutes = (Date.now() - state.timestamp) / 1000 / 60;
+      
+      // If upload takes longer than 5 minutes, assume it failed
+      if (ageMinutes >= 5) {
+        console.log('⚠️ Guest upload timeout (>5 min), clearing...');
+        localStorage.removeItem('zombify_guest_active_upload');
+        return;
+      }
+      
+      console.log('🔄 Resuming upload...', state);
+      
+      // Restore file preview
+      if (state.filePreview) {
+        setPreviewUrl(state.filePreview);
+      }
+      
+      // Show reconnecting UI
+      setUploading(true);
+      setUploadStage(5);
+      setUploadProgress(70);
+      setStageText('Resuming analysis...');
+      
+      let failureCount = 0;
+      const MAX_FAILURES = 5;
+      
+      // Start polling for completion
+      const pollUpload = async () => {
+        try {
+          console.log('📊 Polling for upload completion...', state.uploadId);
+          const res = await fetch(`${APP_URL}/api/feedback/${state.uploadId}`, {
+            credentials: 'include'
+          });
+          
+          if (res.ok) {
+            failureCount = 0; // Reset on success
+            const data = await res.json();
+            console.log('📊 Poll response:', { hasAnalysis: !!data.analysis });
+            if (data.analysis) {
+              // Analysis complete!
+              console.log('✅ Guest upload complete, redirecting...');
+              localStorage.removeItem('zombify_guest_active_upload');
+              if (pollingIntervalRef.current) {
+                clearInterval(pollingIntervalRef.current);
+                pollingIntervalRef.current = null;
+              }
+              window.location.href = `${APP_URL}/feedback/${state.uploadId}`;
+            }
+          } else {
+            console.log('📊 Poll failed:', res.status);
+            failureCount++;
+          }
+        } catch (err) {
+          console.error('Polling error:', err);
+          failureCount++;
+        }
+        
+        // Give up after too many failures
+        if (failureCount >= MAX_FAILURES) {
+          console.error('❌ Too many polling failures, giving up');
+          localStorage.removeItem('zombify_guest_active_upload');
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+          }
+          setUploading(false);
+          setError('Upload appears to have failed. Please try again.');
+        }
+      };
+      
+      // Poll immediately, then every 2 seconds
+      pollUpload();
+      pollingIntervalRef.current = window.setInterval(pollUpload, 2000) as any;
+      
+    } catch (err) {
+      console.error('Error resuming upload:', err);
+      localStorage.removeItem('zombify_guest_active_upload');
+    }
   }, []);
 
   // Animate loading dots when verifying
@@ -179,6 +284,23 @@ export function GuestUploadZone() {
     }
     return `${minutes}m`;
   };
+
+  // Get display message based on stage (matching app)
+  const getOverlayMessage = () => {
+    return stageText || 'Processing...';
+  };
+
+  // Map stage text to user-friendly messages (matching app)
+  const mapStageText = (s: string) => {
+    const lower = (s || '').toLowerCase();
+    if (lower.includes('color')) return 'Extracting colours…';
+    if (lower.includes('text') || lower.includes('ocr')) return 'Extracting text…';
+    if (lower.includes('contrast')) return 'Analyzing contrast…';
+    if (lower.includes('spacing')) return 'Measuring spacing…';
+    return 'Extracting text and colours…';
+  };
+
+  const displayProgress = uploadProgress; // Use uploadProgress directly, it's already calculated correctly
 
   const handleFileSelect = (selectedFile: File) => {
     if (!selectedFile.type.startsWith('image/')) {
@@ -232,10 +354,21 @@ export function GuestUploadZone() {
     const controller = new AbortController();
     abortControllerRef.current = controller;
     
+    // Generate upload ID immediately (server will use this)
+    const uploadId = crypto.randomUUID();
+    
     setUploading(true);
     setError(null);
     setUploadStage(0);
     setUploadProgress(0);
+    
+    // Save file info + uploadId immediately for reconnection
+    localStorage.setItem('zombify_guest_active_upload', JSON.stringify({
+      uploadId: uploadId,
+      timestamp: Date.now(),
+      fileName: file.name,
+      filePreview: previewUrl
+    }));
 
     try {
       // STAGE 0: Grace period (3 seconds to cancel)
@@ -254,14 +387,15 @@ export function GuestUploadZone() {
       const extractedData = await extractor.extractAll(
         file,
         (stage, progress) => {
-          setStageText(stage);
           const s = String(stage).toLowerCase();
           if (s.includes('color')) {
             setUploadStage(1);
-            setUploadProgress(progress);
+            setUploadProgress(Math.round(progress * 0.25)); // 0-25%
+            setStageText('Extracting colours…');
           } else if (s.includes('text') || s.includes('ocr')) {
             setUploadStage(2);
-            setUploadProgress(progress);
+            setUploadProgress(25 + Math.round(progress * 0.25)); // 25-50%
+            setStageText('Extracting text…');
           }
         },
         controller.signal
@@ -279,6 +413,7 @@ export function GuestUploadZone() {
       const guestSessionId = localStorage.getItem('guest_session_id');
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('id', uploadId); // Pass client-generated ID to server
       formData.append('is_guest', 'true');
       formData.append('guest_session_id', guestSessionId || '');
       formData.append('turnstile_token', turnstileToken);
@@ -287,27 +422,84 @@ export function GuestUploadZone() {
         formData.append('dev_bypass_rate_limits', 'true');
       }
 
-      // Use XHR for upload progress
+      // Use XHR for upload progress with rotating text
       const response = await new Promise<Response>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open('POST', `${APP_URL}/api/upload`);
         xhr.withCredentials = true;
         xhr.responseType = 'json';
+        let analysisTickerStarted = false;
+        let stage4Timer: number | undefined;
+        let stage5Timer: number | undefined;
+        
+        // Wire up abort signal BEFORE starting upload
+        const onAbort = () => {
+          console.log('[XHR] Abort signal received, aborting request');
+          xhr.abort();
+          clearTimeout(stage4Timer);
+          clearTimeout(stage5Timer);
+          if (rotationTimerRef.current) {
+            clearInterval(rotationTimerRef.current);
+            rotationTimerRef.current = null;
+          }
+        };
+        controller.signal.addEventListener('abort', onAbort, { once: true });
         
         xhr.upload.onprogress = (evt) => {
           if (evt.lengthComputable) {
             const pct = Math.round((evt.loaded / evt.total) * 100);
-            setUploadProgress(pct);
-            setStageText(pct < 100 ? 'Uploading to server…' : 'Processing...');
+            const mapped = 30 + Math.round(pct * 0.3);
+            setStageText(pct < 5 ? 'Preparing image…' : 'Uploading to server…');
+            setUploadProgress(Math.max(10, mapped));
             
-            if (pct >= 100) {
-              setUploadStage(4);
-              setStageText('Running analysis...');
+            if (pct >= 100 && !analysisTickerStarted) {
+              analysisTickerStarted = true;
+              stage4Timer = window.setTimeout(() => {
+                setUploadStage(4);
+                setUploadProgress(70);
+                setStageText('Analyzing clarity and alignment…');
+              }, 600);
+              stage5Timer = window.setTimeout(() => {
+                setUploadStage(5);
+                setUploadProgress(70);
+                setStageText('Generating recommendations…');
+                const phrases = [
+                  'Generating recommendations…',
+                  'Calculating GRIP score…',
+                  'Evaluating clarity signals…',
+                  'Analyzing alignment & spacing…',
+                  'Reviewing contrast & accessibility…',
+                  'Ranking top issues…',
+                  'Building evidence map…',
+                  'Compiling fixes…',
+                  'Cross-checking evidence…',
+                  'Aggregating insights…',
+                  'Weighing severity levels…',
+                  'Mapping OCR to findings…',
+                  'Estimating impact…',
+                  'Prioritizing fixes…',
+                  'Summarizing results…'
+                ];
+                let i = 0;
+                rotationTimerRef.current = window.setInterval(() => {
+                  i = (i + 1) % phrases.length;
+                  setStageText(phrases[i]);
+                  setUploadProgress(70 + (i % 5));
+                }, 7000);
+              }, 2200);
             }
           }
         };
         
         xhr.onload = () => {
+          controller.signal.removeEventListener('abort', onAbort);
+          clearTimeout(stage4Timer);
+          clearTimeout(stage5Timer);
+          if (rotationTimerRef.current) {
+            clearInterval(rotationTimerRef.current);
+            rotationTimerRef.current = null;
+          }
+          
           if (xhr.status >= 200 && xhr.status < 300) {
             resolve(new Response(JSON.stringify(xhr.response), {
               status: xhr.status,
@@ -321,10 +513,28 @@ export function GuestUploadZone() {
           }
         };
         
-        xhr.onerror = () => reject(new Error('Network error'));
-        xhr.onabort = () => reject(new DOMException('Aborted', 'AbortError'));
+        xhr.onerror = () => {
+          controller.signal.removeEventListener('abort', onAbort);
+          clearTimeout(stage4Timer);
+          clearTimeout(stage5Timer);
+          if (rotationTimerRef.current) {
+            clearInterval(rotationTimerRef.current);
+            rotationTimerRef.current = null;
+          }
+          reject(new Error('Network error'));
+        };
         
-        controller.signal.addEventListener('abort', () => xhr.abort(), { once: true });
+        xhr.onabort = () => {
+          controller.signal.removeEventListener('abort', onAbort);
+          clearTimeout(stage4Timer);
+          clearTimeout(stage5Timer);
+          if (rotationTimerRef.current) {
+            clearInterval(rotationTimerRef.current);
+            rotationTimerRef.current = null;
+          }
+          console.log('[XHR] Request aborted successfully');
+          reject(new DOMException('Aborted', 'AbortError'));
+        };
         
         xhr.send(formData);
       });
@@ -353,32 +563,40 @@ export function GuestUploadZone() {
           localStorage.setItem('z_guest_session_id', data.guestSessionId);
         }
         
-        // STAGE 5: Poll for completion before redirecting
-        setUploadStage(5);
-        setStageText('Finalizing...');
+        // Clear upload state - redirecting to feedback page
+        localStorage.removeItem('zombify_guest_active_upload');
         
-        // Redirect immediately for now (polling can be added later if needed)
+        // Redirect to feedback page (analysis may still be processing)
         window.location.href = `${APP_URL}/feedback/${data.feedbackId}`;
       } else {
         setError('Upload succeeded but no feedback ID returned.');
         setUploading(false);
         setUploadStage(0);
+        localStorage.removeItem('zombify_guest_active_upload');
       }
     } catch (err: any) {
+      console.error('[UPLOAD ERROR]', err);
       if (err.name === 'AbortError') {
         console.log('Upload cancelled by user');
         setError(null);
+        localStorage.removeItem('zombify_guest_active_upload');
       } else {
-        setError('Upload failed. Please try again.');
+        setError(`Upload failed: ${err.message}`);
+        localStorage.removeItem('zombify_guest_active_upload');
       }
       setUploading(false);
       setUploadStage(0);
+      setUploadProgress(0);
     } finally {
       abortControllerRef.current = null;
+      if (rotationTimerRef.current) {
+        clearInterval(rotationTimerRef.current);
+        rotationTimerRef.current = null;
+      }
     }
   };
 
-  const isDisabled = cooldownSeconds > 0 || uploading;
+  const isDisabled = cooldownSeconds > 0;
 
   return (
     <>
@@ -524,7 +742,7 @@ export function GuestUploadZone() {
             border-2 border-dashed rounded-lg p-8 text-center
             transition-all duration-300 scanline-effect
             flex items-center justify-center
-            ${cooldownSeconds > 0 ? 'cursor-default' : isDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer group'}
+            ${cooldownSeconds > 0 ? 'cursor-default' : (isDisabled && !uploading) ? 'cursor-not-allowed opacity-60' : uploading ? 'cursor-default' : 'cursor-pointer group'}
             ${!isDisabled && !error ? 'border-black/50 bg-black/5' : 'border-black/20'}
             ${file ? 'border-black/40 bg-black/5' : ''}
             ${error ? 'border-red-400 bg-red-50' : ''}
@@ -551,7 +769,7 @@ export function GuestUploadZone() {
             disabled={isDisabled}
           />
 
-          <div className="space-y-4 relative z-10 w-full">
+          <div className="space-y-4 relative z-20 w-full">
             {cooldownSeconds > 0 ? (
               <div className="space-y-4">
                 <p className="text-lg font-medium">Guest upload limit reached</p>
@@ -590,41 +808,59 @@ export function GuestUploadZone() {
                     )}
                   </div>
                 </div>
-                <div className="text-sm font-mono tracking-wide text-black/80">
-                  {stageText || 'Processing...'}
+                <div className="text-xs opacity-40 font-mono">
+                  {getOverlayMessage()}
                 </div>
                 <div className="w-3/4 max-w-sm mx-auto">
                   <div className="flex gap-1 items-center">
                     {Array.from({ length: 20 }).map((_, i) => {
-                      const progressBlocks = Math.floor((uploadProgress / 100) * 20);
-                      const isFilled = i < progressBlocks;
-                      const isFlashing = i === progressBlocks && uploadProgress < 100;
+                      const filledSegments = Math.floor((displayProgress / 100) * 20);
+                      const isFilled = i < filledSegments;
+                      const isFlashing = i === filledSegments && filledSegments < 20;
                       return (
                         <div
                           key={i}
-                          className={`h-2 flex-1 ${isFilled ? 'bg-black' : 'bg-black/20'} ${isFlashing ? 'animate-pulse' : ''}`}
+                          className={`h-2 flex-1 ${isFilled ? 'bg-black' : 'bg-[#c4c1b8]'} ${isFlashing ? 'animate-pulse' : ''}`}
                         />
                       );
                     })}
                   </div>
-                  <div className="text-xs text-black/50 mt-1 font-mono">
-                    {uploadProgress}% • Stage {uploadStage}/5
-                  </div>
                 </div>
+                
                 {uploadStage < 3 && (
-                  <button
+                  <ButtonBig
                     onClick={(e) => {
                       e.stopPropagation();
-                      abortControllerRef.current?.abort();
+                      console.log('🛑 CANCEL clicked, aborting upload');
+                      if (abortControllerRef.current) {
+                        abortControllerRef.current.abort();
+                      }
+                      if (rotationTimerRef.current) {
+                        clearInterval(rotationTimerRef.current);
+                        rotationTimerRef.current = null;
+                      }
+                      localStorage.removeItem('zombify_guest_active_upload');
                       setUploading(false);
                       setUploadStage(0);
                       setUploadProgress(0);
                       setStageText('');
+                      // DON'T remove file/preview/turnstile - keep them so user can retry
                     }}
-                    className="text-xs font-mono tracking-wide px-3 py-1.5 border border-red-600 text-red-600 hover:bg-red-50 rounded transition-colors"
+                    variant="black"
+                    stroke="thick"
                   >
                     CANCEL
-                  </button>
+                  </ButtonBig>
+                )}
+                
+                {uploadStage >= 3 && (
+                  <ButtonBig
+                    disabled
+                    variant="black"
+                    stroke="thick"
+                  >
+                    ANALYZING...
+                  </ButtonBig>
                 )}
               </div>
             ) : file && previewUrl ? (
