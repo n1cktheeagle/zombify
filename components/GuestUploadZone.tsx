@@ -228,8 +228,28 @@ export function GuestUploadZone() {
                 clearInterval(pollingIntervalRef.current);
                 pollingIntervalRef.current = null;
               }
-              window.location.href = `${APP_URL}/feedback/${state.uploadId}`;
+              try {
+                // Re-sync guest session cookie on the app origin so /feedback/[id] recognizes guest owner
+                const guestSessionId = localStorage.getItem('guest_session_id');
+                if (guestSessionId) {
+                  await fetch(`${APP_URL}/api/guest/session/sync`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ guestSessionId }),
+                  }).catch((err) => {
+                    console.error('Guest session sync failed (continuing anyway):', err);
+                  });
+                }
+              } finally {
+                // Disable beforeunload warning before redirecting
+                setUploading(false);
+                window.location.href = `${APP_URL}/feedback/${state.uploadId}`;
+              }
             }
+          } else if (res.status === 404) {
+            // Record not created yet – keep polling without counting as a hard failure
+            console.log('📊 Poll: feedback not found yet (404), will retry');
           } else {
             console.log('📊 Poll failed:', res.status);
             failureCount++;
@@ -252,9 +272,9 @@ export function GuestUploadZone() {
         }
       };
       
-      // Poll immediately, then every 2 seconds
+      // Poll immediately, then every 5 seconds (short-lived, minimal DB cost)
       pollUpload();
-      pollingIntervalRef.current = window.setInterval(pollUpload, 2000) as any;
+      pollingIntervalRef.current = window.setInterval(pollUpload, 5000) as any;
       
     } catch (err) {
       console.error('Error resuming upload:', err);
