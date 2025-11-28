@@ -30,7 +30,10 @@ export function GuestUploadZone() {
   const [stageText, setStageText] = useState('');
   const abortControllerRef = useRef<AbortController | null>(null);
   const rotationTimerRef = useRef<number | null>(null);
+  const analysisStartRef = useRef<number | null>(null);
   const pollingIntervalRef = useRef<number | null>(null);
+  const allowUnloadRef = useRef(false);
+  const hasOCRRetriedRef = useRef(false);
   
   // Dev mode state (persisted in localStorage)
   const [devMode, setDevMode] = useState(false);
@@ -154,6 +157,8 @@ export function GuestUploadZone() {
     if (!uploading) return;
     
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Allow programmatic redirects (completion/resume) without showing the native prompt
+      if (allowUnloadRef.current) return;
       e.preventDefault();
       e.returnValue = 'Your upload is in progress. Are you sure you want to leave?';
       return e.returnValue;
@@ -243,6 +248,7 @@ export function GuestUploadZone() {
                 }
               } finally {
                 // Disable beforeunload warning before redirecting
+                allowUnloadRef.current = true;
                 setUploading(false);
                 window.location.href = `${APP_URL}/feedback/${state.uploadId}`;
               }
@@ -377,6 +383,10 @@ export function GuestUploadZone() {
     // Generate upload ID immediately (server will use this)
     const uploadId = crypto.randomUUID();
     
+    // Any new upload should protect against accidental tab closes until we explicitly allow unload
+    allowUnloadRef.current = false;
+    // Reset extraction-phase helpers
+    hasOCRRetriedRef.current = false;
     setUploading(true);
     setError(null);
     setUploadStage(0);
@@ -399,7 +409,7 @@ export function GuestUploadZone() {
         throw new DOMException('Aborted', 'AbortError');
       }
       
-      // STAGE 1-2: Text extraction
+      // STAGE 1-2: Text extraction (colors + OCR)
       setUploadStage(1);
       setStageText('Initializing extraction…');
       
@@ -408,14 +418,36 @@ export function GuestUploadZone() {
         file,
         (stage, progress) => {
           const s = String(stage).toLowerCase();
+          const pct = Math.max(0, Math.min(100, Math.round(progress)));
+
+          // Colors: 0–10
           if (s.includes('color')) {
             setUploadStage(1);
-            setUploadProgress(Math.round(progress * 0.25)); // 0-25%
+            const mapped = Math.round((pct / 100) * 10);
+            setUploadProgress(prev => Math.max(prev, mapped));
             setStageText('Extracting colours…');
-          } else if (s.includes('text') || s.includes('ocr')) {
-            setUploadStage(2);
-            setUploadProgress(25 + Math.round(progress * 0.25)); // 25-50%
-            setStageText('Extracting text…');
+            return;
+          }
+
+          // OCR passes:
+          // - First pass: 10–20, label "Extracting text…"
+          // - Second pass (retry): 20–40, label "Refining text…"
+          setUploadStage(2);
+
+          if (!hasOCRRetriedRef.current) {
+            // First OCR attempt: 10–20
+            const mapped = 10 + Math.round((pct / 100) * 10);
+            setUploadProgress(prev => Math.max(prev, mapped));
+            setStageText(`Extracting text… (${pct}%)`);
+            // Once first run hits 100%, flip the flag so any further OCR progress is "refining"
+            if (pct >= 100) {
+              hasOCRRetriedRef.current = true;
+            }
+          } else {
+            // Second / refining pass: 20–40
+            const mapped = 20 + Math.round((pct / 100) * 20);
+            setUploadProgress(prev => Math.max(prev, mapped));
+            setStageText(`Refining text… (${pct}%)`);
           }
         },
         controller.signal
@@ -425,10 +457,10 @@ export function GuestUploadZone() {
         throw new DOMException('Aborted', 'AbortError');
       }
       
-      // STAGE 3-5: Upload and analysis
-      setUploadStage(3);
-      setUploadProgress(0);
-      setStageText('Uploading to server…');
+    // STAGE 3-5: Upload and analysis
+    setUploadStage(3);
+    // Don't reset progress visually; continue from extraction (~40%)
+    setStageText('Uploading to server…');
       
       const guestSessionId = localStorage.getItem('guest_session_id');
       const formData = new FormData();
@@ -449,15 +481,11 @@ export function GuestUploadZone() {
         xhr.withCredentials = true;
         xhr.responseType = 'json';
         let analysisTickerStarted = false;
-        let stage4Timer: number | undefined;
-        let stage5Timer: number | undefined;
         
         // Wire up abort signal BEFORE starting upload
         const onAbort = () => {
           console.log('[XHR] Abort signal received, aborting request');
           xhr.abort();
-          clearTimeout(stage4Timer);
-          clearTimeout(stage5Timer);
           if (rotationTimerRef.current) {
             clearInterval(rotationTimerRef.current);
             rotationTimerRef.current = null;
@@ -468,53 +496,72 @@ export function GuestUploadZone() {
         xhr.upload.onprogress = (evt) => {
           if (evt.lengthComputable) {
             const pct = Math.round((evt.loaded / evt.total) * 100);
-            const mapped = 30 + Math.round(pct * 0.3);
+            // Continue global progress smoothly from extraction (~40%) into upload (~40–60)
+            const base = 40;
+            const span = 20; // 40–60
+            const mapped = base + Math.round((pct / 100) * span);
             setStageText(pct < 5 ? 'Preparing image…' : 'Uploading to server…');
-            setUploadProgress(Math.max(10, mapped));
-            
+            setUploadProgress((prev) => Math.max(prev, mapped));
             if (pct >= 100 && !analysisTickerStarted) {
               analysisTickerStarted = true;
-              stage4Timer = window.setTimeout(() => {
-                setUploadStage(4);
-                setUploadProgress(70);
-                setStageText('Analyzing clarity and alignment…');
-              }, 600);
-              stage5Timer = window.setTimeout(() => {
-                setUploadStage(5);
-                setUploadProgress(70);
-                setStageText('Generating recommendations…');
-                const phrases = [
-                  'Generating recommendations…',
-                  'Calculating GRIP score…',
-                  'Evaluating clarity signals…',
-                  'Analyzing alignment & spacing…',
-                  'Reviewing contrast & accessibility…',
-                  'Ranking top issues…',
-                  'Building evidence map…',
-                  'Compiling fixes…',
-                  'Cross-checking evidence…',
-                  'Aggregating insights…',
-                  'Weighing severity levels…',
-                  'Mapping OCR to findings…',
-                  'Estimating impact…',
-                  'Prioritizing fixes…',
-                  'Summarizing results…'
-                ];
-                let i = 0;
-                rotationTimerRef.current = window.setInterval(() => {
-                  i = (i + 1) % phrases.length;
-                  setStageText(phrases[i]);
-                  setUploadProgress(70 + (i % 5));
-                }, 7000);
-              }, 2200);
+              // Enter long-running analysis phase:
+              // - Pin progress ~65% for the first minute after upload completes
+              // - Jump to ~85% for the second minute
+              // - Only go to 100% when the server responds successfully
+              setUploadStage(4);
+              setUploadProgress((prev) => Math.max(prev, 65));
+              setStageText('Generating recommendations…');
+              analysisStartRef.current = Date.now();
+
+              const phrases = [
+                'Parsing interface…',
+                'Identifying elements that “felt right at the time”…',
+                'Squinting at pixels like a tired designer…',
+                'Calculating GRIP signal…',
+                'Inspecting alignment crime scenes…',
+                'Measuring…',
+                'Ranking UI sins…',
+                'Noting every pixel you thought nobody would notice…',
+                'Compiling evidence stack…',
+                'Cross-referencing visual anomalies…',
+                'Aggregating insights… slowly but surely.',
+                'Prioritizing fixes…',
+                'Reading text like a human…',
+                'Mapping OCR fragments to patterns…',
+                'Summarizing the damage…',
+                'Stabilizing visual hallucinations…',
+                'Tracking attention leaks…',
+                'Checking for sneaky dark patterns…',
+                'Detecting cognitive bottlenecks…',
+                'Gently judging spacing decisions…',
+                'Trying to make sense of this…'
+              ];
+              let i = 0;
+              rotationTimerRef.current = window.setInterval(() => {
+                i = (i + 1) % phrases.length;
+                setStageText(phrases[i]);
+
+                const start = analysisStartRef.current ?? Date.now();
+                const elapsed = Date.now() - start;
+
+                if (elapsed < 60_000) {
+                  // First minute after upload: hold around 65%
+                  setUploadProgress((prev) => Math.max(prev, 65));
+                } else if (elapsed < 120_000) {
+                  // Second minute: jump and hold around 85%
+                  setUploadStage(5);
+                  setUploadProgress((prev) => Math.max(prev, 85));
+                } else {
+                  // After 2 minutes: gently creep up but never reach 100% by time alone
+                  setUploadProgress((prev) => Math.min(95, Math.max(prev, 85)));
+                }
+              }, 5000);
             }
           }
         };
         
         xhr.onload = () => {
           controller.signal.removeEventListener('abort', onAbort);
-          clearTimeout(stage4Timer);
-          clearTimeout(stage5Timer);
           if (rotationTimerRef.current) {
             clearInterval(rotationTimerRef.current);
             rotationTimerRef.current = null;
@@ -535,8 +582,6 @@ export function GuestUploadZone() {
         
         xhr.onerror = () => {
           controller.signal.removeEventListener('abort', onAbort);
-          clearTimeout(stage4Timer);
-          clearTimeout(stage5Timer);
           if (rotationTimerRef.current) {
             clearInterval(rotationTimerRef.current);
             rotationTimerRef.current = null;
@@ -546,8 +591,6 @@ export function GuestUploadZone() {
         
         xhr.onabort = () => {
           controller.signal.removeEventListener('abort', onAbort);
-          clearTimeout(stage4Timer);
-          clearTimeout(stage5Timer);
           if (rotationTimerRef.current) {
             clearInterval(rotationTimerRef.current);
             rotationTimerRef.current = null;
@@ -578,6 +621,10 @@ export function GuestUploadZone() {
       }
 
       if (data.feedbackId) {
+        // Mark visual progress as complete just before redirect
+        setUploadStage(6);
+        setUploadProgress(100);
+        setStageText('Complete!');
         // Store guest session ID
         if (data.guestSessionId) {
           localStorage.setItem('z_guest_session_id', data.guestSessionId);
@@ -587,6 +634,8 @@ export function GuestUploadZone() {
         localStorage.removeItem('zombify_guest_active_upload');
         
         // Redirect to feedback page (analysis may still be processing)
+        allowUnloadRef.current = true;
+        setUploading(false);
         window.location.href = `${APP_URL}/feedback/${data.feedbackId}`;
       } else {
         setError('Upload succeeded but no feedback ID returned.');

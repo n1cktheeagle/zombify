@@ -94,7 +94,7 @@ export class BrowserExtractor {
       }
       
       // Extract colors (fast)
-      onProgress?.('colors', 25);
+      onProgress?.('colors', 100);
       const colors = await this.extractColors(img);
       
       // Check if cancelled after colors
@@ -104,7 +104,6 @@ export class BrowserExtractor {
       }
       
       // Extract text (slower)
-      onProgress?.('text', 50);
       // Downscale large images for more reliable OCR and lower memory usage
       const ocrBlob = await this.downscaleImageToBlob(img, 1600);
       
@@ -114,7 +113,15 @@ export class BrowserExtractor {
         throw new DOMException('Aborted', 'AbortError');
       }
       
-      const text = await this.extractText(ocrBlob, signal);
+      const text = await this.extractText(
+        ocrBlob,
+        signal,
+        (percent, phase) => {
+          const safePct = Math.max(0, Math.min(100, Math.round(percent)));
+          const stageLabel = phase === 'retry' ? 'text_refine' : 'text';
+          onProgress?.(stageLabel, safePct);
+        }
+      );
       
       // Check if cancelled after OCR
       if (signal?.aborted) {
@@ -249,7 +256,11 @@ export class BrowserExtractor {
   /**
    * Extract text using Tesseract.js OCR
    */
-  private async extractText(source: Blob | File, signal?: AbortSignal): Promise<ExtractedData['text']> {
+  private async extractText(
+    source: Blob | File,
+    signal?: AbortSignal,
+    onOCRProgress?: (percent: number, phase: 'primary' | 'retry') => void
+  ): Promise<ExtractedData['text']> {
     try {
       // Check if cancelled before starting OCR
       if (signal?.aborted) {
@@ -258,7 +269,11 @@ export class BrowserExtractor {
       }
       
       console.log('[OCR] Starting text extraction...');
-      const result = await Tesseract.recognize(source, 'eng', this.getTesseractOptions());
+      const result = await Tesseract.recognize(
+        source,
+        'eng',
+        this.getTesseractOptions(onOCRProgress ? (p) => onOCRProgress(p, 'primary') : undefined)
+      );
       
       // Check if cancelled after first OCR attempt
       if (signal?.aborted) {
@@ -289,7 +304,12 @@ export class BrowserExtractor {
         }
         
         console.log('[OCR] No blocks, retrying with alternate settings (psm 6)');
-        const retry = await Tesseract.recognize(source, 'eng', { ...this.getTesseractOptions(), tessedit_pageseg_mode: 6 as any, user_defined_dpi: '220' as any } as any);
+        const retryBaseOpts = this.getTesseractOptions(onOCRProgress ? (p) => onOCRProgress(p, 'retry') : undefined);
+        const retry = await Tesseract.recognize(
+          source,
+          'eng',
+          { ...retryBaseOpts, tessedit_pageseg_mode: 6 as any, user_defined_dpi: '220' as any } as any
+        );
         
         // Check if cancelled after retry
         if (signal?.aborted) {
@@ -393,7 +413,7 @@ export class BrowserExtractor {
    * Build robust tesseract options with explicit asset paths.
    * Uses env overrides, otherwise falls back to trusted CDNs.
    */
-  private getTesseractOptions(): any {
+  private getTesseractOptions(onOCRProgress?: (percent: number) => void): any {
     // Align defaults with installed versions (tesseract.js 6.0.1 + tesseract.js-core 6.0.0)
     const workerPath = process.env.NEXT_PUBLIC_TESSERACT_WORKER_PATH || 'https://cdn.jsdelivr.net/npm/tesseract.js@6.0.1/dist/worker.min.js';
     const corePath = process.env.NEXT_PUBLIC_TESSERACT_CORE_PATH || 'https://cdn.jsdelivr.net/npm/tesseract.js-core@6.0.0/tesseract-core.wasm.js';
@@ -408,7 +428,15 @@ export class BrowserExtractor {
       user_defined_dpi: '300' as any,
       logger: (m: any) => {
         if (m?.status === 'recognizing text') {
-          console.log(`[OCR] Progress: ${Math.round((m.progress || 0) * 100)}%`);
+          const pct = Math.round((m.progress || 0) * 100);
+          if (typeof onOCRProgress === 'function') {
+            try {
+              onOCRProgress(pct);
+            } catch {
+              // swallow errors from UI callbacks
+            }
+          }
+          console.log(`[OCR] Progress: ${pct}%`);
         }
       }
     } as any;
