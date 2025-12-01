@@ -80,9 +80,10 @@ export async function isOAuthUser(): Promise<boolean> {
 
 // SECURE: Reset password - only used when user explicitly requests it
 export async function resetPassword(email: string, source: 'landing' | 'settings' = 'landing') {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   const redirectUrl = source === 'settings' 
-    ? `${window.location.origin}/auth/password-reset?source=settings`
-    : `${window.location.origin}/auth/password-reset?source=landing`;
+    ? `${appUrl}/auth/password-reset?source=settings`
+    : `${appUrl}/auth/password-reset?source=landing`;
     
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: redirectUrl
@@ -167,7 +168,7 @@ export async function signUp(
         full_name: fullName || '',
         marketing_opt_out: marketingOptOut || false,
       },
-      emailRedirectTo: `${window.location.origin}/auth/callback?type=signup`
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback?type=signup`
     },
   })
   
@@ -334,7 +335,7 @@ export async function resendConfirmation(email: string) {
     type: 'signup',
     email,
     options: {
-      emailRedirectTo: `${window.location.origin}/auth/callback?type=signup`
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback?type=signup`
     }
   })
   
@@ -513,12 +514,15 @@ export async function getUserProviders(): Promise<string[]> {
 export async function signInWithGoogle() {
   console.log('🔍 Starting PKCE Google OAuth...')
   
-  // Get returnTo from URL if present
-  let redirectUrl = `${window.location.origin}/auth/callback`
+  // Always redirect to APP (not landing page) for auth callback
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  let redirectUrl = `${appUrl}/auth/callback`
+  
+  // Preserve returnTo parameter if present
   try {
     const returnTo = new URLSearchParams(window.location.search).get('returnTo')
     if (returnTo) {
-      redirectUrl = `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent(returnTo)}`
+      redirectUrl = `${appUrl}/auth/callback?returnTo=${encodeURIComponent(returnTo)}`
     }
   } catch {}
   
@@ -539,12 +543,15 @@ export async function signInWithGoogle() {
 export async function signInWithDiscord() {
   console.log('🔍 Starting PKCE Discord OAuth...')
   
-  // Get returnTo from URL if present
-  let redirectUrl = `${window.location.origin}/auth/callback`
+  // Always redirect to APP (not landing page) for auth callback
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  let redirectUrl = `${appUrl}/auth/callback`
+  
+  // Preserve returnTo parameter if present
   try {
     const returnTo = new URLSearchParams(window.location.search).get('returnTo')
     if (returnTo) {
-      redirectUrl = `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent(returnTo)}`
+      redirectUrl = `${appUrl}/auth/callback?returnTo=${encodeURIComponent(returnTo)}`
     }
   } catch {}
   

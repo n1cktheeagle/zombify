@@ -68,7 +68,7 @@ export default function ButtonBig({
   const classes = twMerge(
     clsx(
       // Sharp edges, consistent sizing and type, Space Grotesk
-      "inline-flex items-center justify-center gap-3 font-heading tracking-wide rounded-none transition-colors px-6 py-3 text-base leading-none disabled:opacity-50 disabled:cursor-not-allowed",
+      "inline-flex items-center justify-center gap-3 font-heading tracking-wide rounded-none transition-colors px-6 py-3 text-base leading-tight disabled:opacity-50 disabled:cursor-not-allowed",
       effectiveWeight === 'heavy' ? 'font-bold' : 'font-normal',
       fullWidth && "w-full",
       getVariantClasses(variant),

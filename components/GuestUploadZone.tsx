@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Upload } from 'lucide-react';
 import Script from 'next/script';
 import ButtonBig from '@/components/ui/ButtonBig';
+import { AnalyzeButton } from '@/components/ui/AnalyzeButton';
 import { AuthModal } from '@/components/AuthModal';
 import { useAuthModal } from '@/hooks/useAuthModal';
 import { BrowserExtractor } from '@/lib/extractors/browserExtractor';
@@ -853,7 +854,7 @@ export function GuestUploadZone() {
                     }}
                     className="font-mono text-sm tracking-wide px-4 py-2 border border-black text-black hover:bg-black/5 transition-all"
                   >
-                    LOGIN
+                    Login
                   </button>
                   <button
                     onClick={(e) => {
@@ -862,7 +863,7 @@ export function GuestUploadZone() {
                     }}
                     className="font-mono text-sm tracking-wide px-4 py-2 bg-black border border-black text-white hover:bg-black/90 transition-all"
                   >
-                    SIGN UP
+                    Sign up
                   </button>
                 </div>
               </div>
@@ -877,22 +878,22 @@ export function GuestUploadZone() {
                     )}
                   </div>
                 </div>
-                <div className="text-xs opacity-40 font-mono">
+                <div className="text-sm font-mono tracking-wide text-black/80">
                   {getOverlayMessage()}
                 </div>
                 <div className="w-3/4 max-w-sm mx-auto">
                   <div className="flex gap-1 items-center">
-                    {Array.from({ length: 20 }).map((_, i) => {
-                      const filledSegments = Math.floor((displayProgress / 100) * 20);
-                      const isFilled = i < filledSegments;
-                      const isFlashing = i === filledSegments && filledSegments < 20;
-                      return (
-                        <div
-                          key={i}
-                          className={`h-2 flex-1 ${isFilled ? 'bg-black' : 'bg-[#c4c1b8]'} ${isFlashing ? 'animate-pulse' : ''}`}
-                        />
-                      );
-                    })}
+                        {Array.from({ length: 20 }).map((_, i) => {
+                          const filledSegments = Math.floor((displayProgress / 100) * 20);
+                          const isFilled = i < filledSegments;
+                          const isFlashing = i === filledSegments && filledSegments < 20;
+                          return (
+                            <div
+                              key={i}
+                              className={`h-2 flex-1 ${isFilled ? 'bg-black' : 'bg-[#c4c1b8]'} ${isFlashing ? 'flash-fill' : ''}`}
+                            />
+                          );
+                        })}
                   </div>
                 </div>
                 
@@ -918,18 +919,19 @@ export function GuestUploadZone() {
                     variant="black"
                     stroke="thick"
                   >
-                    CANCEL
+                    Cancel
                   </ButtonBig>
                 )}
                 
                 {uploadStage >= 3 && (
-                  <ButtonBig
+                  <AnalyzeButton
                     disabled
                     variant="black"
                     stroke="thick"
-                  >
-                    ANALYZING...
-                  </ButtonBig>
+                    isAnalyzing={true}
+                    idleText="Analyze"
+                    analyzingText="Analyzing"
+                  />
                 )}
               </div>
             ) : file && previewUrl ? (
@@ -950,10 +952,10 @@ export function GuestUploadZone() {
                             setPreviewUrl(null);
                             setError(null);
                           }}
-                          className="text-white text-xs font-mono tracking-wide px-2 py-1 bg-red-600 hover:bg-red-700 rounded transition-colors"
-                        >
-                          REMOVE
-                        </button>
+                              className="text-white text-xs font-mono tracking-wide px-2 py-1 bg-red-600 hover:bg-red-700 rounded transition-colors"
+                            >
+                              Remove
+                            </button>
                       </div>
                     )}
                   </div>
@@ -979,7 +981,7 @@ export function GuestUploadZone() {
                     variant="black"
                     stroke="thick"
                   >
-                    VERIFY I'M HUMAN
+                    Verify I'm human
                   </ButtonBig>
                 )}
                 
@@ -998,7 +1000,7 @@ export function GuestUploadZone() {
                     variant="black"
                     stroke="thick"
                   >
-                    ANALYZE
+                    Analyze
                   </ButtonBig>
                 )}
               </>
