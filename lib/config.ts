@@ -8,6 +8,9 @@ type Environment = 'development' | 'staging' | 'production';
 function getEnvironment(): Environment {
   const env = process.env.NEXT_PUBLIC_ENV || process.env.NODE_ENV;
   
+  // Explicit staging check first
+  if (env === 'staging') return 'staging';
+  
   if (env === 'production' && process.env.NEXT_PUBLIC_VERCEL_ENV === 'preview') {
     return 'staging';
   }
