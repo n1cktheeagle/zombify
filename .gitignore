@@ -79,3 +79,4 @@ zombify.git/
 
 # AI tooling
 .claude/
+.env*.local
