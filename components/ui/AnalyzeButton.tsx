@@ -12,7 +12,7 @@ interface AnalyzeButtonProps extends ButtonBigProps {
 export function AnalyzeButton({
   isAnalyzing,
   idleText = 'Analyze',
-  analyzingText = 'ANALYZING',
+  analyzingText = 'Analyzing',
   className,
   ...buttonProps
 }: AnalyzeButtonProps) {

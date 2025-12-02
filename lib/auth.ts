@@ -1,5 +1,6 @@
 import { getSupabaseClient } from './supabaseClient'
 import { User } from '@supabase/supabase-js'
+import { APP_URL } from './config'
 
 export const supabase = getSupabaseClient()
 
@@ -80,10 +81,9 @@ export async function isOAuthUser(): Promise<boolean> {
 
 // SECURE: Reset password - only used when user explicitly requests it
 export async function resetPassword(email: string, source: 'landing' | 'settings' = 'landing') {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   const redirectUrl = source === 'settings' 
-    ? `${appUrl}/auth/password-reset?source=settings`
-    : `${appUrl}/auth/password-reset?source=landing`;
+    ? `${APP_URL}/auth/password-reset?source=settings`
+    : `${APP_URL}/auth/password-reset?source=landing`;
     
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: redirectUrl
@@ -168,7 +168,7 @@ export async function signUp(
         full_name: fullName || '',
         marketing_opt_out: marketingOptOut || false,
       },
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback?type=signup`
+      emailRedirectTo: `${APP_URL}/auth/callback?type=signup`
     },
   })
   
@@ -216,7 +216,7 @@ export async function signUp(
         console.log('🔄 [SIGNUP] Creating pending claim for guest upload...')
         
         // Get app URL
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+        const appUrl = APP_URL
         
         // Create pending claim (will be executed on first login)
         const claimResponse = await fetch(`${appUrl}/api/guest/claim`, {
@@ -289,7 +289,7 @@ export async function signIn(email: string, password: string) {
   try {
     console.log('🔄 [SIGNIN] Checking for pending guest claim...')
     
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const appUrl = APP_URL
     
     const claimResponse = await fetch(`${appUrl}/api/guest/claim`, {
       method: 'POST',
@@ -335,7 +335,7 @@ export async function resendConfirmation(email: string) {
     type: 'signup',
     email,
     options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback?type=signup`
+      emailRedirectTo: `${APP_URL}/auth/callback?type=signup`
     }
   })
   
@@ -515,7 +515,7 @@ export async function signInWithGoogle() {
   console.log('🔍 Starting PKCE Google OAuth...')
   
   // Always redirect to APP (not landing page) for auth callback
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const appUrl = APP_URL
   let redirectUrl = `${appUrl}/auth/callback`
   
   // Preserve returnTo parameter if present
@@ -544,7 +544,7 @@ export async function signInWithDiscord() {
   console.log('🔍 Starting PKCE Discord OAuth...')
   
   // Always redirect to APP (not landing page) for auth callback
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const appUrl = APP_URL
   let redirectUrl = `${appUrl}/auth/callback`
   
   // Preserve returnTo parameter if present

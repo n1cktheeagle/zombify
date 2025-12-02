@@ -8,8 +8,7 @@ import { AnalyzeButton } from '@/components/ui/AnalyzeButton';
 import { AuthModal } from '@/components/AuthModal';
 import { useAuthModal } from '@/hooks/useAuthModal';
 import { BrowserExtractor } from '@/lib/extractors/browserExtractor';
-
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://app.zombify.ai';
+import { APP_URL } from '@/lib/config';
 
 export function GuestUploadZone() {
   const [file, setFile] = useState<File | null>(null);

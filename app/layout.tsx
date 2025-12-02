@@ -5,20 +5,24 @@ import dynamic from 'next/dynamic'
 import { Analytics } from '@vercel/analytics/react'
 import AttrCapture from '@/components/AttrCapture'
 import { CookieBanner } from '@/components/CookieBanner'
+import { LANDING_URL } from '@/lib/config'
+
+const BASE_URL = LANDING_URL;
+const OG_IMAGE = `${BASE_URL}/zombify-og.jpg`;
 
 export const metadata: Metadata = {
   title: "Zombify - UX Feedback Tool",
   description: "Get undead-level UX feedback for your designs",
   generator: 'v0.dev',
-  metadataBase: new URL('https://zombify.ai'),
+  metadataBase: new URL(BASE_URL),
   openGraph: {
     title: 'Zombify — UI Analysis Engine for the Attention Apocalypse',
     description: 'Upload a screenshot. Zombify detects blind spots, dark patterns, and grip leaks in your design. Alpha waitlist open.',
-    url: 'https://zombify.ai',
+    url: BASE_URL,
     siteName: 'Zombify',
     images: [
       {
-        url: 'https://zombify.ai/zombify-og.jpg',
+        url: OG_IMAGE,
         width: 1200,
         height: 630,
         type: 'image/jpeg',
@@ -30,7 +34,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Zombify — UI Analysis Engine for the Attention Apocalypse',
     description: 'Upload a screenshot. Zombify detects blind spots, dark patterns, and grip leaks in your design. Alpha waitlist open.',
-    images: ['https://zombify.ai/zombify-og.jpg'],
+    images: [OG_IMAGE],
   },
 }
 
