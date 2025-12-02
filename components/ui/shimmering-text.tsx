@@ -46,7 +46,8 @@ export function ShimmeringText({
   shimmerColor,
 }: ShimmeringTextProps) {
   const ref = useRef<HTMLSpanElement>(null);
-  const isInView = useInView(ref, { once, ...(inViewMargin && { margin: inViewMargin }) });
+  const viewOptions = inViewMargin ? { once, margin: inViewMargin as any } : { once };
+  const isInView = useInView(ref, viewOptions);
 
   // Calculate dynamic spread based on text length
   const dynamicSpread = useMemo(() => {
