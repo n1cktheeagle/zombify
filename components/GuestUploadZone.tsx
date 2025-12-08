@@ -250,7 +250,9 @@ export function GuestUploadZone() {
                 // Disable beforeunload warning before redirecting
                 allowUnloadRef.current = true;
                 setUploading(false);
-                window.location.href = `${APP_URL}/feedback/${state.uploadId}`;
+                // Include guestSessionId in URL for cross-origin ownership verification
+                const guestId = localStorage.getItem('z_guest_session_id') || state.guestSessionId;
+                window.location.href = `${APP_URL}/feedback/${state.uploadId}${guestId ? `?guestSession=${guestId}` : ''}`;
               }
             }
           } else if (res.status === 404) {
@@ -636,7 +638,9 @@ export function GuestUploadZone() {
         // Redirect to feedback page (analysis may still be processing)
         allowUnloadRef.current = true;
         setUploading(false);
-        window.location.href = `${APP_URL}/feedback/${data.feedbackId}`;
+        // Include guestSessionId in URL for cross-origin ownership verification
+        const guestId = localStorage.getItem('z_guest_session_id') || data.guestSessionId;
+        window.location.href = `${APP_URL}/feedback/${data.feedbackId}${guestId ? `?guestSession=${guestId}` : ''}`;
       } else {
         setError('Upload succeeded but no feedback ID returned.');
         setUploading(false);
