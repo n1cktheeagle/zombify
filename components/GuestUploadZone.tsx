@@ -233,27 +233,24 @@ export function GuestUploadZone() {
                 clearInterval(pollingIntervalRef.current);
                 pollingIntervalRef.current = null;
               }
-              try {
-                // Re-sync guest session cookie on the app origin so /feedback/[id] recognizes guest owner
-                const guestSessionId = localStorage.getItem('guest_session_id');
-                if (guestSessionId) {
-                  await fetch(`${APP_URL}/api/guest/session/sync`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ guestSessionId }),
-                  }).catch((err) => {
-                    console.error('Guest session sync failed (continuing anyway):', err);
-                  });
-                }
-              } finally {
-                // Disable beforeunload warning before redirecting
-                allowUnloadRef.current = true;
-                setUploading(false);
-                // Include guestSessionId in URL for cross-origin ownership verification
-                const guestId = localStorage.getItem('z_guest_session_id') || state.guestSessionId;
-                window.location.href = `${APP_URL}/feedback/${state.uploadId}${guestId ? `?guestSession=${guestId}` : ''}`;
+              // Re-sync guest session cookie on the app origin
+              const guestSessionId = localStorage.getItem('z_guest_session_id') || state.guestSessionId;
+              if (guestSessionId) {
+                await fetch(`${APP_URL}/api/guest/session/sync`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({ guestSessionId }),
+                }).catch((err) => {
+                  console.error('Guest session sync failed (continuing anyway):', err);
+                });
               }
+              
+              // Disable beforeunload warning and redirect
+              allowUnloadRef.current = true;
+              setUploading(false);
+              window.location.href = `${APP_URL}/feedback/${state.uploadId}`;
+            }
             }
           } else if (res.status === 404) {
             // Record not created yet – keep polling without counting as a hard failure
@@ -635,12 +632,23 @@ export function GuestUploadZone() {
         // Clear upload state - redirecting to feedback page
         localStorage.removeItem('zombify_guest_active_upload');
         
+        // Re-sync guest session cookie on the app origin before redirecting
+        const guestSessionId = localStorage.getItem('z_guest_session_id') || data.guestSessionId;
+        if (guestSessionId) {
+          await fetch(`${APP_URL}/api/guest/session/sync`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ guestSessionId }),
+          }).catch((err) => {
+            console.error('Guest session sync failed (continuing anyway):', err);
+          });
+        }
+        
         // Redirect to feedback page (analysis may still be processing)
         allowUnloadRef.current = true;
         setUploading(false);
-        // Include guestSessionId in URL for cross-origin ownership verification
-        const guestId = localStorage.getItem('z_guest_session_id') || data.guestSessionId;
-        window.location.href = `${APP_URL}/feedback/${data.feedbackId}${guestId ? `?guestSession=${guestId}` : ''}`;
+        window.location.href = `${APP_URL}/feedback/${data.feedbackId}`;
       } else {
         setError('Upload succeeded but no feedback ID returned.');
         setUploading(false);
