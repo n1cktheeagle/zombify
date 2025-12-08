@@ -477,7 +477,8 @@ export function GuestUploadZone() {
       const response = await new Promise<Response>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open('POST', `${APP_URL}/api/upload`);
-        xhr.withCredentials = true;
+        // Don't use credentials in production (CORS wildcard not allowed with credentials)
+        // For dev/staging, we handle guest ownership via URL param and client-side cookie
         xhr.responseType = 'json';
         let analysisTickerStarted = false;
         
