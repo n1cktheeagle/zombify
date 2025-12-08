@@ -233,23 +233,16 @@ export function GuestUploadZone() {
                 clearInterval(pollingIntervalRef.current);
                 pollingIntervalRef.current = null;
               }
-              // Re-sync guest session cookie on the app origin
+              // Redirect with guestSession param for client-side cookie setting
               const guestSessionId = localStorage.getItem('z_guest_session_id') || state.guestSessionId;
-              if (guestSessionId) {
-                await fetch(`${APP_URL}/api/guest/session/sync`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  credentials: 'include',
-                  body: JSON.stringify({ guestSessionId }),
-                }).catch((err) => {
-                  console.error('Guest session sync failed (continuing anyway):', err);
-                });
-              }
-              
-              // Disable beforeunload warning and redirect
               allowUnloadRef.current = true;
               setUploading(false);
-              window.location.href = `${APP_URL}/feedback/${state.uploadId}`;
+              
+              const redirectUrl = new URL(`${APP_URL}/feedback/${state.uploadId}`);
+              if (guestSessionId) {
+                redirectUrl.searchParams.set('guestSession', guestSessionId);
+              }
+              window.location.href = redirectUrl.toString();
             }
           } else if (res.status === 404) {
             // Record not created yet – keep polling without counting as a hard failure
