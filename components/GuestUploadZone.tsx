@@ -251,7 +251,6 @@ export function GuestUploadZone() {
               setUploading(false);
               window.location.href = `${APP_URL}/feedback/${state.uploadId}`;
             }
-            }
           } else if (res.status === 404) {
             // Record not created yet – keep polling without counting as a hard failure
             console.log('📊 Poll: feedback not found yet (404), will retry');
