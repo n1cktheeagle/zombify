@@ -7,6 +7,7 @@ import { signInWithGoogle, signInWithDiscord, signUp, signIn, resetPasswordWithC
 import { trackSignupFromShared } from '@/lib/tracking'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Tick02Icon } from '@hugeicons/core-free-icons'
+import { APP_URL } from '@/lib/config'
 
 // Force rebuild: v2
 
@@ -115,7 +116,8 @@ export function AuthModal({ onClose, initialMode = 'signin', notice, inline = fa
             alert('✅ Account created successfully!')
             onClose()
             const rt = getReturnTo()
-            router.push(rt || '/dashboard')
+            // Use absolute URL for cross-domain redirect (landing → app)
+            window.location.href = rt || `${APP_URL}/dashboard`
           }
         } else {
           console.log('⚠️ [UI] Unexpected signup result - likely needs verification')
@@ -133,7 +135,8 @@ export function AuthModal({ onClose, initialMode = 'signin', notice, inline = fa
           console.log('✅ [UI] Signin successful')
           onClose()
           const rt = getReturnTo()
-          router.push(rt || '/dashboard')
+          // Use absolute URL for cross-domain redirect (landing → app)
+          window.location.href = rt || `${APP_URL}/dashboard`
         }
       }
     } catch (err: any) {
