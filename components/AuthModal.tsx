@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import ButtonBig from '@/components/ui/ButtonBig'
-import { signInWithGoogle, signInWithDiscord, signUp, signIn, resetPasswordWithCooldown, getResetCooldownStatus, resendConfirmation } from '@/lib/auth'
+import { supabase, signInWithGoogle, signInWithDiscord, signUp, signIn, resetPasswordWithCooldown, getResetCooldownStatus, resendConfirmation } from '@/lib/auth'
 import { trackSignupFromShared } from '@/lib/tracking'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Tick02Icon } from '@hugeicons/core-free-icons'
@@ -111,13 +111,28 @@ export function AuthModal({ onClose, initialMode = 'signin', notice, inline = fa
             // Track signup even if verification is pending
             trackSignupSource()
           } else {
-            // Account created and verified immediately
+            // Account created and verified immediately (rare - usually needs email verification)
             trackSignupSource()
             alert('✅ Account created successfully!')
+
+            // Get session to transfer to app domain
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+
+            if (sessionError || !session) {
+              console.error('❌ [UI] Failed to get session after signup:', sessionError)
+              setError('Signup succeeded but session retrieval failed')
+              return
+            }
+
+            console.log('🔑 [UI] Got session after signup, transferring to app domain...')
             onClose()
+
+            // Redirect to app's callback with session tokens for cross-domain transfer
             const rt = getReturnTo()
-            // Use absolute URL for cross-domain redirect (landing → app)
-            window.location.href = rt || `${APP_URL}/dashboard`
+            const callbackUrl = `${APP_URL}/auth/callback?access_token=${session.access_token}&refresh_token=${session.refresh_token}`
+            const finalUrl = rt && rt !== '/dashboard' ? `${callbackUrl}&returnTo=${encodeURIComponent(rt)}` : callbackUrl
+
+            window.location.href = finalUrl
           }
         } else {
           console.log('⚠️ [UI] Unexpected signup result - likely needs verification')
@@ -127,16 +142,31 @@ export function AuthModal({ onClose, initialMode = 'signin', notice, inline = fa
       } else {
         console.log('🔍 [UI] Starting signin process...')
         const result = await signIn(email, password)
-        
+
         if (result.error) {
           console.log('🚨 [UI] Signin error:', result.error.message)
           setError(result.error.message)
         } else {
-          console.log('✅ [UI] Signin successful')
+          console.log('✅ [UI] Signin successful, getting session for cross-domain transfer...')
+
+          // Get session to transfer to app domain
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+
+          if (sessionError || !session) {
+            console.error('❌ [UI] Failed to get session:', sessionError)
+            setError('Authentication succeeded but session retrieval failed')
+            return
+          }
+
+          console.log('🔑 [UI] Got session, transferring to app domain...')
           onClose()
+
+          // Redirect to app's callback with session tokens for cross-domain transfer
           const rt = getReturnTo()
-          // Use absolute URL for cross-domain redirect (landing → app)
-          window.location.href = rt || `${APP_URL}/dashboard`
+          const callbackUrl = `${APP_URL}/auth/callback?access_token=${session.access_token}&refresh_token=${session.refresh_token}`
+          const finalUrl = rt && rt !== '/dashboard' ? `${callbackUrl}&returnTo=${encodeURIComponent(rt)}` : callbackUrl
+
+          window.location.href = finalUrl
         }
       }
     } catch (err: any) {
