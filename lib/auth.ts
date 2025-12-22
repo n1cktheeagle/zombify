@@ -1,6 +1,6 @@
 import { getSupabaseClient } from './supabaseClient'
 import { User } from '@supabase/supabase-js'
-import { APP_URL } from './config'
+import { APP_URL, LANDING_URL } from './config'
 
 export const supabase = getSupabaseClient()
 
@@ -510,22 +510,24 @@ export async function getUserProviders(): Promise<string[]> {
   }
 }
 
-// OAuth functions - preserve returnTo parameter through OAuth flow
+// OAuth functions - redirect to LANDING callback first (for PKCE), then transfer to APP
 export async function signInWithGoogle() {
   console.log('🔍 Starting PKCE Google OAuth...')
-  
-  // Always redirect to APP (not landing page) for auth callback
-  const appUrl = APP_URL
-  let redirectUrl = `${appUrl}/auth/callback`
-  
+
+  // Redirect to LANDING's callback (same domain where PKCE verifier is stored)
+  // Landing callback will exchange code, then redirect to APP with session tokens
+  let redirectUrl = `${LANDING_URL}/auth/callback`
+
   // Preserve returnTo parameter if present
   try {
     const returnTo = new URLSearchParams(window.location.search).get('returnTo')
     if (returnTo) {
-      redirectUrl = `${appUrl}/auth/callback?returnTo=${encodeURIComponent(returnTo)}`
+      redirectUrl = `${LANDING_URL}/auth/callback?returnTo=${encodeURIComponent(returnTo)}`
     }
   } catch {}
-  
+
+  console.log('🔗 OAuth redirect URL:', redirectUrl)
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
@@ -536,25 +538,27 @@ export async function signInWithGoogle() {
       }
     }
   })
-  
+
   return { data, error }
 }
 
 export async function signInWithDiscord() {
   console.log('🔍 Starting PKCE Discord OAuth...')
-  
-  // Always redirect to APP (not landing page) for auth callback
-  const appUrl = APP_URL
-  let redirectUrl = `${appUrl}/auth/callback`
-  
+
+  // Redirect to LANDING's callback (same domain where PKCE verifier is stored)
+  // Landing callback will exchange code, then redirect to APP with session tokens
+  let redirectUrl = `${LANDING_URL}/auth/callback`
+
   // Preserve returnTo parameter if present
   try {
     const returnTo = new URLSearchParams(window.location.search).get('returnTo')
     if (returnTo) {
-      redirectUrl = `${appUrl}/auth/callback?returnTo=${encodeURIComponent(returnTo)}`
+      redirectUrl = `${LANDING_URL}/auth/callback?returnTo=${encodeURIComponent(returnTo)}`
     }
   } catch {}
-  
+
+  console.log('🔗 OAuth redirect URL:', redirectUrl)
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'discord',
     options: {
@@ -562,7 +566,7 @@ export async function signInWithDiscord() {
       scopes: 'identify email'
     }
   })
-  
+
   return { data, error }
 }
 

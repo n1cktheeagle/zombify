@@ -27,24 +27,24 @@ export const ENV = getEnvironment();
  * - Staging: https://your-staging-app.vercel.app
  * - Production: https://app.zombify.ai
  */
-export const APP_URL = 
-  ENV === 'production' 
+export const APP_URL =
+  ENV === 'production'
     ? 'https://app.zombify.ai'
     : ENV === 'staging'
-    ? process.env.NEXT_PUBLIC_APP_URL || 'https://zombify-app-staging.vercel.app'
+    ? process.env.NEXT_PUBLIC_APP_URL || 'https://zombify-app-git-staging-ashernicholas-6278s-projects.vercel.app'
     : 'http://localhost:3000';
 
 /**
  * Landing page URL (this site)
  * - Development: http://localhost:3001
- * - Staging: https://your-staging-site.vercel.app
+ * - Staging: https://zombify-site-git-staging-....vercel.app
  * - Production: https://zombify.ai
  */
-export const LANDING_URL = 
+export const LANDING_URL =
   ENV === 'production'
     ? 'https://zombify.ai'
     : ENV === 'staging'
-    ? process.env.NEXT_PUBLIC_LANDING_URL || 'https://zombify-site-staging.vercel.app'
+    ? process.env.NEXT_PUBLIC_LANDING_URL || 'https://zombify-site-git-staging-ashernicholas-6278s-projects.vercel.app'
     : 'http://localhost:3001';
 
 /**
