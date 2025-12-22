@@ -472,6 +472,8 @@ export function GuestUploadZone() {
         // Don't use credentials in production (CORS wildcard not allowed with credentials)
         // For dev/staging, we handle guest ownership via URL param and client-side cookie
         xhr.responseType = 'json';
+        // Set 90-second timeout - fail fast on client side instead of waiting forever
+        xhr.timeout = 90000;
         let analysisTickerStarted = false;
         
         // Wire up abort signal BEFORE starting upload
@@ -580,7 +582,16 @@ export function GuestUploadZone() {
           }
           reject(new Error('Network error'));
         };
-        
+
+        xhr.ontimeout = () => {
+          controller.signal.removeEventListener('abort', onAbort);
+          if (rotationTimerRef.current) {
+            clearInterval(rotationTimerRef.current);
+            rotationTimerRef.current = null;
+          }
+          reject(new Error('Analysis timed out — AI is busy. Please try again.'));
+        };
+
         xhr.onabort = () => {
           controller.signal.removeEventListener('abort', onAbort);
           if (rotationTimerRef.current) {
