@@ -51,6 +51,9 @@ export function GuestUploadZone() {
   // Track if user had an error (for "Try Again" button text)
   const [hadUploadError, setHadUploadError] = useState(false);
 
+  // Force Turnstile re-render after errors (increment to trigger useEffect)
+  const [turnstileRenderKey, setTurnstileRenderKey] = useState(0);
+
   // SAFETY NET: Clear localStorage immediately when ANY error is set
   // This prevents "Resuming..." state from appearing after user refreshes
   useEffect(() => {
@@ -72,22 +75,19 @@ export function GuestUploadZone() {
     localStorage.removeItem('zombify_guest_active_upload');
 
     // Reset turnstile widget so user can re-verify
-    // Keep turnstileClicked=true so widget stays visible (user just re-verifies)
+    // IMPORTANT: Always remove and re-render (reset() is unreliable)
     setTurnstileToken(null);
     const turnstile = (window as any).turnstile;
     if (turnstile && widgetIdRef.current) {
       try {
-        turnstile.reset(widgetIdRef.current);
+        turnstile.remove(widgetIdRef.current);
       } catch (e) {
-        // If reset fails, remove and let it re-render
-        try {
-          turnstile.remove(widgetIdRef.current);
-          widgetIdRef.current = null;
-        } catch (e2) {
-          // ignore
-        }
+        console.log('[Turnstile] Remove failed:', e);
       }
     }
+    widgetIdRef.current = null;
+    // Increment render key to force useEffect to re-run and create new widget
+    setTurnstileRenderKey(k => k + 1);
 
     // Clear any active abort controller
     if (abortControllerRef.current) {
@@ -215,7 +215,7 @@ export function GuestUploadZone() {
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [file, turnstileReady, turnstileClicked]);
+  }, [file, turnstileReady, turnstileClicked, turnstileRenderKey]);
 
   // Cleanup when file is removed
   useEffect(() => {
