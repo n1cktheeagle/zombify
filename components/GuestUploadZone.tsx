@@ -38,6 +38,7 @@ export function GuestUploadZone() {
   // Dev mode state (persisted in localStorage)
   const [devMode, setDevMode] = useState(false);
   const [bypassRateLimits, setBypassRateLimits] = useState(false);
+  const [showDevPanel, setShowDevPanel] = useState(false);
 
   // Error simulation states (dev mode only)
   const [simulateTimeout, setSimulateTimeout] = useState(false);
@@ -115,6 +116,9 @@ export function GuestUploadZone() {
     if (typeof window !== 'undefined') {
       const savedBypass = localStorage.getItem('dev_bypass_rate_limits') === 'true';
       setBypassRateLimits(savedBypass);
+      // Show dev panel in development OR on staging hostname
+      const isStaging = window.location.hostname.includes('staging');
+      setShowDevPanel(process.env.NODE_ENV === 'development' || isStaging);
     }
   }, []);
 
@@ -617,8 +621,8 @@ export function GuestUploadZone() {
         // Don't use credentials in production (CORS wildcard not allowed with credentials)
         // For dev/staging, we handle guest ownership via URL param and client-side cookie
         xhr.responseType = 'json';
-        // Set 90-second timeout - fail fast on client side instead of waiting forever
-        xhr.timeout = 90000;
+        // Set 180-second timeout - fail fast on client side instead of waiting forever
+        xhr.timeout = 180000;
         let analysisTickerStarted = false;
         
         // Wire up abort signal BEFORE starting upload
@@ -832,8 +836,8 @@ export function GuestUploadZone() {
         onLoad={() => setTurnstileReady(true)}
       />
       
-      {/* Dev Mode Toggle - Only visible in development */}
-      {process.env.NODE_ENV === 'development' && (
+      {/* Dev Mode Toggle - Visible in development and staging */}
+      {showDevPanel && (
         <div className="fixed top-4 left-4 z-[9999] bg-yellow-100 border-2 border-yellow-400 p-3 shadow-lg rounded max-w-xs">
           <label className="flex items-center gap-2 text-xs font-mono cursor-pointer font-bold">
             <input
