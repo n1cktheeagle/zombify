@@ -168,7 +168,8 @@ export async function signUp(
         full_name: fullName || '',
         marketing_opt_out: marketingOptOut || false,
       },
-      emailRedirectTo: `${APP_URL}/auth/callback?type=signup`
+      // Include email in URL so we can check verification status in any browser
+      emailRedirectTo: `${APP_URL}/auth/callback?type=signup&verify_email=${encodeURIComponent(email)}`
     },
   })
   
@@ -330,12 +331,13 @@ export async function signIn(email: string, password: string) {
 // Simple resend confirmation
 export async function resendConfirmation(email: string) {
   console.log('🔍 [RESEND] Resending confirmation for:', email)
-  
+
   const { error } = await supabase.auth.resend({
     type: 'signup',
     email,
     options: {
-      emailRedirectTo: `${APP_URL}/auth/callback?type=signup`
+      // Include email in URL so we can check verification status in any browser
+      emailRedirectTo: `${APP_URL}/auth/callback?type=signup&verify_email=${encodeURIComponent(email)}`
     }
   })
   
