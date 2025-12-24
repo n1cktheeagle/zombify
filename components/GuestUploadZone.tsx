@@ -838,7 +838,7 @@ export function GuestUploadZone() {
       
       {/* Dev Mode Toggle - Visible in development and staging */}
       {showDevPanel && (
-        <div className="fixed top-4 left-4 z-[9999] bg-yellow-100 border-2 border-yellow-400 p-3 shadow-lg rounded max-w-xs">
+        <div className="fixed top-20 right-6 z-[9999] bg-yellow-100 border-2 border-yellow-400 p-3 shadow-lg rounded max-w-xs">
           <label className="flex items-center gap-2 text-xs font-mono cursor-pointer font-bold">
             <input
               type="checkbox"
