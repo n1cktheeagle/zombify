@@ -38,9 +38,77 @@ export function GuestUploadZone() {
   // Dev mode state (persisted in localStorage)
   const [devMode, setDevMode] = useState(false);
   const [bypassRateLimits, setBypassRateLimits] = useState(false);
+
+  // Error simulation states (dev mode only)
+  const [simulateTimeout, setSimulateTimeout] = useState(false);
+  const [simulateBotFail, setSimulateBotFail] = useState(false);
+  const [simulateUploadFail, setSimulateUploadFail] = useState(false);
+  const [simulate404Polling, setSimulate404Polling] = useState(false);
   
   // Auth modal
   const { openSignIn, openSignUp, showAuthModal, closeModal, authMode } = useAuthModal();
+
+  // Track if user had an error (for "Try Again" button text)
+  const [hadUploadError, setHadUploadError] = useState(false);
+
+  // SAFETY NET: Clear localStorage immediately when ANY error is set
+  // This prevents "Resuming..." state from appearing after user refreshes
+  useEffect(() => {
+    if (error) {
+      localStorage.removeItem('zombify_guest_active_upload');
+    }
+  }, [error]);
+
+  // Reset upload zone to retry state (called on ANY error)
+  // Keeps the file so user can retry without re-selecting
+  const resetForRetry = (errorMessage: string) => {
+    // Reset upload state (keep file and preview!)
+    setUploading(false);
+    setUploadStage(0);
+    setUploadProgress(0);
+    setStageText('');
+
+    // Clear localStorage
+    localStorage.removeItem('zombify_guest_active_upload');
+
+    // Reset turnstile widget so user can re-verify
+    // Keep turnstileClicked=true so widget stays visible (user just re-verifies)
+    setTurnstileToken(null);
+    const turnstile = (window as any).turnstile;
+    if (turnstile && widgetIdRef.current) {
+      try {
+        turnstile.reset(widgetIdRef.current);
+      } catch (e) {
+        // If reset fails, remove and let it re-render
+        try {
+          turnstile.remove(widgetIdRef.current);
+          widgetIdRef.current = null;
+        } catch (e2) {
+          // ignore
+        }
+      }
+    }
+
+    // Clear any active abort controller
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
+    // Clear timers
+    if (rotationTimerRef.current) {
+      clearInterval(rotationTimerRef.current);
+      rotationTimerRef.current = null;
+    }
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+
+    // Set the error message and mark that an error occurred
+    setError(errorMessage);
+    setHadUploadError(true);
+  };
 
   // Load dev mode state from localStorage on mount
   useEffect(() => {
@@ -117,18 +185,32 @@ export function GuestUploadZone() {
           'error-callback': () => {
             console.error('[Turnstile] Error callback triggered');
             setTurnstileToken(null);
-            setError('Bot verification failed. Please refresh the page and try again.');
+            // Reset widget so user can retry without page refresh
+            setTimeout(() => {
+              const t = (window as any).turnstile;
+              if (t && widgetIdRef.current) {
+                try { t.reset(widgetIdRef.current); } catch {}
+              }
+            }, 100);
+            setError('Verification failed. Please try again.');
           },
           'timeout-callback': () => {
             console.error('[Turnstile] Timeout callback triggered');
             setTurnstileToken(null);
+            // Reset widget so user can retry without page refresh
+            setTimeout(() => {
+              const t = (window as any).turnstile;
+              if (t && widgetIdRef.current) {
+                try { t.reset(widgetIdRef.current); } catch {}
+              }
+            }, 100);
             setError('Verification timed out. Please try again.');
           }
         });
         widgetIdRef.current = widgetId;
       } catch (err) {
         console.error('Turnstile render error:', err);
-        setError('Verification failed to load. Please refresh and try again.');
+        setError('Verification failed to load. Please try again.');
       }
     }, 100);
 
@@ -211,8 +293,10 @@ export function GuestUploadZone() {
       setStageText('Resuming analysis...');
       
       let failureCount = 0;
+      let notFoundCount = 0;
       const MAX_FAILURES = 5;
-      
+      const MAX_NOT_FOUND = 30; // 30 polls × 5 seconds = 2.5 minutes of 404s
+
       // Start polling for completion
       const pollUpload = async () => {
         try {
@@ -220,9 +304,10 @@ export function GuestUploadZone() {
           const res = await fetch(`${APP_URL}/api/feedback/${state.uploadId}`, {
             credentials: 'include'
           });
-          
+
           if (res.ok) {
             failureCount = 0; // Reset on success
+            notFoundCount = 0; // Reset 404 count on success
             const data = await res.json();
             console.log('📊 Poll response:', { hasAnalysis: !!data.analysis });
             if (data.analysis) {
@@ -237,7 +322,7 @@ export function GuestUploadZone() {
               const guestSessionId = localStorage.getItem('z_guest_session_id') || state.guestSessionId;
               allowUnloadRef.current = true;
               setUploading(false);
-              
+
               const redirectUrl = new URL(`${APP_URL}/feedback/${state.uploadId}`);
               if (guestSessionId) {
                 redirectUrl.searchParams.set('guestSession', guestSessionId);
@@ -245,8 +330,9 @@ export function GuestUploadZone() {
               window.location.href = redirectUrl.toString();
             }
           } else if (res.status === 404) {
-            // Record not created yet – keep polling without counting as a hard failure
-            console.log('📊 Poll: feedback not found yet (404), will retry');
+            // Record not created yet – count separately from hard failures
+            notFoundCount++;
+            console.log(`📊 Poll: feedback not found yet (404), attempt ${notFoundCount}/${MAX_NOT_FOUND}`);
           } else {
             console.log('📊 Poll failed:', res.status);
             failureCount++;
@@ -255,8 +341,24 @@ export function GuestUploadZone() {
           console.error('Polling error:', err);
           failureCount++;
         }
-        
-        // Give up after too many failures
+
+        // Give up after too many 404s (upload never existed)
+        if (notFoundCount >= MAX_NOT_FOUND) {
+          console.error('❌ Upload not found after 2.5 minutes, giving up');
+          localStorage.removeItem('zombify_guest_active_upload');
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+          }
+          setUploading(false);
+          setUploadStage(0);
+          setUploadProgress(0);
+          setStageText('');
+          setError('Upload not found. Please try again.');
+          return;
+        }
+
+        // Give up after too many hard failures
         if (failureCount >= MAX_FAILURES) {
           console.error('❌ Too many polling failures, giving up');
           localStorage.removeItem('zombify_guest_active_upload');
@@ -265,6 +367,9 @@ export function GuestUploadZone() {
             pollingIntervalRef.current = null;
           }
           setUploading(false);
+          setUploadStage(0);
+          setUploadProgress(0);
+          setStageText('');
           setError('Upload appears to have failed. Please try again.');
         }
       };
@@ -452,7 +557,47 @@ export function GuestUploadZone() {
     setUploadStage(3);
     // Don't reset progress visually; continue from extraction (~40%)
     setStageText('Uploading to server…');
-      
+
+    // DEV MODE: Simulate errors for testing
+    if (process.env.NODE_ENV === 'development') {
+      if (simulateTimeout) {
+        console.log('🧪 DEV: Simulating timeout error');
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Short delay for realism
+        resetForRetry('Analysis timed out — AI is busy. Please try again.');
+        setSimulateTimeout(false); // Reset toggle after triggering
+        return;
+      }
+      if (simulateBotFail) {
+        console.log('🧪 DEV: Simulating bot verification failure');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        resetForRetry('Bot verification failed. Please verify again and retry.');
+        setSimulateBotFail(false);
+        return;
+      }
+      if (simulateUploadFail) {
+        console.log('🧪 DEV: Simulating upload failure');
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        resetForRetry('Upload failed. Please try again.');
+        setSimulateUploadFail(false);
+        return;
+      }
+      if (simulate404Polling) {
+        console.log('🧪 DEV: Simulating 404 polling (fake resume state)');
+        // Create a fake resume state with non-existent ID
+        const fakeUploadId = 'fake-' + crypto.randomUUID();
+        localStorage.setItem('zombify_guest_active_upload', JSON.stringify({
+          uploadId: fakeUploadId,
+          timestamp: Date.now(),
+          filePreview: previewUrl,
+          guestSessionId: localStorage.getItem('guest_session_id')
+        }));
+        setSimulate404Polling(false);
+        // Trigger resume by reloading
+        window.location.reload();
+        return;
+      }
+    }
+
       const guestSessionId = localStorage.getItem('guest_session_id');
       const formData = new FormData();
       formData.append('file', file);
@@ -589,7 +734,7 @@ export function GuestUploadZone() {
             clearInterval(rotationTimerRef.current);
             rotationTimerRef.current = null;
           }
-          reject(new Error('Analysis timed out — AI is busy. Please try again.'));
+          reject(new Error('Analysis timed out — hit retry and we\'ll check if it finished.'));
         };
 
         xhr.onabort = () => {
@@ -612,14 +757,13 @@ export function GuestUploadZone() {
           const cooldownEnd = Date.now() + (data.remainingTime * 1000);
           localStorage.setItem('guest_upload_cooldown', cooldownEnd.toString());
           setCooldownSeconds(data.remainingTime);
-          setError(data.error || 'Rate limit exceeded. Please try again later.');
+          resetForRetry(data.error || 'Rate limit exceeded. Please try again later.');
         } else if (data.code === 'MONTHLY_LIMIT_EXCEEDED') {
           setCooldownSeconds(999999);
+          resetForRetry('');  // No error message - UI shows signup prompt
         } else {
-          setError(data.error || 'Upload failed. Please try again.');
+          resetForRetry(data.error || 'Upload failed. Please try again.');
         }
-        setUploading(false);
-        setUploadStage(0);
         return;
       }
 
@@ -647,24 +791,28 @@ export function GuestUploadZone() {
         }
         window.location.href = redirectUrl.toString();
       } else {
-        setError('Upload succeeded but no feedback ID returned.');
-        setUploading(false);
-        setUploadStage(0);
-        localStorage.removeItem('zombify_guest_active_upload');
+        resetForRetry('Upload succeeded but no feedback ID returned.');
       }
     } catch (err: any) {
       console.error('[UPLOAD ERROR]', err);
       if (err.name === 'AbortError') {
+        // User cancelled - reset state but don't show error
         console.log('Upload cancelled by user');
+        setUploading(false);
+        setUploadStage(0);
+        setUploadProgress(0);
+        setStageText('');
         setError(null);
         localStorage.removeItem('zombify_guest_active_upload');
+        // Reset turnstile so they can try again
+        setTurnstileToken(null);
+        const turnstile = (window as any).turnstile;
+        if (turnstile && widgetIdRef.current) {
+          try { turnstile.reset(widgetIdRef.current); } catch {}
+        }
       } else {
-        setError(`Upload failed: ${err.message}`);
-        localStorage.removeItem('zombify_guest_active_upload');
+        resetForRetry(`Upload failed: ${err.message}`);
       }
-      setUploading(false);
-      setUploadStage(0);
-      setUploadProgress(0);
     } finally {
       abortControllerRef.current = null;
       if (rotationTimerRef.current) {
@@ -686,7 +834,7 @@ export function GuestUploadZone() {
       
       {/* Dev Mode Toggle - Only visible in development */}
       {process.env.NODE_ENV === 'development' && (
-        <div className="fixed bottom-4 right-4 z-[9999] bg-yellow-100 border-2 border-yellow-400 p-3 shadow-lg rounded max-w-xs">
+        <div className="fixed top-4 left-4 z-[9999] bg-yellow-100 border-2 border-yellow-400 p-3 shadow-lg rounded max-w-xs">
           <label className="flex items-center gap-2 text-xs font-mono cursor-pointer font-bold">
             <input
               type="checkbox"
@@ -698,8 +846,42 @@ export function GuestUploadZone() {
           </label>
           {devMode && (
             <div className="mt-3 space-y-2">
-              <div className="text-[10px] font-bold text-gray-700 mb-2">RATE LIMIT TESTING:</div>
-              
+              <div className="text-[10px] font-bold text-gray-700 mb-2">ERROR SIMULATION:</div>
+
+              {/* Simulate Timeout */}
+              <button
+                onClick={() => setSimulateTimeout(!simulateTimeout)}
+                className={`block w-full px-2 py-1.5 text-white text-xs transition-colors rounded text-left ${simulateTimeout ? 'bg-orange-600' : 'bg-orange-400 hover:bg-orange-500'}`}
+              >
+                {simulateTimeout ? '🔥 ARMED' : '⏱️'} Timeout Error
+              </button>
+
+              {/* Simulate Bot Fail */}
+              <button
+                onClick={() => setSimulateBotFail(!simulateBotFail)}
+                className={`block w-full px-2 py-1.5 text-white text-xs transition-colors rounded text-left ${simulateBotFail ? 'bg-orange-600' : 'bg-orange-400 hover:bg-orange-500'}`}
+              >
+                {simulateBotFail ? '🔥 ARMED' : '🤖'} Bot Verification Fail
+              </button>
+
+              {/* Simulate Upload Fail */}
+              <button
+                onClick={() => setSimulateUploadFail(!simulateUploadFail)}
+                className={`block w-full px-2 py-1.5 text-white text-xs transition-colors rounded text-left ${simulateUploadFail ? 'bg-orange-600' : 'bg-orange-400 hover:bg-orange-500'}`}
+              >
+                {simulateUploadFail ? '🔥 ARMED' : '💥'} Upload Fail
+              </button>
+
+              {/* Simulate 404 Polling */}
+              <button
+                onClick={() => setSimulate404Polling(!simulate404Polling)}
+                className={`block w-full px-2 py-1.5 text-white text-xs transition-colors rounded text-left ${simulate404Polling ? 'bg-orange-600' : 'bg-orange-400 hover:bg-orange-500'}`}
+              >
+                {simulate404Polling ? '🔥 ARMED' : '🔄'} 404 Polling Loop
+              </button>
+
+              <div className="text-[10px] font-bold text-gray-700 mt-3 mb-2">RATE LIMIT TESTING:</div>
+
               {/* Bypass Rate Limits Toggle */}
               <button
                 onClick={() => setBypassRateLimits(!bypassRateLimits)}
@@ -1003,12 +1185,14 @@ export function GuestUploadZone() {
                   <ButtonBig
                     onClick={(e) => {
                       e.stopPropagation();
+                      setHadUploadError(false); // Reset error state on new attempt
+                      setError(null);
                       handleUpload();
                     }}
                     variant="black"
                     stroke="thick"
                   >
-                    Analyze
+                    {hadUploadError ? 'Try Again' : 'Analyze'}
                   </ButtonBig>
                 )}
               </>
