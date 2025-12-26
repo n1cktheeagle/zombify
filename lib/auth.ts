@@ -108,57 +108,31 @@ export async function signUp(
     return { data: null, error: new Error(passwordCheck.error!) }
   }
 
-  // 🔥 MINIMAL CHECK: Only block on definitive errors that mean account exists and is active
-  console.log('🔍 [SIGNUP] Checking for active account conflicts...')
+  // Check if email already exists in database (prevents fake "verification sent" messages)
+  console.log('🔍 [SIGNUP] Checking if email already exists...')
   try {
-    const { data: testData, error: testError } = await supabase.auth.signInWithPassword({
-      email,
-      password: 'test_password_to_check_if_account_exists'
+    const checkResponse = await fetch('/api/auth/check-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.toLowerCase().trim() })
     })
-    
-    if (testError) {
-      const errorMsg = testError.message.toLowerCase()
-      console.log('🔍 [SIGNUP] Sign-in test error:', errorMsg)
-      
-      // ONLY block on errors that definitively mean an ACTIVE account exists
-      if (errorMsg.includes('email not confirmed') || 
-          errorMsg.includes('email not verified') ||
-          errorMsg.includes('confirm your email')) {
-        console.log('🚨 [SIGNUP] BLOCKING - Unverified account exists')
-        return {
-          data: null,
-          error: new Error('An account with this email exists but needs verification. Please check your email.')
-        }
-      }
-      
-      if (errorMsg.includes('too many requests')) {
-        console.log('🚨 [SIGNUP] BLOCKING - Rate limited, account exists')
+
+    if (checkResponse.ok) {
+      const { exists } = await checkResponse.json()
+      if (exists) {
+        console.log('🚨 [SIGNUP] BLOCKING - Email already registered')
         return {
           data: null,
           error: new Error('An account with this email already exists. Please sign in instead.')
         }
       }
-      
-      // For "invalid login credentials" - this could be deleted account, so proceed
-      if (errorMsg.includes('invalid login credentials')) {
-        console.log('🔍 [SIGNUP] Invalid credentials - could be deleted account, proceeding')
-      }
-      
-      console.log('✅ [SIGNUP] Test passed, proceeding to Supabase signup')
-      
-    } else if (testData?.user) {
-      // If signin succeeded with test password, that's very weird but account exists
-      console.log('🚨 [SIGNUP] BLOCKING - Test signin succeeded unexpectedly')
-      return {
-        data: null,
-        error: new Error('An account with this email already exists. Please sign in instead.')
-      }
     }
-  } catch (manualCheckError) {
-    console.log('🔍 [SIGNUP] Manual check failed, proceeding:', manualCheckError)
+  } catch (checkError) {
+    console.log('🔍 [SIGNUP] Email check failed, proceeding:', checkError)
+    // Continue with signup if check fails - Supabase will catch duplicates
   }
 
-  console.log('✅ [SIGNUP] Proceeding to Supabase signup')
+  console.log('✅ [SIGNUP] Email available, proceeding to Supabase signup')
   
   const { data, error } = await supabase.auth.signUp({
     email,

@@ -79,6 +79,7 @@ export function AuthModal({ onClose, initialMode = 'signin', notice, inline = fa
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('')
   const [forgotPasswordSent, setForgotPasswordSent] = useState(false)
   const [verificationStep, setVerificationStep] = useState(false)
+  const [emailInUseStep, setEmailInUseStep] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [marketingOptOut, setMarketingOptOut] = useState(false)
 
@@ -96,7 +97,14 @@ export function AuthModal({ onClose, initialMode = 'signin', notice, inline = fa
         
         if (result.error) {
           console.log('🚨 [UI] Signup error:', result.error.message)
-          setError(result.error.message)
+          // Check if it's an "email already exists" error
+          if (result.error.message.toLowerCase().includes('already exists') ||
+              result.error.message.toLowerCase().includes('already registered')) {
+            setEmailInUseStep(true)
+            setError(null)
+          } else {
+            setError(result.error.message)
+          }
         } else if (result.data?.user) {
           console.log('✅ [UI] Signup successful:', { 
             hasUser: !!result.data.user,
@@ -306,6 +314,89 @@ export function AuthModal({ onClose, initialMode = 'signin', notice, inline = fa
   }
 
   const cooldownInfo = getCooldownInfo()
+
+  // Email already in use step
+  if (emailInUseStep) {
+    const content = (
+      <div className={inline ? 'min-h-[70vh] flex items-center justify-center' : 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]'} onClick={dismissible ? onClose : undefined}>
+        <div className="bg-[#f5f1e6] border-2 border-black p-8 rounded-none w-[28rem] max-w-[28rem] mx-4 font-heading" onClick={(e) => e.stopPropagation()}>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-heading font-bold">
+              Email Already Registered
+            </h2>
+            {dismissible && (
+              <button
+                onClick={onClose}
+                className="text-2xl hover:text-gray-600 font-heading leading-none"
+              >
+                ×
+              </button>
+            )}
+          </div>
+
+          <div className="verification-form text-center space-y-4">
+            <div className="text-amber-700 text-sm font-heading bg-amber-50 p-4 border-2 border-amber-200">
+              <div className="mb-2 font-bold">
+                An account with this email already exists
+              </div>
+              <div className="font-bold">{email}</div>
+            </div>
+
+            <div className="text-sm text-gray-600 font-heading space-y-2">
+              <p>Please sign in with your existing account, or use a different email address to create a new account.</p>
+            </div>
+
+            <div className="pt-4 space-y-3">
+              <ButtonBig variant="black" fullWidth onClick={() => {
+                setEmailInUseStep(false)
+                setIsSignUp(false)
+              }}>
+                Sign In Instead
+              </ButtonBig>
+
+              <ButtonBig
+                variant="ghost"
+                fullWidth
+                onClick={() => {
+                  setEmailInUseStep(false)
+                  setEmail('')
+                }}
+              >
+                Try Different Email
+              </ButtonBig>
+            </div>
+          </div>
+
+          {/* reCAPTCHA Notice */}
+          <div className="mt-6 text-center text-[10px] text-gray-500 leading-tight">
+            This site is protected by reCAPTCHA and the Google{' '}
+            <a
+              href="https://policies.google.com/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#816928] hover:opacity-80 underline"
+            >
+              Privacy Policy
+            </a>{' '}
+            and{' '}
+            <a
+              href="https://policies.google.com/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#816928] hover:opacity-80 underline"
+            >
+              Terms of Service
+            </a>{' '}
+            apply.
+          </div>
+        </div>
+      </div>
+    )
+
+    if (inline) return content
+    if (!mounted) return null
+    return createPortal(content, document.body)
+  }
 
   // 🔥 ENHANCED: Email Verification Step with resend functionality
   if (verificationStep) {
