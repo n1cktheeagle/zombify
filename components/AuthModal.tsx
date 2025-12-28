@@ -85,6 +85,23 @@ export function AuthModal({ onClose, initialMode = 'signin', notice, inline = fa
   const [emailCooldownStep, setEmailCooldownStep] = useState(false)
   const [cooldownDaysRemaining, setCooldownDaysRemaining] = useState<number | null>(null)
 
+  // Check for OAuth cooldown error in URL params (from app callback redirect)
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('auth_error') === 'email_cooldown') {
+        const days = params.get('days')
+        setCooldownDaysRemaining(days ? parseInt(days, 10) : 30)
+        setEmailCooldownStep(true)
+        // Clean URL
+        const url = new URL(window.location.href)
+        url.searchParams.delete('auth_error')
+        url.searchParams.delete('days')
+        window.history.replaceState({}, '', url.toString())
+      }
+    } catch {}
+  }, [])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)

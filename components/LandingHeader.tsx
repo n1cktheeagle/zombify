@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import GlitchLogo from '@/components/GlitchLogo';
 import { useAuthModal } from '@/hooks/useAuthModal';
@@ -7,7 +8,18 @@ import { AuthModal } from '@/components/AuthModal';
 
 export function LandingHeader() {
   const { openSignIn, openSignUp, showAuthModal, closeModal, authMode } = useAuthModal();
-  
+
+  // Auto-open auth modal if redirected back with auth_error (OAuth cooldown)
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('auth_error') === 'email_cooldown') {
+        // The AuthModal will detect the params and show the cooldown view
+        openSignUp()
+      }
+    } catch {}
+  }, [openSignUp])
+
   return (
     <>
       <nav className="fixed top-0 left-0 right-0 z-50 flex flex-nowrap items-center justify-between px-6 py-4">
