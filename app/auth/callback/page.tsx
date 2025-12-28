@@ -58,11 +58,10 @@ function CallbackHandler() {
           if (verifyError) {
             console.error('❌ LANDING CALLBACK: Email verification error:', verifyError)
 
-            // Check if already verified/logged in
-            const { data: sessionData } = await supabase.auth.getSession()
-            if (sessionData.session) {
+            // Check if already verified/logged in - use getSession() pattern
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+            if (session && !sessionError) {
               console.log('✅ LANDING CALLBACK: Already have session, transferring to app...')
-              const session = sessionData.session
               // URL-encode tokens to prevent URL parsing issues
               const callbackUrl = `${APP_URL}/auth/callback?access_token=${encodeURIComponent(session.access_token)}&refresh_token=${encodeURIComponent(session.refresh_token)}&verified=true`
               window.location.href = callbackUrl
@@ -74,8 +73,18 @@ function CallbackHandler() {
           }
 
           if (data.session) {
-            console.log('✅ LANDING CALLBACK: Email verified! Transferring session to app...')
-            const session = data.session
+            console.log('✅ LANDING CALLBACK: Email verified! Getting session from storage...')
+
+            // Match the manual login pattern: get session from storage after verification
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+
+            if (sessionError || !session) {
+              console.error('❌ LANDING CALLBACK: Failed to get session from storage:', sessionError)
+              window.location.href = `${LANDING_URL}/?error=verification_failed`
+              return
+            }
+
+            console.log('✅ LANDING CALLBACK: Got session from storage, transferring to app...')
             // URL-encode tokens to prevent URL parsing issues
             const callbackUrl = `${APP_URL}/auth/callback?access_token=${encodeURIComponent(session.access_token)}&refresh_token=${encodeURIComponent(session.refresh_token)}&verified=true`
             window.location.href = callbackUrl
