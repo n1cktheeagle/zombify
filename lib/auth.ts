@@ -108,18 +108,30 @@ export async function signUp(
     return { data: null, error: new Error(passwordCheck.error!) }
   }
 
-  // Check if email already exists in database (prevents fake "verification sent" messages)
-  console.log('🔍 [SIGNUP] Checking if email already exists...')
+  // Check if email already exists OR is in cooldown (recently deleted)
+  // Must use APP_URL since this endpoint only exists on the app, not landing
+  console.log('🔍 [SIGNUP] Checking if email already exists or in cooldown...')
   try {
-    const checkResponse = await fetch('/api/auth/check-email', {
+    const checkResponse = await fetch(`${APP_URL}/api/auth/check-email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: email.toLowerCase().trim() })
     })
 
     if (checkResponse.ok) {
-      const { exists } = await checkResponse.json()
-      if (exists) {
+      const checkData = await checkResponse.json()
+
+      // Check for cooldown (recently deleted account)
+      if (checkData.blocked) {
+        console.log('🚨 [SIGNUP] BLOCKING - Email in cooldown:', checkData.daysRemaining, 'days remaining')
+        return {
+          data: null,
+          error: new Error(checkData.message || 'This email cannot be used at this time.')
+        }
+      }
+
+      // Check for existing account
+      if (checkData.exists) {
         console.log('🚨 [SIGNUP] BLOCKING - Email already registered')
         return {
           data: null,
