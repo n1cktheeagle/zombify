@@ -84,7 +84,8 @@ export default function PrivacyPage() {
         <p className="pl-4">• Rate limiting logs – retained for 24 hours.</p>
         <p className="pl-4">• View tracking logs – retained for 90 days.</p>
         <p className="pl-4">• UTM attribution data – retained for 90 days (browser only).</p>
-        
+        <p className="pl-4">• Email hash cooldown – 30 days after account deletion (for abuse prevention).</p>
+
         <p>6.2 When a User deletes their account, all related data is permanently erased from Zombify's database.</p>
         <p>6.3 Analytical and telemetry data may be retained in anonymised or aggregated form for statistical purposes.</p>
         <p>6.4 You may request deletion or access to your data by emailing hi@zombify.ai.</p>
