@@ -9,12 +9,15 @@ function CallbackHandler() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    let processed = false
+    // Use sessionStorage to prevent double-processing (survives Strict Mode)
+    const callbackKey = `_landing_callback_processed_${window.location.search.substring(0, 100)}`
+    if (sessionStorage.getItem(callbackKey)) {
+      console.log('🔄 LANDING CALLBACK: Already processed (sessionStorage), skipping...')
+      return
+    }
+    sessionStorage.setItem(callbackKey, 'true')
 
     const handleCallback = async () => {
-      if (processed) return
-      processed = true
-
       console.log('🔗 LANDING CALLBACK: Processing auth callback...')
 
       // Parse hash fragment too (Supabase sometimes sends tokens in hash)
