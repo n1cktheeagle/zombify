@@ -13,6 +13,19 @@ function CallbackHandler() {
     const callbackKey = `_landing_callback_processed_${window.location.search.substring(0, 100)}`
     if (sessionStorage.getItem(callbackKey)) {
       console.log('🔄 LANDING CALLBACK: Already processed (sessionStorage), skipping...')
+      // Check if we already have a session and redirect to app
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          console.log('✅ LANDING CALLBACK: Session exists, transferring to app...')
+          const callbackUrl = `${APP_URL}/auth/callback?access_token=${encodeURIComponent(session.access_token)}&refresh_token=${encodeURIComponent(session.refresh_token)}`
+          window.location.href = callbackUrl
+        } else {
+          // No session and already processed - clear the key and reload to retry
+          console.log('⚠️ LANDING CALLBACK: No session but marked processed, clearing and retrying...')
+          sessionStorage.removeItem(callbackKey)
+          window.location.reload()
+        }
+      })
       return
     }
     sessionStorage.setItem(callbackKey, 'true')
