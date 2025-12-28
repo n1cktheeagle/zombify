@@ -82,6 +82,8 @@ export function AuthModal({ onClose, initialMode = 'signin', notice, inline = fa
   const [emailInUseStep, setEmailInUseStep] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [marketingOptOut, setMarketingOptOut] = useState(false)
+  const [emailCooldownStep, setEmailCooldownStep] = useState(false)
+  const [cooldownDaysRemaining, setCooldownDaysRemaining] = useState<number | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -97,8 +99,16 @@ export function AuthModal({ onClose, initialMode = 'signin', notice, inline = fa
         
         if (result.error) {
           console.log('🚨 [UI] Signup error:', result.error.message)
+          // Check if it's a cooldown error (recently deleted account)
+          if (result.error.message.toLowerCase().includes('recently deleted') ||
+              result.error.message.toLowerCase().includes('please wait')) {
+            // Extract days remaining from message if possible
+            const daysMatch = result.error.message.match(/(\d+)\s*day/)
+            setCooldownDaysRemaining(daysMatch ? parseInt(daysMatch[1]) : 30)
+            setEmailCooldownStep(true)
+            setError(null)
           // Check if it's an "email already exists" error
-          if (result.error.message.toLowerCase().includes('already exists') ||
+          } else if (result.error.message.toLowerCase().includes('already exists') ||
               result.error.message.toLowerCase().includes('already registered')) {
             setEmailInUseStep(true)
             setError(null)
@@ -363,6 +373,100 @@ export function AuthModal({ onClose, initialMode = 'signin', notice, inline = fa
                 }}
               >
                 Try Different Email
+              </ButtonBig>
+            </div>
+          </div>
+
+          {/* reCAPTCHA Notice */}
+          <div className="mt-6 text-center text-[10px] text-gray-500 leading-tight">
+            This site is protected by reCAPTCHA and the Google{' '}
+            <a
+              href="https://policies.google.com/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#816928] hover:opacity-80 underline"
+            >
+              Privacy Policy
+            </a>{' '}
+            and{' '}
+            <a
+              href="https://policies.google.com/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#816928] hover:opacity-80 underline"
+            >
+              Terms of Service
+            </a>{' '}
+            apply.
+          </div>
+        </div>
+      </div>
+    )
+
+    if (inline) return content
+    if (!mounted) return null
+    return createPortal(content, document.body)
+  }
+
+  // Email cooldown step (recently deleted account)
+  if (emailCooldownStep) {
+    const content = (
+      <div className={inline ? 'min-h-[70vh] flex items-center justify-center' : 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]'} onClick={dismissible ? onClose : undefined}>
+        <div className="bg-[#f5f1e6] border-2 border-black p-8 rounded-none w-[28rem] max-w-[28rem] mx-4 font-heading" onClick={(e) => e.stopPropagation()}>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-heading font-bold">
+              Account Recently Deleted
+            </h2>
+            {dismissible && (
+              <button
+                onClick={onClose}
+                className="text-2xl hover:text-gray-600 font-heading leading-none"
+              >
+                ×
+              </button>
+            )}
+          </div>
+
+          <div className="verification-form text-center space-y-4">
+            <div className="text-amber-700 text-sm font-heading bg-amber-50 p-4 border-2 border-amber-200">
+              <div className="mb-2 font-bold">
+                This email was recently used for a deleted account
+              </div>
+              <div className="font-bold">{email}</div>
+            </div>
+
+            <div className="text-sm text-gray-600 font-heading space-y-2">
+              <p>
+                For security reasons, you must wait <strong>{cooldownDaysRemaining} day{cooldownDaysRemaining !== 1 ? 's' : ''}</strong> before creating a new account with this email.
+              </p>
+              <p>
+                You can use a different email address to create an account now, or wait until the cooldown period expires.
+              </p>
+            </div>
+
+            <div className="pt-4 space-y-3">
+              <ButtonBig
+                variant="black"
+                fullWidth
+                onClick={() => {
+                  setEmailCooldownStep(false)
+                  setEmail('')
+                  setCooldownDaysRemaining(null)
+                }}
+              >
+                Try Different Email
+              </ButtonBig>
+
+              <ButtonBig
+                variant="ghost"
+                fullWidth
+                onClick={() => {
+                  setEmailCooldownStep(false)
+                  setIsSignUp(false)
+                  setCooldownDaysRemaining(null)
+                }}
+              >
+                Sign In With Different Account
               </ButtonBig>
             </div>
           </div>
