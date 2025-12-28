@@ -142,7 +142,7 @@ export async function signUp(
         full_name: fullName || '',
         marketing_opt_out: marketingOptOut || false,
       },
-      // Redirect to LANDING callback first - PKCE verifier is stored here
+      // Redirect to LANDING callback - PKCE verifier is stored here
       // Landing callback will verify and transfer session to app
       emailRedirectTo: `${LANDING_URL}/auth/callback?type=signup&verify_email=${encodeURIComponent(email)}`
     },

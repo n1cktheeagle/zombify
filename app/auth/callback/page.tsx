@@ -115,16 +115,7 @@ function CallbackHandler() {
           if (exchangeError) {
             console.error('❌ LANDING CALLBACK: Code exchange error:', exchangeError)
 
-            // If this looks like an APP signup (has verify_email), redirect to APP callback with the code
-            // The PKCE verifier is on APP domain, so APP callback should handle the exchange
-            if (verifyEmail && code) {
-              console.log('🔄 LANDING CALLBACK: APP signup detected, redirecting to APP callback with code...')
-              const appCallbackUrl = `${APP_URL}/auth/callback?code=${encodeURIComponent(code)}&type=signup&verify_email=${encodeURIComponent(verifyEmail)}`
-              window.location.href = appCallbackUrl
-              return
-            }
-
-            // For OAuth (no verify_email), try to get existing session as fallback
+            // Try to get existing session as fallback
             const { data: sessionData } = await supabase.auth.getSession()
             if (sessionData.session) {
               console.log('✅ LANDING CALLBACK: Found existing session, transferring...')
@@ -157,15 +148,7 @@ function CallbackHandler() {
         } catch (err) {
           console.error('❌ LANDING CALLBACK: Exception:', err)
 
-          // If this looks like an APP signup, redirect to APP callback with the code
-          if (verifyEmail && code) {
-            console.log('🔄 LANDING CALLBACK: APP signup detected (exception), redirecting to APP callback with code...')
-            const appCallbackUrl = `${APP_URL}/auth/callback?code=${encodeURIComponent(code)}&type=signup&verify_email=${encodeURIComponent(verifyEmail)}`
-            window.location.href = appCallbackUrl
-            return
-          }
-
-          // Final fallback for OAuth - check for existing session
+          // Final fallback - check for existing session
           try {
             const { data: sessionData } = await supabase.auth.getSession()
             if (sessionData.session) {
