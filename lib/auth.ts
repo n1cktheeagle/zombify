@@ -142,8 +142,8 @@ export async function signUp(
         full_name: fullName || '',
         marketing_opt_out: marketingOptOut || false,
       },
-      // Redirect to LANDING callback first (where PKCE verifier exists), then transfer to app
-      emailRedirectTo: `${LANDING_URL}/auth/callback?type=email_verification&verify_email=${encodeURIComponent(email)}`
+      // Direct to APP callback - it handles token_hash verification
+      emailRedirectTo: `${APP_URL}/auth/callback?type=signup&verify_email=${encodeURIComponent(email)}`
     },
   })
   
@@ -310,8 +310,8 @@ export async function resendConfirmation(email: string) {
     type: 'signup',
     email,
     options: {
-      // Redirect to LANDING callback first (where PKCE verifier exists), then transfer to app
-      emailRedirectTo: `${LANDING_URL}/auth/callback?type=email_verification&verify_email=${encodeURIComponent(email)}`
+      // Direct to APP callback - it handles token_hash verification
+      emailRedirectTo: `${APP_URL}/auth/callback?type=signup&verify_email=${encodeURIComponent(email)}`
     }
   })
   
