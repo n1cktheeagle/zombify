@@ -15,24 +15,78 @@ function CallbackHandler() {
       if (processed) return
       processed = true
 
-      console.log('🔗 LANDING CALLBACK: Processing OAuth callback...')
+      console.log('🔗 LANDING CALLBACK: Processing auth callback...')
+
+      // Parse hash fragment too (Supabase sometimes sends tokens in hash)
+      const hashParams = new URLSearchParams(window.location.hash.substring(1))
 
       const code = searchParams.get('code')
-      const error = searchParams.get('error')
-      const error_description = searchParams.get('error_description')
+      const token_hash = searchParams.get('token_hash') || hashParams.get('token_hash')
+      const type = searchParams.get('type') || hashParams.get('type')
+      const error = searchParams.get('error') || hashParams.get('error')
+      const error_description = searchParams.get('error_description') || hashParams.get('error_description')
       const returnTo = searchParams.get('returnTo')
+      const verifyEmail = searchParams.get('verify_email')
 
       console.log('🔍 LANDING CALLBACK: Parameters:', {
         hasCode: !!code,
+        hasTokenHash: !!token_hash,
+        type,
         error,
         error_description,
-        returnTo
+        returnTo,
+        verifyEmail
       })
 
       // Handle OAuth errors
       if (error) {
-        console.error('❌ LANDING CALLBACK: OAuth error:', error, error_description)
-        window.location.href = `${LANDING_URL}/?error=oauth_failed`
+        console.error('❌ LANDING CALLBACK: Auth error:', error, error_description)
+        window.location.href = `${LANDING_URL}/?error=auth_failed`
+        return
+      }
+
+      // Handle email verification (token_hash flow)
+      if (token_hash) {
+        console.log('🔄 LANDING CALLBACK: Verifying email with token_hash...')
+
+        try {
+          const { data, error: verifyError } = await supabase.auth.verifyOtp({
+            token_hash,
+            type: 'signup'
+          })
+
+          if (verifyError) {
+            console.error('❌ LANDING CALLBACK: Email verification error:', verifyError)
+
+            // Check if already verified/logged in
+            const { data: sessionData } = await supabase.auth.getSession()
+            if (sessionData.session) {
+              console.log('✅ LANDING CALLBACK: Already have session, transferring to app...')
+              const session = sessionData.session
+              const callbackUrl = `${APP_URL}/auth/callback?access_token=${session.access_token}&refresh_token=${session.refresh_token}&verified=true`
+              window.location.href = callbackUrl
+              return
+            }
+
+            window.location.href = `${LANDING_URL}/?error=verification_failed`
+            return
+          }
+
+          if (data.session) {
+            console.log('✅ LANDING CALLBACK: Email verified! Transferring session to app...')
+            const session = data.session
+            const callbackUrl = `${APP_URL}/auth/callback?access_token=${session.access_token}&refresh_token=${session.refresh_token}&verified=true`
+            window.location.href = callbackUrl
+          } else {
+            console.error('❌ LANDING CALLBACK: No session after verification')
+            window.location.href = `${LANDING_URL}/?error=verification_failed`
+          }
+
+        } catch (err) {
+          console.error('❌ LANDING CALLBACK: Verification exception:', err)
+          window.location.href = `${LANDING_URL}/?error=verification_failed`
+        }
+
         return
       }
 
