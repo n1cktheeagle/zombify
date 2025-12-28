@@ -91,12 +91,15 @@ export function AuthModal({ onClose, initialMode = 'signin', notice, inline = fa
       const params = new URLSearchParams(window.location.search)
       if (params.get('auth_error') === 'email_cooldown') {
         const days = params.get('days')
+        const emailParam = params.get('email')
         setCooldownDaysRemaining(days ? parseInt(days, 10) : 30)
+        if (emailParam) setEmail(emailParam)
         setEmailCooldownStep(true)
         // Clean URL
         const url = new URL(window.location.href)
         url.searchParams.delete('auth_error')
         url.searchParams.delete('days')
+        url.searchParams.delete('email')
         window.history.replaceState({}, '', url.toString())
       }
     } catch {}
