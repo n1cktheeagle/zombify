@@ -63,7 +63,8 @@ function CallbackHandler() {
             if (sessionData.session) {
               console.log('✅ LANDING CALLBACK: Already have session, transferring to app...')
               const session = sessionData.session
-              const callbackUrl = `${APP_URL}/auth/callback?access_token=${session.access_token}&refresh_token=${session.refresh_token}&verified=true`
+              // URL-encode tokens to prevent URL parsing issues
+              const callbackUrl = `${APP_URL}/auth/callback?access_token=${encodeURIComponent(session.access_token)}&refresh_token=${encodeURIComponent(session.refresh_token)}&verified=true`
               window.location.href = callbackUrl
               return
             }
@@ -75,7 +76,8 @@ function CallbackHandler() {
           if (data.session) {
             console.log('✅ LANDING CALLBACK: Email verified! Transferring session to app...')
             const session = data.session
-            const callbackUrl = `${APP_URL}/auth/callback?access_token=${session.access_token}&refresh_token=${session.refresh_token}&verified=true`
+            // URL-encode tokens to prevent URL parsing issues
+            const callbackUrl = `${APP_URL}/auth/callback?access_token=${encodeURIComponent(session.access_token)}&refresh_token=${encodeURIComponent(session.refresh_token)}&verified=true`
             window.location.href = callbackUrl
           } else {
             console.error('❌ LANDING CALLBACK: No session after verification')
@@ -106,7 +108,7 @@ function CallbackHandler() {
             if (sessionData.session) {
               console.log('✅ LANDING CALLBACK: Found existing session, transferring...')
               const session = sessionData.session
-              const callbackUrl = `${APP_URL}/auth/callback?access_token=${session.access_token}&refresh_token=${session.refresh_token}`
+              const callbackUrl = `${APP_URL}/auth/callback?access_token=${encodeURIComponent(session.access_token)}&refresh_token=${encodeURIComponent(session.refresh_token)}`
               const finalUrl = returnTo ? `${callbackUrl}&returnTo=${encodeURIComponent(returnTo)}` : callbackUrl
               window.location.href = finalUrl
               return
@@ -119,9 +121,9 @@ function CallbackHandler() {
           if (data.session) {
             console.log('✅ LANDING CALLBACK: OAuth successful! Transferring session to app...')
 
-            // Transfer session tokens to app domain
+            // Transfer session tokens to app domain (URL-encoded)
             const session = data.session
-            const callbackUrl = `${APP_URL}/auth/callback?access_token=${session.access_token}&refresh_token=${session.refresh_token}`
+            const callbackUrl = `${APP_URL}/auth/callback?access_token=${encodeURIComponent(session.access_token)}&refresh_token=${encodeURIComponent(session.refresh_token)}`
             const finalUrl = returnTo ? `${callbackUrl}&returnTo=${encodeURIComponent(returnTo)}` : callbackUrl
 
             console.log('🚀 LANDING CALLBACK: Redirecting to app with tokens...')
@@ -140,7 +142,7 @@ function CallbackHandler() {
             if (sessionData.session) {
               console.log('✅ LANDING CALLBACK: Found session in fallback, transferring...')
               const session = sessionData.session
-              const callbackUrl = `${APP_URL}/auth/callback?access_token=${session.access_token}&refresh_token=${session.refresh_token}`
+              const callbackUrl = `${APP_URL}/auth/callback?access_token=${encodeURIComponent(session.access_token)}&refresh_token=${encodeURIComponent(session.refresh_token)}`
               const finalUrl = returnTo ? `${callbackUrl}&returnTo=${encodeURIComponent(returnTo)}` : callbackUrl
               window.location.href = finalUrl
               return
