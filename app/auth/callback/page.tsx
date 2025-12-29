@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/auth'
 import { APP_URL, LANDING_URL } from '@/lib/config'
+import GlitchLogo from '@/components/GlitchLogo'
 
 type CallbackStatus = 'loading' | 'expired'
 
@@ -213,6 +214,9 @@ function CallbackHandler() {
     return (
       <div className="min-h-screen bg-[#f5f1e6] text-black flex items-center justify-center">
         <div className="mx-auto max-w-2xl px-4 py-24 text-center">
+          <a href={LANDING_URL} className="inline-block mb-6">
+            <GlitchLogo className="scale-110" />
+          </a>
           <div className="mb-3 text-xl font-semibold font-heading">{title}</div>
           <div className="text-black/60 mb-6 text-sm font-heading leading-relaxed">
             {description}
