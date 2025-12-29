@@ -1,12 +1,16 @@
 'use client'
 
-import { Suspense, useEffect } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/auth'
 import { APP_URL, LANDING_URL } from '@/lib/config'
 
+type CallbackStatus = 'loading' | 'expired'
+
 function CallbackHandler() {
   const searchParams = useSearchParams()
+  const [status, setStatus] = useState<CallbackStatus>('loading')
+  const [errorInfo, setErrorInfo] = useState<{ code?: string; description?: string } | null>(null)
 
   useEffect(() => {
     // Use sessionStorage to prevent double-processing (survives Strict Mode)
@@ -54,10 +58,11 @@ function CallbackHandler() {
         verifyEmail
       })
 
-      // Handle OAuth errors
+      // Handle OAuth errors - show expired UI
       if (error) {
         console.error('❌ LANDING CALLBACK: Auth error:', error, error_description)
-        window.location.href = `${LANDING_URL}/?error=auth_failed`
+        setErrorInfo({ code: error, description: error_description || undefined })
+        setStatus('expired')
         return
       }
 
@@ -84,7 +89,9 @@ function CallbackHandler() {
               return
             }
 
-            window.location.href = `${LANDING_URL}/?error=verification_failed`
+            // Show expired UI instead of redirecting
+            setErrorInfo({ code: verifyError.code || 'otp_expired', description: verifyError.message })
+            setStatus('expired')
             return
           }
 
@@ -96,7 +103,8 @@ function CallbackHandler() {
 
             if (sessionError || !session) {
               console.error('❌ LANDING CALLBACK: Failed to get session from storage:', sessionError)
-              window.location.href = `${LANDING_URL}/?error=verification_failed`
+              setErrorInfo({ code: 'session_error', description: 'Failed to establish session after verification' })
+              setStatus('expired')
               return
             }
 
@@ -106,12 +114,14 @@ function CallbackHandler() {
             window.location.href = callbackUrl
           } else {
             console.error('❌ LANDING CALLBACK: No session after verification')
-            window.location.href = `${LANDING_URL}/?error=verification_failed`
+            setErrorInfo({ code: 'no_session', description: 'No session received after verification' })
+            setStatus('expired')
           }
 
-        } catch (err) {
+        } catch (err: any) {
           console.error('❌ LANDING CALLBACK: Verification exception:', err)
-          window.location.href = `${LANDING_URL}/?error=verification_failed`
+          setErrorInfo({ code: 'verification_exception', description: err?.message || 'Verification failed' })
+          setStatus('expired')
         }
 
         return
@@ -139,7 +149,8 @@ function CallbackHandler() {
               return
             }
 
-            window.location.href = `${LANDING_URL}/?error=auth_failed`
+            setErrorInfo({ code: 'code_exchange_failed', description: exchangeError?.message || 'OAuth failed' })
+            setStatus('expired')
             return
           }
 
@@ -155,10 +166,11 @@ function CallbackHandler() {
             window.location.href = finalUrl
           } else {
             console.error('❌ LANDING CALLBACK: No session after exchange')
-            window.location.href = `${LANDING_URL}/?error=auth_failed`
+            setErrorInfo({ code: 'no_session', description: 'No session after OAuth exchange' })
+            setStatus('expired')
           }
 
-        } catch (err) {
+        } catch (err: any) {
           console.error('❌ LANDING CALLBACK: Exception:', err)
 
           // Final fallback - check for existing session
@@ -174,7 +186,8 @@ function CallbackHandler() {
             }
           } catch {}
 
-          window.location.href = `${LANDING_URL}/?error=auth_failed`
+          setErrorInfo({ code: 'auth_exception', description: err?.message || 'Authentication failed' })
+          setStatus('expired')
         }
 
       } else {
@@ -186,6 +199,55 @@ function CallbackHandler() {
     handleCallback()
   }, [searchParams])
 
+  // Expired/Invalid Link UI
+  if (status === 'expired') {
+    // Determine message based on error code
+    const isOtpExpired = errorInfo?.code === 'otp_expired' || errorInfo?.code === 'access_denied'
+    const isFlowExpired = errorInfo?.code === 'flow_state_expired'
+
+    const title = 'This link has expired'
+    const description = isFlowExpired
+      ? 'Your authentication session timed out. Please try signing in again.'
+      : 'This verification link has expired or has already been used.'
+
+    return (
+      <div className="min-h-screen bg-[#f5f1e6] text-black flex items-center justify-center">
+        <div className="mx-auto max-w-2xl px-4 py-24 text-center">
+          <div className="mb-3 text-xl font-semibold font-heading">{title}</div>
+          <div className="text-black/60 mb-6 text-sm font-heading leading-relaxed">
+            {description}
+            <br /><br />
+            <strong>Opened on a different device?</strong>
+            <br />
+            Please open the link on the same device and browser where you signed up.
+            <br /><br />
+            If you already verified your email, try logging in below.
+          </div>
+          <div className="mt-6 flex flex-col gap-3 items-center">
+            <a
+              href={`${APP_URL}/login`}
+              className="inline-flex items-center justify-center px-6 py-3 bg-black text-white font-heading text-sm font-medium border-2 border-black hover:bg-black/90 transition-colors"
+            >
+              Go to Login
+            </a>
+            <a
+              href={LANDING_URL}
+              className="inline-flex items-center justify-center px-6 py-3 bg-transparent text-black font-heading text-sm font-medium border-2 border-black hover:bg-black/5 transition-colors"
+            >
+              Back to Home
+            </a>
+          </div>
+          {errorInfo?.code && (
+            <div className="mt-8 text-xs text-black/40 font-mono">
+              Error: {errorInfo.code}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // Loading state
   return (
     <div className="min-h-screen bg-[#f5f1e6] flex items-center justify-center">
       <div className="font-mono text-gray-600 text-center">
