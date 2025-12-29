@@ -621,8 +621,8 @@ export function GuestUploadZone() {
         // Don't use credentials in production (CORS wildcard not allowed with credentials)
         // For dev/staging, we handle guest ownership via URL param and client-side cookie
         xhr.responseType = 'json';
-        // Set 180-second timeout - fail fast on client side instead of waiting forever
-        xhr.timeout = 180000;
+        // Set 5-minute timeout to match server maxDuration (300s)
+        xhr.timeout = 300000;
         let analysisTickerStarted = false;
         
         // Wire up abort signal BEFORE starting upload
@@ -1186,18 +1186,44 @@ export function GuestUploadZone() {
                 )}
                 
                 {!uploading && turnstileToken && (
-                  <ButtonBig
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setHadUploadError(false); // Reset error state on new attempt
-                      setError(null);
-                      handleUpload();
-                    }}
-                    variant="black"
-                    stroke="thick"
-                  >
-                    {hadUploadError ? 'Try Again' : 'Analyze'}
-                  </ButtonBig>
+                  hadUploadError ? (
+                    /* Error state - show Retry + Create Account buttons */
+                    <div className="flex gap-3 justify-center">
+                      <ButtonBig
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setHadUploadError(false);
+                          setError(null);
+                          handleUpload();
+                        }}
+                        variant="black"
+                        stroke="thick"
+                      >
+                        Retry
+                      </ButtonBig>
+                      <ButtonBig
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openSignUp();
+                        }}
+                        variant="black"
+                        stroke="thick"
+                      >
+                        Create Account
+                      </ButtonBig>
+                    </div>
+                  ) : (
+                    <ButtonBig
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleUpload();
+                      }}
+                      variant="black"
+                      stroke="thick"
+                    >
+                      Analyze
+                    </ButtonBig>
+                  )
                 )}
               </>
             ) : (
