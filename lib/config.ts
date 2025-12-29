@@ -81,9 +81,12 @@ export const EXTERNAL_LINKS = {
   aiDisclaimer: '/ai-disclaimer',
 };
 
-console.log('🌍 Landing Site Config:', {
-  ENV,
-  APP_URL,
-  LANDING_URL,
-});
+// Only log in non-production environments
+if (ENV !== 'production') {
+  console.log('🌍 Landing Site Config:', {
+    ENV,
+    APP_URL,
+    LANDING_URL,
+  });
+}
 

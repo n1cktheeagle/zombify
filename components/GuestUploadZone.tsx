@@ -323,7 +323,8 @@ export function GuestUploadZone() {
                 pollingIntervalRef.current = null;
               }
               // Redirect with guestSession param for client-side cookie setting
-              const guestSessionId = localStorage.getItem('z_guest_session_id') || state.guestSessionId;
+              // Check multiple localStorage keys - z_guest_session_id is set after XHR, guest_session_id is the original
+              const guestSessionId = localStorage.getItem('z_guest_session_id') || localStorage.getItem('guest_session_id') || state.guestSessionId;
               allowUnloadRef.current = true;
               setUploading(false);
 

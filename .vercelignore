@@ -1,0 +1,29 @@
+# Documentation - not needed in production
+docs/
+*.md
+!README.md
+
+# Test files
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+__tests__/
+
+# Development files
+.env.local
+.env.*.local
+*.backup
+*.bak
+*.old
+
+# Python venv (should never be deployed)
+.venv/
+venv/
+
+# Editor configs
+.vscode/
+.idea/
+
+# Local caches
+.turbo/
