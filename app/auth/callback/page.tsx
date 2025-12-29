@@ -225,16 +225,16 @@ function CallbackHandler() {
           </div>
           <div className="mt-6 flex flex-row gap-3 justify-center">
             <a
-              href={`${APP_URL}/login`}
-              className="inline-flex items-center justify-center px-6 py-3 bg-black text-white font-heading text-sm font-medium border-2 border-black hover:bg-black/90 transition-colors min-w-[140px]"
-            >
-              Go to Login
-            </a>
-            <a
               href={LANDING_URL}
               className="inline-flex items-center justify-center px-6 py-3 bg-transparent text-black font-heading text-sm font-medium border-2 border-black hover:bg-black/5 transition-colors min-w-[140px]"
             >
               Back to Home
+            </a>
+            <a
+              href={`${APP_URL}/login`}
+              className="inline-flex items-center justify-center px-6 py-3 bg-black text-white font-heading text-sm font-medium border-2 border-black hover:bg-black/90 transition-colors min-w-[140px]"
+            >
+              Go to Login
             </a>
           </div>
           {errorInfo?.code && (
