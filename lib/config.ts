@@ -22,30 +22,50 @@ function getEnvironment(): Environment {
 export const ENV = getEnvironment();
 
 /**
- * App URL (main application)
- * - Development: http://localhost:3000
- * - Staging: https://your-staging-app.vercel.app
- * - Production: https://app.zombify.ai
+ * Helper to get URL from Vercel's auto-set VERCEL_URL
+ * VERCEL_URL is automatically set by Vercel (without protocol)
  */
-export const APP_URL =
-  ENV === 'production'
-    ? 'https://app.zombify.ai'
-    : ENV === 'staging'
-    ? process.env.NEXT_PUBLIC_APP_URL || 'https://zombify-app-git-staging-ashernicholas-6278s-projects.vercel.app'
-    : 'http://localhost:3000';
+function getVercelUrl(): string | undefined {
+  const vercelUrl = process.env.VERCEL_URL;
+  if (vercelUrl) {
+    return `https://${vercelUrl}`;
+  }
+  return undefined;
+}
+
+/**
+ * Helper to derive app URL from landing URL
+ * Replaces 'zombify-site' with 'zombify-app' in the URL
+ */
+function deriveAppUrl(landingUrl: string): string {
+  return landingUrl.replace('zombify-site', 'zombify-app');
+}
 
 /**
  * Landing page URL (this site)
  * - Development: http://localhost:3001
- * - Staging: https://zombify-site-git-staging-....vercel.app
+ * - Staging/Preview: Auto-detected from VERCEL_URL, or explicit env var
  * - Production: https://zombify.ai
  */
 export const LANDING_URL =
   ENV === 'production'
     ? 'https://zombify.ai'
-    : ENV === 'staging'
-    ? process.env.NEXT_PUBLIC_LANDING_URL || 'https://zombify-site-git-staging-ashernicholas-6278s-projects.vercel.app'
-    : 'http://localhost:3001';
+    : ENV === 'development'
+    ? 'http://localhost:3001'
+    : process.env.NEXT_PUBLIC_LANDING_URL || getVercelUrl() || 'https://zombify-site-git-staging-ashernicholas-6278s-projects.vercel.app';
+
+/**
+ * App URL (main application)
+ * - Development: http://localhost:3000
+ * - Staging/Preview: Auto-detected from VERCEL_URL (derived), or explicit env var
+ * - Production: https://app.zombify.ai
+ */
+export const APP_URL =
+  ENV === 'production'
+    ? 'https://app.zombify.ai'
+    : ENV === 'development'
+    ? 'http://localhost:3000'
+    : process.env.NEXT_PUBLIC_APP_URL || (getVercelUrl() ? deriveAppUrl(getVercelUrl()!) : 'https://zombify-app-git-staging-ashernicholas-6278s-projects.vercel.app');
 
 /**
  * Current origin (dynamically determined)
